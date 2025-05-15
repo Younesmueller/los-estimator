@@ -1,0 +1,17 @@
+coverage
+ipython
+jupyter
+matplotlib
+notebook
+numpy
+pandas
+seaborn
+watermark
+pytest
+tqdm
+scikit-learn
+scipy
+tensorflow
+statsmodels
+numba
+plotly
