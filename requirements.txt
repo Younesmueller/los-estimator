@@ -1,3 +1,4 @@
+ipykernel
 coverage
 ipython
 jupyter
