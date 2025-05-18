@@ -25,15 +25,18 @@ def calc_its_convolution(inc,los_distro1, transition_rate,delay,los_cutoff,gauss
 from numba import njit
 import numpy as np
 
+
 @njit
-def convolve_variable_kernel(admissions, los_distro):
-    T, K = los_distro.shape
-    result = np.zeros(T)
-    for t in range(T):
-        end = min(K, T - t)
-        for k in range(end):
-            result[t + k] += admissions[t] * los_distro[t, k]
+def convolve_variable_kernel(admissions, los_distro):    
+    adm_len = admissions.shape[0]
+    n_kernel, t_kernel = los_distro.shape
+    result = np.zeros(adm_len)
+    for t in range(adm_len):
+        for kernel_pos in range(t_kernel):
+            if t + kernel_pos < adm_len:
+                result[t + kernel_pos] += admissions[t] * los_distro[min(t,n_kernel-1), kernel_pos]
     return result
+
 import matplotlib.pyplot as plt
 def calc_its_convolution_old_and_gold(inc,los_distro1, transition_rate,delay,los_cutoff):
     if len(los_distro1.shape) == 1:
@@ -44,6 +47,7 @@ def calc_its_convolution_old_and_gold(inc,los_distro1, transition_rate,delay,los
     admissions = inc * transition_rate
     delay_zeros = np.zeros([los_distro.shape[0],int(delay)])
     los_distro = np.concatenate([delay_zeros,los_distro],axis=-1)
+    
     its = convolve_variable_kernel(admissions,los_distro)
 
     
@@ -58,6 +62,23 @@ def calc_its_convolution_old_and_gold(inc,los_distro1, transition_rate,delay,los
 
     return its
 
+def calc_its_convolution_original(inc,los_distro1, transition_rate,delay,los_cutoff):
+    los_distro = los_distro_converter(los_distro1)
+    
+    admissions = inc * transition_rate
+    los_distro = np.concatenate([np.zeros(int(delay)),los_distro])
+    its = convolve(admissions, los_distro, mode="full")
+    
+    # # Smooth transition between days for floating point optimization
+    # its = np.concatenate([np.zeros(int(delay) + 1), its,[ 0]])
+    # intraday_delay = delay - int(delay)
+    # its = its[1:] * (1 - intraday_delay) + its[:-1] * intraday_delay
+
+    # Remove beginning and end of the signal according to the los_cutoff (los_cutoff is the point, where the main mass of the los_distro is)
+    its[:los_cutoff] = 0
+    its = its[:-len(los_distro) + 1]
+
+    return its
 
 
 def mse(pred,real):

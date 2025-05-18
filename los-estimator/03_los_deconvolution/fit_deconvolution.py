@@ -144,9 +144,9 @@ params = types.SimpleNamespace()
 params.use_manual_transition_rate = False
 params.use_gaussian_spread = False
 params.smooth_data = False
-params.train_width = 7 + los_cutoff
+params.train_width = 42 + los_cutoff
 params.test_width = 21 #28 *4
-params.step = 21
+params.step = 7
 params.fit_admissions = True
 params.error_fun = "mse"# "weighted_mse"
 params.reuse_last_parametrization = False
@@ -267,24 +267,74 @@ plt.title("Manual Transition Rates")
 plt.xticks(xtick_pos[::4],xtick_label[::4])
 show_plt()
 
+#%%
+from scipy.signal import convolve
 
+
+admissions = np.random.RandomState(42).randn(100)
+los_distro = np.array([10,1,9,0,8,0,7,0,6,0,5,0,4,0,3,0,2,0,1])
+los_distro = los_distro / np.sum(los_distro)
+los_distro = 1-np.cumsum(los_distro)
+
+los_distro1  = np.tile(los_distro, (len(admissions), 1))
+
+
+def convolve_variable_kernel(admissions, los_distro):
+    adm_len = admissions.shape[0]
+    n_kernel, t_kernel = los_distro.shape
+    result = np.zeros(adm_len)
+    for t in range(adm_len):
+        conv_end = t + t_kernel
+        i_kernel = min(t,n_kernel-1) # repeat last kernel
+        kernel_len = adm_len-t # shorten kernel at the end of convolution
+        result[t:conv_end] += admissions[t:conv_end] * los_distro[i_kernel,:kernel_len]
+    return result
+its_old = convolve(admissions, los_distro, mode="full")
+its_new = convolve_variable_kernel(admissions,los_distro1)
+
+adm_len = admissions.shape[0]
+n_kernel, t_kernel = los_distro1.shape
+result = np.zeros(adm_len)
+for t in range(adm_len):
+    for kernel_pos in range(t_kernel):
+        if t + kernel_pos < adm_len:
+            result[t + kernel_pos] += admissions[t] * los_distro1[t, kernel_pos]
+# admissions[0]*los_distro[0]
+# admissions[0]*los_distro[1]+admissions[1]*los_distro[0]
+# admissions[0]*los_distro[2]+admissions[1]*los_distro[1]+admissions[2]*los_distro[0]
+
+its3 = result
+
+plt.plot(its_old,label="old")
+plt.plot(its_new,label="new")
+plt.plot(its3,label="alternative new")
+plt.legend()
+plt.title("Convolution with variable kernel")
+plt.show()
 
 
 
 #%%
 # Fitting the LoS curves, as well as the delay and probability
-debug_windows = True
+debug_windows = False
 debug_distros = True
+only_lienar = True
+less_windows = False
 
 nono = ["beta","invgauss","gamma","weibull","lognorm"] + ["sentinel","block"]
 
 from los_fitter import fit_SEIR
+from convolutional_model import calc_its_convolution
+
+from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results
 
 distro_to_fit = list(distributions.keys())
 distro_to_fit += ["SEIR"]
 distro_to_fit = [distro for distro in distro_to_fit if distro not in nono]
 if debug_distros:
     distro_to_fit = ["linear","SEIR"]
+if only_lienar:
+    distro_to_fit = ["linear"]
 
 
 fit_results_by_window = []
@@ -306,13 +356,15 @@ y_full = df["icu"].values
 x_full = x_full.values
 
 l = list(enumerate(windows))
-if debug_windows:
+if less_windows:
+    l = l[:3]
+elif debug_windows:
     l = [l[10]]
 kernels_per_week = {}
 for distro in distro_to_fit:
     if distro == "SEIR":
         kernels_per_week[distro] = None
-    kernels_per_week[distro] = np.zeros((len(l),kernel_width))
+    kernels_per_week[distro] = np.zeros((x_full.shape[0],kernel_width))
 
 first_loop = True
 for window_counter, window in l:
@@ -394,15 +446,16 @@ for window_counter, window in l:
                     gaussian_spread=params.use_gaussian_spread,
                     error_fun=params.error_fun,
                     )
-                else:
-                    past_kernels = kernels_per_week[distro][w.train_start:]
+                    kernels_per_week[distro][:] = result_dict["kernel"]
+                else:                    
+                    past_kernels = kernels_per_week[distro][w.train_start:w.train_start + los_cutoff]
                     result_dict = fit_kernel_distro_to_data_with_previous_results(
                         distro,
                         x_train,
                         y_train,
                         x_test,
                         y_test,
-                        past_kernels
+                        past_kernels,
                         kernel_width,
                         los_cutoff,
                         curve_init_params,
@@ -413,17 +466,21 @@ for window_counter, window in l:
                         error_fun=params.error_fun,
                         )
                     
-                y_pred_b = calc_its_convolution(x_full, result_dict["kernel"], *result_dict["params"][:2],los_cutoff,gaussian_spread=params.use_gaussian_spread)
                 kernels_per_week[distro][w.train_start:] = result_dict["kernel"]
-                
+                y_pred_b = calc_its_convolution(x_full, kernels_per_week[distro], *result_dict["params"][:2],los_cutoff,gaussian_spread=params.use_gaussian_spread)
             
+            # plt.plot(y_pred_b[:len(y_full)],label=distro)
+
             trans_rates.append(result_dict["params"][1])
             delay.append(result_dict["params"][0])
             relative_errors = np.abs(y_pred_b[:len(y_full)]-y_full)/(y_full+1)
             result_dict["train_relative_error"] = np.mean(relative_errors[w.train_start:w.train_end])
             result_dict["test_relative_error"] = np.mean(relative_errors[w.test_start:w.test_end])
-        except Exception as e:
+        except Exception as e:            
             print(f"\tError in {distro}:",e)
+            # print call stack
+            import traceback
+            traceback.print_exc()
             min_result = types.SimpleNamespace()
             min_result.success = False
             result_dict = {"train_error":np.inf,"test_error":np.inf,"minimization_result":min_result}
@@ -574,7 +631,7 @@ df_mutant
 #%% Generate Video 2
 ##animation
 
-debug = True
+debug = False
 if True:
     if not debug:
         path = animation_folder
@@ -603,7 +660,8 @@ if True:
         line1, = ax1.plot(y_full, color="black",label="ICU Bedload")
         ax12 = ax1.twinx()
         # df_mutant.plot(ax=ax12)
-        ax12.plot(df_mutant.values)
+        
+        # ax12.plot(df_mutant.values)
 
         span1 = ax1.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Los convolution edge window")
         span2 = ax1.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,label=f"Training = {params.train_width-los_cutoff} days")

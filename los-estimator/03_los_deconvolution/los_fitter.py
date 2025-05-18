@@ -160,17 +160,6 @@ def objective_direct_kernel_fit(distro, kernel_length, los_cutoff, gaussian_spre
 
     return objective_function
 
-# Objective function for direct kernel fit
-def objective_direct_kernel_fit_with_previous_results(distro, kernel_length, los_cutoff, gaussian_spread=False,error_fun=mse):
-    def objective_function(params, inc, icu, icu_previous_convolution):
-        transition_rate, delay, *fun_params = params
-        kernel = generate_kernel(distro, fun_params, kernel_length)
-        observed = calc_its_convolution(inc, kernel, transition_rate, delay, los_cutoff,gaussian_spread)
-        return error_fun(icu[los_cutoff:], observed[los_cutoff:])
-
-    return objective_function
-
-
 
 def fit_kernel_distro_to_data(
     distro,
@@ -201,6 +190,7 @@ def fit_kernel_distro_to_data(
         distro_init_params = distributions[distro] + [stretching_init]
     params = np.concatenate((curve_init_params, distro_init_params))
     obj_fun = objective_direct_kernel_fit(distro, kernel_width, los_cutoff, gaussian_spread,error_fun)
+    test = obj_fun(params, x_train, y_train)
     result = minimize(
         obj_fun,
         params,
@@ -229,6 +219,18 @@ def fit_kernel_distro_to_data(
     result_dict["minimization_result"] = result
     return result_dict
 
+# Objective function for direct kernel fit
+def objective_direct_kernel_fit_with_previous_results(distro, kernel_length, los_cutoff, gaussian_spread=False,error_fun=mse):
+    def objective_function(params, inc, icu, past_kernels):
+        transition_rate, delay, *fun_params = params
+        kernel = generate_kernel(distro, fun_params, kernel_length)
+        kernels = np.zeros((len(past_kernels)+1,kernel_length))
+        kernels[-1] = kernel
+        observed = calc_its_convolution(inc, kernels, transition_rate, delay, los_cutoff,gaussian_spread)
+        return error_fun(icu[los_cutoff:], observed[los_cutoff:])
+
+    return objective_function
+
 
 def fit_kernel_distro_to_data_with_previous_results(
     distro,
@@ -236,7 +238,7 @@ def fit_kernel_distro_to_data_with_previous_results(
     y_train,
     x_test,
     y_test,
-    past_kernels,
+    past_kernels, # Shape: x_train.shape[0] - los_cutoff X kernel_width
     kernel_width,
     los_cutoff,
     curve_init_params,
@@ -259,26 +261,57 @@ def fit_kernel_distro_to_data_with_previous_results(
         stretching_init = 1
         distro_init_params = distributions[distro] + [stretching_init]
     params = np.concatenate((curve_init_params, distro_init_params))
-    obj_fun = objective_direct_kernel_fit_with_previous_results(distro, kernel_width, los_cutoff, gaussian_spread,error_fun)
+    # obj_fun = objective_direct_kernel_fit_with_previous_results(distro, kernel_width, los_cutoff, gaussian_spread, error_fun)
+    kernel_length = kernel_width
+    def obj_fun(params, inc, icu, past_kernels, plot = False):
+        transition_rate, delay, *fun_params = params
+        kernels = stitch_together_multidim_kernel(past_kernels, fun_params)
+        observed = calc_its_convolution(inc, kernels, transition_rate, delay, los_cutoff,gaussian_spread)
+        # if plot:
+        #     observed_without_cutoff = calc_its_convolution(inc, kernels, transition_rate, delay, 0,gaussian_spread)
+        #     old_observed = calc_its_convolution(inc, past_kernels[0], transition_rate, delay, 0,gaussian_spread)
+        #     plt.plot(icu,label="icu") 
+        #     plt.plot(observed_without_cutoff,label="observed")
+        #     plt.plot(old_observed,label="old_observed")
+        #     plt.legend()
+        #     plt.show()
+        return error_fun(icu[los_cutoff:], observed[los_cutoff:])
+
+    def stitch_together_multidim_kernel(past_kernels, fun_params):
+        kernel = generate_kernel(distro, fun_params, kernel_length)
+        kernels = np.zeros((len(past_kernels)+1,kernel_length))
+        kernels[:len(past_kernels)] = past_kernels
+        kernels[-1] = kernel
+        return kernels
+    test = obj_fun(params, x_train, y_train, past_kernels,plot=True)
     result = minimize(
         obj_fun,
         params,
         args=(
             x_train,
-            y_train,            
+            y_train,
+            past_kernels,
         ),
         bounds=curve_fit_boundaries + distro_boundaries,
         method=method,
     )
     # Generate and plot the fitted kernel
     fitted_kernel = generate_kernel(distro, result.x[2:], kernel_width)
-    train_err = obj_fun(result.x, x_train, y_train)
-    y_pred = calc_its_convolution(x_test, fitted_kernel, *result.x[:2], los_cutoff)
+    train_err = obj_fun(result.x, x_train, y_train, past_kernels)
+    kernels = stitch_together_multidim_kernel(past_kernels, result.x[2:])
+
+    y_pred = calc_its_convolution(x_test, kernels, *result.x[:2], los_cutoff)
+    
+    
+    # plt.plot(y_test);plt.plot(y_pred); plt.show()
 
     train_length = len(x_train)
-    test_err = obj_fun(result.x, x_test[train_length-los_cutoff:], y_test[train_length-los_cutoff:])
+    test_err = obj_fun(result.x,
+                       x_test[train_length-los_cutoff:],
+                       y_test[train_length-los_cutoff:],
+                       #TODO: This cannot work!!
+                       past_kernels)
     
-
     result_dict = {}
     result_dict["params"] = result.x
     result_dict["kernel"] = fitted_kernel
