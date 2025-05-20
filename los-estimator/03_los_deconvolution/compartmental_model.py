@@ -1,13 +1,20 @@
 import numpy as np
 from numba import njit
 
-
+@njit
 def calc_its_comp(inc, discharge_rate, transition_rate, delay,init):
+    int_delay = int(delay)
     beds = inc * transition_rate
     beds = update_beds(beds, init, (1-discharge_rate))
     intraday_delay = delay-int(delay)
-    beds = np.concatenate([np.zeros(int(delay)+1),beds,[beds[-1]]])
+    
+    beds_ext = np.zeros(beds.shape[0] + int_delay + 2, dtype=beds.dtype)
+    beds_ext[int_delay + 1: -1] = beds
+    beds_ext[-1] = beds[-1]
+    beds = beds_ext
+
     beds = beds[1:]*(1-intraday_delay)+beds[:-1]*intraday_delay
+    beds = beds[:-1]
     return beds
 
 

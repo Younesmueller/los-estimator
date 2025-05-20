@@ -98,6 +98,7 @@ DISTROS = {
     "block":     lambda x: np.eye(1, len(x), 1, dtype=float).ravel(),
     "sentinel":  lambda x: np.asarray(sentinel_los_berlin, dtype=float),
 }
+
 def generate_kernel(distro, fun_params, kernel_size):
     *params, scaling_fac = fun_params
     pdf = DISTROS[distro]
@@ -107,10 +108,18 @@ def generate_kernel(distro, fun_params, kernel_size):
     return result
 
 
+def get_error_fun(error_fun):
+    if error_fun == "mse":
+        return mse
+    elif error_fun == "weighted_mse":
+        return weighted_mse
+    else:
+        raise ValueError(f"Unknown Error Function: {error_fun}")
+
 
 
 # Objective function for direct kernel fit
-def gen_obj_fun(distro):
+def objective_fit_kernel_to_sentinel(distro):
     def objective_function(params, observed):
         kernel = generate_kernel(distro, params, observed.shape[0])
         return mse(kernel, observed)
@@ -124,7 +133,7 @@ def stitch_together_multidim_kernel(past_kernels, kernel):
 
 
 # Objective function for direct kernel fit
-def objective_direct_kernel_fit_new(distro, kernel_width, los_cutoff, error_fun=mse):
+def objective_fit_kernel_to_series(distro, kernel_width, los_cutoff, error_fun=mse):
     def objective_function(params, inc, icu, past_kernels=None):
         transition_rate, delay, *fun_params = params
 
@@ -137,75 +146,9 @@ def objective_direct_kernel_fit_new(distro, kernel_width, los_cutoff, error_fun=
         return res
     return objective_function
 
-def fit_kernel_distro_to_data_with_previous_results(
-    distro,
-    x_train,
-    y_train,
-    x_test,
-    y_test,
-    past_kernels, # Shape: x_train.shape[0] - los_cutoff X kernel_width
-    kernel_width,
-    los_cutoff,
-    curve_init_params,
-    curve_fit_boundaries,
-    distro_boundaries=None,
-    distro_init_params=None,
-    method="L-BFGS-B",
-    error_fun="mse"
-):
-    if error_fun == "mse":
-        error_fun = mse
-    elif error_fun == "weighted_mse":
-        error_fun = weighted_mse
-    else:
-        raise Exception("Unknown Error Function")
-    if distro_boundaries is None:
-        distro_boundaries = boundaries[distro] + [(None,None)]
-    if distro_init_params is None or len(distro_init_params) == 0:
-        stretching_init = 1
-        distro_init_params = distributions[distro] + [stretching_init]
-    params = np.concatenate((curve_init_params, distro_init_params))
-    obj_fun = objective_direct_kernel_fit_new(distro, kernel_width, los_cutoff, error_fun)
-    result = minimize(
-        obj_fun,
-        params,
-        args=(
-            x_train,
-            y_train,
-            past_kernels,
-        ),
-        bounds=curve_fit_boundaries + distro_boundaries,
-        method=method,
-    )
-    # Generate and plot the fitted kernel
-    fitted_kernel = generate_kernel(distro, result.x[2:], kernel_width)
-    train_err = obj_fun(result.x, x_train, y_train, past_kernels)
-    kernels = stitch_together_multidim_kernel(past_kernels, fitted_kernel)
-
-    y_pred = calc_its_convolution(x_test, kernels, *result.x[:2], los_cutoff)
-    
-    
-    # plt.plot(y_test);plt.plot(y_pred); plt.show()
-
-    train_length = len(x_train)
-    test_err = obj_fun(result.x,
-                       x_test[train_length-los_cutoff:],
-                       y_test[train_length-los_cutoff:],
-                       #TODO: This cannot work!!
-                       past_kernels)
-    
-    result_dict = {}
-    result_dict["params"] = result.x
-    result_dict["kernel"] = fitted_kernel
-    result_dict["curve"] = y_pred
-    result_dict["train_error"] = train_err
-    result_dict["test_error"] = test_err
-    result_dict["minimization_result"] = result
-    return result_dict
 
 
-
-def fit_kernel_distro_to_data_new(
+def fit_kernel_to_series(
         distro,
         x_train,
         y_train,
@@ -221,22 +164,18 @@ def fit_kernel_distro_to_data_new(
         method="L-BFGS-B",
         error_fun="mse"
     ):
-        if error_fun == "mse":
-            error_fun = mse
-        elif error_fun == "weighted_mse":
-            error_fun = weighted_mse
-        else:
-            raise ValueError(f"Unknown Error Function: {error_fun}")
+        error_fun = get_error_fun(error_fun)
 
         if distro_boundaries is None:
             distro_boundaries = boundaries[distro] + [(None, None)]
+
         if not distro_init_params:
             stretching_init = 1
             distro_init_params = distributions[distro] + [stretching_init]
 
         params = np.concatenate((curve_init_params, distro_init_params))
 
-        obj_fun = objective_direct_kernel_fit_new(distro, kernel_width, los_cutoff, error_fun)
+        obj_fun = objective_fit_kernel_to_series(distro, kernel_width, los_cutoff, error_fun)
 
         minimize_args = (x_train, y_train)
         if past_kernels is not None:
@@ -275,225 +214,40 @@ def fit_kernel_distro_to_data_new(
             "relative_error": relative_error,
         }
 
+def objective_compartemental(error_fun):    
+    def objective_function(params,inc,icu,los_cutoff):
+        discharge_rate, transition_rate,delay  = params
+        pred = calc_its_comp(inc,discharge_rate,transition_rate,delay,init=icu[0])
+        return error_fun(pred[los_cutoff:len(icu)],icu[los_cutoff:])
+    return objective_function
 
-def fit_SEIR(x_train, y_train,x_test,y_test, initial_guess_comp,los_cutoff):
+
+def fit_SEIR(x_train, y_train,x_test,y_test, initial_guess_comp,los_cutoff,method="TNC"):
+    error_fun = get_error_fun("mse")
+    obj_fun = objective_compartemental(error_fun)
+
     result = minimize(
-            objective_function_compartmental,
+            obj_fun,
             initial_guess_comp,
             args=(x_train,y_train,los_cutoff),
-            method="L-BFGS-B",
+            method=method,
             bounds=[(0, 1),(1, 1),(0,0)]
         )
-    y_pred = calc_its_comp(x_test, *result.x,y_test[0])
+    y_pred = calc_its_comp(x_test, *result.x, y_test[0])
 
-    result_dict = {}
-    result_dict["params"] = result.x
-    result_dict["kernel"] = np.zeros(1)
-    result_dict["curve"] = y_pred
-    result_dict["train_error"] = [np.nan]
-    result_dict["test_error"] = [np.nan]
-    result_dict["minimization_result"] = result
-        
-    return result_dict
+    test_x = x_test[len(x_train)-los_cutoff:]
+    test_y = y_test[len(x_train)-los_cutoff:]
 
 
-
-########################################################################################
-########################################################################################
-########################################################################################
-########################################################################################
-
-# Objective function for direct kernel fit
-def objective_direct_kernel_fit(distro, kernel_length, los_cutoff,error_fun=mse):
-    def objective_function(params, inc, icu):
-        transition_rate, delay, *fun_params = params
-        kernel = generate_kernel(distro, fun_params, kernel_length)
-        observed = calc_its_convolution(inc, kernel, transition_rate, delay, los_cutoff)
-        return error_fun(icu[los_cutoff:], observed[los_cutoff:])
-    return objective_function
-
-# Objective function for direct kernel fit
-def objective_direct_kernel_fit_with_previous_results(distro, kernel_length, los_cutoff, error_fun=mse):
-    def objective_function(params, inc, icu, past_kernels):
-        transition_rate, delay, *fun_params = params
-        kernel = generate_kernel(distro, fun_params, kernel_length)
-        kernels = np.zeros((len(past_kernels)+1,kernel_length))
-        kernels[:-1] = past_kernels
-        kernels[-1] = kernel
-        observed = calc_its_convolution(inc, kernels, transition_rate, delay, los_cutoff)
-        return error_fun(icu[los_cutoff:], observed[los_cutoff:])
-    return objective_function
-
-def test_objective_direct_kernel_fit_new_equivalence():
-    # Generate synthetic data
-    np.random.seed(42)
-    kernel_length = 10
-    los_cutoff = 2
-    inc = np.random.rand(20)
-    icu = np.random.rand(20)
-    distro = "lognorm"
-    params = [0.5, 1.0, 1.0, 0.0, 1.0]  # transition_rate, delay, sigma, mu, scaling_fac
-
-    # No past_kernels case
-    obj_new = objective_direct_kernel_fit_new(distro, kernel_length, los_cutoff)
-    obj_old = objective_direct_kernel_fit(distro, kernel_length, los_cutoff)
-    val_new = obj_new(params, inc, icu)
-    val_old = obj_old(params, inc, icu)
-    assert np.equal(val_new, val_old), f"Mismatch without past_kernels: {val_new} vs {val_old}"
-    
-
-    # With past_kernels case
-    past_kernels = [np.ones(kernel_length) / kernel_length]
-    obj_new = objective_direct_kernel_fit_new(distro, kernel_length, los_cutoff)
-    obj_old_prev = objective_direct_kernel_fit_with_previous_results(distro, kernel_length, los_cutoff)
-    val_new = obj_new(params, inc, icu, past_kernels=past_kernels)
-    val_old_prev = obj_old_prev(params, inc, icu, past_kernels)
-    assert np.equal(val_new, val_old_prev), f"Mismatch with past_kernels: {val_new} vs {val_old_prev}"
-
-    print("objective_direct_kernel_fit_new behaves identically to the old functions.")
-
-########################################################################################
-########################################################################################
-########################################################################################
-########################################################################################
-########################################################################################
-
-def fit_kernel_distro_to_data(
-    distro,
-    x_train,
-    y_train,
-    x_test,
-    y_test,
-    kernel_width,
-    los_cutoff,
-    curve_init_params,
-    curve_fit_boundaries,
-    distro_boundaries=None,
-    distro_init_params=None,
-    method="L-BFGS-B",
-    error_fun="mse"
-):
-    if error_fun == "mse":
-        error_fun = mse
-    elif error_fun == "weighted_mse":
-        error_fun = weighted_mse
-    else:
-        raise ValueError(f"Unknown Error Function: {error_fun}")
-
-    if distro_boundaries is None:
-        distro_boundaries = boundaries[distro] + [(None, None)]
-    if not distro_init_params:
-        stretching_init = 1
-        distro_init_params = distributions[distro] + [stretching_init]
-
-    params = np.concatenate((curve_init_params, distro_init_params))
-
-    obj_fun = objective_direct_kernel_fit_new(distro, kernel_width, los_cutoff, error_fun)
-
-    result = minimize(
-        obj_fun,
-        params,
-        args=(x_train, y_train),
-        bounds=curve_fit_boundaries + distro_boundaries,
-        method=method,
-    )
-
-    # Generate the fitted kernel and predictions
-    fitted_kernel = generate_kernel(distro, result.x[2:], kernel_width)
-    train_err = obj_fun(result.x, x_train, y_train)
-    y_pred = calc_its_convolution(x_test, fitted_kernel, *result.x[:2], los_cutoff)
-
-    # Calculate test error (ensure correct slicing)
-    train_length = len(x_train)
-    test_x = x_test[train_length-los_cutoff:]
-    test_y = y_test[train_length-los_cutoff:]
-    test_err = obj_fun(result.x, test_x, test_y)
-
-    # Collect results
-    return {
+    train_err = obj_fun(result.x, x_train, y_train, los_cutoff)
+    test_err = obj_fun(result.x, test_x, test_y, los_cutoff)
+    result_dict = {
         "params": result.x,
-        "kernel": fitted_kernel,
+        "kernel": np.zeros(1),
         "curve": y_pred,
         "train_error": train_err,
         "test_error": test_err,
         "minimization_result": result,
     }
-
-def test_fit_kernel_distro_to_data_new_equivalence():
-    # Todo ensure that
-    # train legnth is longer than kernel width 
-    # that los_cutoff is smaller than train length
-    # ...    
-
-    # Generate synthetic data
-    np.random.seed(123)
-    kernel_width = 120
-    los_cutoff = kernel_width
-    n_train = 140
-    n_test = 160
-    np.random.seed(42)
-    x_test = np.random.rand(n_test)
-    y_test = np.random.rand(n_test)
-    x_train = x_test[:n_train]
-    y_train = y_test[:n_train]
-    
-    distro = "lognorm"
-    curve_init_params = [0.5, 1.0]  # transition_rate, delay
-    curve_fit_boundaries = [(0, 1), (0, 2)]
-    distro_init_params = None
-    distro_boundaries = None
-
-    # No past_kernels case    
-    res_old = fit_kernel_distro_to_data(
-        distro, x_train, y_train, x_test, y_test,
-        kernel_width, los_cutoff,
-        curve_init_params, curve_fit_boundaries,
-        distro_boundaries, distro_init_params,
-        method="L-BFGS-B",
-        error_fun="mse"
-    )
-    res_new = fit_kernel_distro_to_data_new(
-        distro, x_train, y_train, x_test, y_test,
-        kernel_width, los_cutoff,
-        curve_init_params, curve_fit_boundaries,
-        distro_boundaries, distro_init_params,
-        past_kernels=None,
-        method="L-BFGS-B",
-        error_fun="mse"
-    )
-
-    # Compare main outputs
-    assert np.allclose(res_new["params"], res_old["params"]), f"Params mismatch: {res_new['params']} vs {res_old['params']}"
-    assert np.allclose(res_new["kernel"], res_old["kernel"]), f"Kernel mismatch"
-    assert np.allclose(res_new["curve"], res_old["curve"]), f"Curve mismatch"
-    assert np.allclose(res_new["train_error"], res_old["train_error"]), f"Train error mismatch"
-    assert np.allclose(res_new["test_error"], res_old["test_error"]), f"Test error mismatch"
-
-    # With past_kernels case
-    past_kernels = [np.ones(kernel_width) / kernel_width]
-    res_new_past = fit_kernel_distro_to_data_new(
-        distro, x_train, y_train, x_test, y_test,
-        kernel_width, los_cutoff,
-        curve_init_params, curve_fit_boundaries,
-        distro_boundaries, distro_init_params,
-        past_kernels=past_kernels,
-        method="L-BFGS-B",
-        error_fun="mse"
-    )
-    res_old_past = fit_kernel_distro_to_data_with_previous_results(
-        distro, x_train, y_train, x_test, y_test,
-        past_kernels,
-        kernel_width, los_cutoff,
-        curve_init_params, curve_fit_boundaries,
-        distro_boundaries, distro_init_params,
-        method="L-BFGS-B",
-        error_fun="mse"
-    )
-
-    assert np.allclose(res_new_past["params"], res_old_past["params"]), f"Params mismatch (past): {res_new_past['params']} vs {res_old_past['params']}"
-    assert np.allclose(res_new_past["kernel"], res_old_past["kernel"]), f"Kernel mismatch (past)"
-    assert np.allclose(res_new_past["curve"], res_old_past["curve"]), f"Curve mismatch (past)"
-    assert np.allclose(res_new_past["train_error"], res_old_past["train_error"]), f"Train error mismatch (past)"    
-    assert np.allclose(res_new_past["test_error"], res_old_past["test_error"]), f"Test error mismatch (past): {res_new_past['test_error']-res_old_past['test_error']}"
-
-    print("fit_kernel_distro_to_data_new is consistent with the old functions.")
+        
+    return result_dict

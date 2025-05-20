@@ -273,24 +273,20 @@ plt.plot(manual_transition_rates,label="Manual Transition Rates")
 plt.title("Manual Transition Rates")
 plt.xticks(xtick_pos[::4],xtick_label[::4])
 show_plt()
-#%%
-from los_fitter import test_objective_direct_kernel_fit_new_equivalence
-from los_fitter import test_fit_kernel_distro_to_data_new_equivalence
 
-test_objective_direct_kernel_fit_new_equivalence()
-test_fit_kernel_distro_to_data_new_equivalence()
 #%%
 # Fitting the LoS curves, as well as the delay and probability
 debug_windows = False
 debug_distros = False
-only_linear = True
-less_windows = True
+only_linear = False
+less_windows = False
 
 nono = ["beta","invgauss","gamma","weibull","lognorm"] + ["sentinel","block"]
 
 from los_fitter import fit_SEIR
 from convolutional_model import calc_its_convolution
-from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results,fit_kernel_distro_to_data_new
+from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results,fit_kernel_to_series
+from compartmental_model import calc_its_comp
 
 distro_to_fit = list(distributions.keys())
 distro_to_fit += ["SEIR"]
@@ -341,7 +337,7 @@ for window_counter, window in l:
     if w.test_end >= len(df):
         continue
         
-    x_test = x_full[w.train_test_window]
+    x_test = x_full[w.train_test_window] #TODO: Rework so that x_test only contains the test window.
     y_test = y_full[w.train_test_window]
 
     x_train = x_full[w.train_window]
@@ -402,7 +398,7 @@ for window_counter, window in l:
                 if not first_loop:
                     past_kernels = kernels_per_week[distro][w.train_start:w.train_start + los_cutoff]              
 
-                result_dict = fit_kernel_distro_to_data_new(
+                result_dict = fit_kernel_to_series(
                     distro,
                     x_train,
                     y_train,
@@ -429,8 +425,6 @@ for window_counter, window in l:
             relative_errors = np.abs(y_pred-y_full)/(y_full+1)
             result_dict["train_relative_error"] = np.mean(relative_errors[w.train_window])
             result_dict["test_relative_error"] =  np.mean(relative_errors[w.test_window])
-            xs = np.arange(w.train_start, w.test_end)
-            plt.plot(xs, result_dict['curve'])
 
         except Exception as e:            
             print(f"\tError in {distro}:",e)
@@ -448,7 +442,6 @@ for window_counter, window in l:
     fit_results_by_window.append(fit_results)
     first_loop = False
 
-#%%
 
 #%%
 # # Run models on a pulse
@@ -531,7 +524,7 @@ for window in windows:
     xs = np.arange(w.train_start,w.train_end)
     # ax.plot(xs,y_pred[:len(xs)],color=colors[0])
     xs2 = np.arange(w.train_end,w.test_end)
-    ax.plot(xs2,y_pred_b[len(xs):-1],color=colors[1])
+    ax.plot(xs2,y_pred_b[len(xs):],color=colors[1])
 # calc_its_comp(inc, discharge_rate, transition_rate, delay,init):
 ax.set_xlim(600,1300)
 plt.title("SEIR-Models")

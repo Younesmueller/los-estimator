@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 sys.path.append("../03_los_deconvolution/")
-from los_fitter import mse, distributions, generate_kernel, gen_obj_fun
+from los_fitter import mse, distributions, generate_kernel, objective_fit_kernel_to_sentinel
 
 #%%
 # Inputs
@@ -49,7 +49,7 @@ result_dict ={}
 for distro, init_params in distros.items():
     params = [*init_params, init_stretch]
     result = minimize(
-        gen_obj_fun(distro),
+        objective_fit_kernel_to_sentinel(distro),
         params,
         args=(real_kernel,),
         method="L-BFGS-B",
