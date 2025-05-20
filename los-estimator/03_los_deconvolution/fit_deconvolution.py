@@ -275,19 +275,22 @@ plt.xticks(xtick_pos[::4],xtick_label[::4])
 show_plt()
 #%%
 from los_fitter import test_objective_direct_kernel_fit_new_equivalence
+from los_fitter import test_fit_kernel_distro_to_data_new_equivalence
+
 test_objective_direct_kernel_fit_new_equivalence()
+test_fit_kernel_distro_to_data_new_equivalence()
 #%%
 # Fitting the LoS curves, as well as the delay and probability
 debug_windows = False
 debug_distros = False
-only_linear = False
+only_linear = True
 less_windows = True
 
 nono = ["beta","invgauss","gamma","weibull","lognorm"] + ["sentinel","block"]
 
 from los_fitter import fit_SEIR
 from convolutional_model import calc_its_convolution
-from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results
+from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results,fit_kernel_distro_to_data_new
 
 distro_to_fit = list(distributions.keys())
 distro_to_fit += ["SEIR"]
@@ -380,6 +383,7 @@ for window_counter, window in l:
                 init_values = df_init.loc[distro]["params"]
             else:
                 init_values = []
+
         boundaries = [(val,val) for val in init_values]
         try:
             if distro == "SEIR":
@@ -392,9 +396,13 @@ for window_counter, window in l:
                     los_cutoff=los_cutoff,
                     )
                 y_pred = calc_its_comp(x_full,*result_dict["params"],y_full[0])
-            else:                
-                if first_loop:
-                    result_dict = fit_kernel_distro_to_data(
+            else:      
+                
+                past_kernels = None          
+                if not first_loop:
+                    past_kernels = kernels_per_week[distro][w.train_start:w.train_start + los_cutoff]              
+
+                result_dict = fit_kernel_distro_to_data_new(
                     distro,
                     x_train,
                     y_train,
@@ -405,56 +413,41 @@ for window_counter, window in l:
                     curve_init_params,
                     curve_fit_boundaries,
                     distro_init_params=init_values,
-                    # distro_boundaries=boundaries,
+                    past_kernels = past_kernels,
                     error_fun=params.error_fun,
                     )
+                
+                if first_loop:
                     kernels_per_week[distro][:] = result_dict["kernel"]
-                else:                    
-                    past_kernels = kernels_per_week[distro][w.train_start:w.train_start + los_cutoff]
-                    result_dict = fit_kernel_distro_to_data_with_previous_results(
-                        distro,
-                        x_train,
-                        y_train,
-                        x_test,
-                        y_test,
-                        past_kernels,
-                        kernel_width,
-                        los_cutoff,
-                        curve_init_params,
-                        curve_fit_boundaries,
-                        distro_init_params=init_values,
-                        # distro_boundaries=boundaries,
-                        error_fun=params.error_fun,
-                        )
-                    
-                kernels_per_week[distro][w.train_start:] = result_dict["kernel"]
+                else:
+                    kernels_per_week[distro][w.train_start:] = result_dict["kernel"]
                 y_pred = calc_its_convolution(x_full, kernels_per_week[distro], *result_dict["params"][:2],los_cutoff)
 
             trans_rates.append(result_dict["params"][1])
             delay.append(result_dict["params"][0])
-            relative_errors = np.abs(y_pred[:len(y_full)]-y_full)/(y_full+1)
-            result_dict["train_relative_error"] = np.mean(relative_errors[w.train_window])
 
-            result_dict["test_relative_error"] = np.mean(relative_errors[w.test_window])
+            relative_errors = np.abs(y_pred-y_full)/(y_full+1)
+            result_dict["train_relative_error"] = np.mean(relative_errors[w.train_window])
+            result_dict["test_relative_error"] =  np.mean(relative_errors[w.test_window])
+            xs = np.arange(w.train_start, w.test_end)
+            plt.plot(xs, result_dict['curve'])
 
         except Exception as e:            
             print(f"\tError in {distro}:",e)
-            # print call stack
-            import traceback
-            traceback.print_exc()
+            # import traceback
+            # traceback.print_exc()
             min_result = types.SimpleNamespace()
             min_result.success = False
-            result_dict = {"train_error":np.inf,"test_error":np.inf,"minimization_result":min_result}
+            result_dict = {"minimization_result":min_result}
 
         if result_dict["minimization_result"].success == False:
-            # result_dict["train_error"] = np.inf
-            # result_dict["test_error"] = np.inf
             print(f"\tFailed to fit {distro}")
         result_dict["success"] = result_dict["minimization_result"].success
         fit_results[distro] = result_dict
 
     fit_results_by_window.append(fit_results)
     first_loop = False
+
 #%%
 
 #%%

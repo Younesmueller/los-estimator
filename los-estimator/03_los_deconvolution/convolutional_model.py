@@ -11,7 +11,7 @@ def los_distro_converter(los):
 
 def calc_its_convolution(inc,los_distro1, transition_rate,delay,los_cutoff):
     if len(los_distro1.shape) == 1:
-        los_distro1  = los_distro1[:,None]
+        los_distro1  = los_distro1[None,:]
     los_distro = los_distro_converter(los_distro1)
     admissions = inc * transition_rate
     if delay > 0:
