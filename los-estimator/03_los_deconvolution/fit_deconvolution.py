@@ -10,13 +10,13 @@ import types
 import seaborn as sns
 
 import time
-
+from numba import njit
 import itertools
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 sys.path.append("../02_fit_los_distributions/")
-from dataprep import load_los, load_incidences, load_icu_occupancy
+from dataprep import load_los, load_incidences, load_icu_occupancy, load_mutant_distribution
 from compartmental_model import objective_function_compartmental,calc_its_comp
 from los_fitter import fit_kernel_distro_to_data,fit_kernel_distro_to_data_with_previous_results, distributions, calc_its_convolution, fit_SEIR, generate_kernel
 plt.rcParams['savefig.facecolor']='white'
@@ -134,15 +134,20 @@ df_init = df_init.set_index("distro")
 df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
 df_init
 
+#%%
 
+df_mutant = load_mutant_distribution()
+df_mutant = df_mutant.reindex(df.index,method="nearest")
+df_mutant.plot()
+df_mutant
 
 #%%
 
 
 
+
 params = types.SimpleNamespace()
 params.use_manual_transition_rate = False
-params.use_gaussian_spread = False
 params.smooth_data = False
 params.train_width = 42 + los_cutoff
 params.test_width = 21 #28 *4
@@ -188,7 +193,6 @@ run_name = f"{timestamp}_dev"
     # params.test_width = [7]
     # params.step = [21]
     # params.use_manual_transition_rate = [False, True]
-    # params.use_gaussian_spread = [False, True]
     # params.fit_admissions = [True]
 
     # param_space = list(itertools.product(
@@ -202,8 +206,6 @@ run_name = f"{timestamp}_dev"
 run_name+=f"_step{params.step}_train{params.train_width}_test{params.test_width}"
 if params.use_manual_transition_rate:
     run_name += "_manual_transition"
-if params.use_gaussian_spread:
-    run_name += "_gaussian_spread"
 if params.fit_admissions:
     run_name += "_fit_admissions"
 else:
@@ -244,6 +246,11 @@ class WindowInfo:
         self.train_los_cutoff = self.train_start + los_cutoff
         self.test_start = self.train_end
         self.test_end = self.test_start + params.test_width
+
+        self.train_window = slice(self.train_start,self.train_end)
+        self.train_test_window = slice(self.train_start,self.test_end)
+        self.test_window = slice(self.test_start,self.test_end)
+
     
 
 # Specify transition rate manually
@@ -266,66 +273,20 @@ plt.plot(manual_transition_rates,label="Manual Transition Rates")
 plt.title("Manual Transition Rates")
 plt.xticks(xtick_pos[::4],xtick_label[::4])
 show_plt()
-
 #%%
-from scipy.signal import convolve
-
-
-admissions = np.random.RandomState(42).randn(100)
-los_distro = np.array([10,1,9,0,8,0,7,0,6,0,5,0,4,0,3,0,2,0,1])
-los_distro = los_distro / np.sum(los_distro)
-los_distro = 1-np.cumsum(los_distro)
-
-los_distro1  = np.tile(los_distro, (len(admissions), 1))
-
-
-def convolve_variable_kernel(admissions, los_distro):
-    adm_len = admissions.shape[0]
-    n_kernel, t_kernel = los_distro.shape
-    result = np.zeros(adm_len)
-    for t in range(adm_len):
-        conv_end = t + t_kernel
-        i_kernel = min(t,n_kernel-1) # repeat last kernel
-        kernel_len = adm_len-t # shorten kernel at the end of convolution
-        result[t:conv_end] += admissions[t:conv_end] * los_distro[i_kernel,:kernel_len]
-    return result
-its_old = convolve(admissions, los_distro, mode="full")
-its_new = convolve_variable_kernel(admissions,los_distro1)
-
-adm_len = admissions.shape[0]
-n_kernel, t_kernel = los_distro1.shape
-result = np.zeros(adm_len)
-for t in range(adm_len):
-    for kernel_pos in range(t_kernel):
-        if t + kernel_pos < adm_len:
-            result[t + kernel_pos] += admissions[t] * los_distro1[t, kernel_pos]
-# admissions[0]*los_distro[0]
-# admissions[0]*los_distro[1]+admissions[1]*los_distro[0]
-# admissions[0]*los_distro[2]+admissions[1]*los_distro[1]+admissions[2]*los_distro[0]
-
-its3 = result
-
-plt.plot(its_old,label="old")
-plt.plot(its_new,label="new")
-plt.plot(its3,label="alternative new")
-plt.legend()
-plt.title("Convolution with variable kernel")
-plt.show()
-
-
-
+from los_fitter import test_objective_direct_kernel_fit_new_equivalence
+test_objective_direct_kernel_fit_new_equivalence()
 #%%
 # Fitting the LoS curves, as well as the delay and probability
 debug_windows = False
-debug_distros = True
-only_lienar = True
-less_windows = False
+debug_distros = False
+only_linear = False
+less_windows = True
 
 nono = ["beta","invgauss","gamma","weibull","lognorm"] + ["sentinel","block"]
 
 from los_fitter import fit_SEIR
 from convolutional_model import calc_its_convolution
-
 from los_fitter import generate_kernel, fit_kernel_distro_to_data_with_previous_results
 
 distro_to_fit = list(distributions.keys())
@@ -333,7 +294,7 @@ distro_to_fit += ["SEIR"]
 distro_to_fit = [distro for distro in distro_to_fit if distro not in nono]
 if debug_distros:
     distro_to_fit = ["linear","SEIR"]
-if only_lienar:
+if only_linear:
     distro_to_fit = ["linear"]
 
 
@@ -352,6 +313,7 @@ else:
         x_full = df["AnzahlFall"]
     else:
         x_full = df["daily"]
+
 y_full = df["icu"].values
 x_full = x_full.values
 
@@ -361,6 +323,7 @@ if less_windows:
 elif debug_windows:
     l = [l[10]]
 kernels_per_week = {}
+
 for distro in distro_to_fit:
     if distro == "SEIR":
         kernels_per_week[distro] = None
@@ -375,11 +338,11 @@ for window_counter, window in l:
     if w.test_end >= len(df):
         continue
         
-    x_test = x_full[w.train_start:w.test_end]
-    y_test = y_full[w.train_start:w.test_end]
+    x_test = x_full[w.train_test_window]
+    y_test = y_full[w.train_test_window]
 
-    x_train = x_full[w.train_start:w.train_end]
-    y_train = y_full[w.train_start:w.train_end]
+    x_train = x_full[w.train_window]
+    y_train = y_full[w.train_window]
 
     init_transition_rate = 0.014472729492187482
     init_delay = 2
@@ -428,7 +391,7 @@ for window_counter, window in l:
                     initial_guess_comp=[1/7,1,0],
                     los_cutoff=los_cutoff,
                     )
-                y_pred_b = calc_its_comp(x_full,*result_dict["params"],y_full[0])
+                y_pred = calc_its_comp(x_full,*result_dict["params"],y_full[0])
             else:                
                 if first_loop:
                     result_dict = fit_kernel_distro_to_data(
@@ -443,7 +406,6 @@ for window_counter, window in l:
                     curve_fit_boundaries,
                     distro_init_params=init_values,
                     # distro_boundaries=boundaries,
-                    gaussian_spread=params.use_gaussian_spread,
                     error_fun=params.error_fun,
                     )
                     kernels_per_week[distro][:] = result_dict["kernel"]
@@ -462,20 +424,19 @@ for window_counter, window in l:
                         curve_fit_boundaries,
                         distro_init_params=init_values,
                         # distro_boundaries=boundaries,
-                        gaussian_spread=params.use_gaussian_spread,
                         error_fun=params.error_fun,
                         )
                     
                 kernels_per_week[distro][w.train_start:] = result_dict["kernel"]
-                y_pred_b = calc_its_convolution(x_full, kernels_per_week[distro], *result_dict["params"][:2],los_cutoff,gaussian_spread=params.use_gaussian_spread)
-            
-            # plt.plot(y_pred_b[:len(y_full)],label=distro)
+                y_pred = calc_its_convolution(x_full, kernels_per_week[distro], *result_dict["params"][:2],los_cutoff)
 
             trans_rates.append(result_dict["params"][1])
             delay.append(result_dict["params"][0])
-            relative_errors = np.abs(y_pred_b[:len(y_full)]-y_full)/(y_full+1)
-            result_dict["train_relative_error"] = np.mean(relative_errors[w.train_start:w.train_end])
-            result_dict["test_relative_error"] = np.mean(relative_errors[w.test_start:w.test_end])
+            relative_errors = np.abs(y_pred[:len(y_full)]-y_full)/(y_full+1)
+            result_dict["train_relative_error"] = np.mean(relative_errors[w.train_window])
+
+            result_dict["test_relative_error"] = np.mean(relative_errors[w.test_window])
+
         except Exception as e:            
             print(f"\tError in {distro}:",e)
             # print call stack
@@ -495,37 +456,7 @@ for window_counter, window in l:
     fit_results_by_window.append(fit_results)
     first_loop = False
 #%%
-kernel = generate_kernel("linear",[40,1],120)
-l = len(x_full)
-kernels_a = np.tile(kernel, (l, 1))
 
-kernels_b = np.zeros((l, kernel.shape[0]))
-random_state = np.random.RandomState(42)
-last_value = 40
-for i in range(l):
-    kernels_b[i] = generate_kernel("linear",[last_value,1],120)
-    r = (random_state.rand()-.5)*5
-    last_value += r
-kernel = generate_kernel("linear",[45,1],120)
-kernels_c = np.tile(kernel, (l, 1))
-
-plt.plot(kernels_a.T)
-plt.show()
-plt.plot(kernels_b.T)
-plt.show()
-plt.plot(kernels_c.T)
-plt.show()
-#%%
-from los_fitter import calc_its_convolution
-
-y_pred_a = calc_its_convolution(x_full, kernels_a, *result_dict["params"][:2],los_cutoff,gaussian_spread=False)
-y_pred_b = calc_its_convolution(x_full, kernels_b, *result_dict["params"][:2],los_cutoff,gaussian_spread=False)
-y_pred_c = calc_its_convolution(x_full, kernels_c, *result_dict["params"][:2],los_cutoff,gaussian_spread=False)
-plt.plot(y_pred_a,label = "A")
-plt.plot(y_pred_b,label = "B")
-plt.plot(y_pred_c,label = "C")
-plt.legend()
-plt.plot()
 #%%
 # # Run models on a pulse
 # debug = True
@@ -554,7 +485,7 @@ plt.plot()
 #         if distro == "SEIR":
 #             y_pred = calc_its_comp(x_in,*res["params"],0)
 #         else:
-#             y_pred = calc_its_convolution(x_in, res["kernel"], *res["params"][:2],los_cutoff=0,gaussian_spread=params.use_gaussian_spread)
+#             y_pred = calc_its_convolution(x_in, res["kernel"], *res["params"][:2],los_cutoff=0)
 #         ax.plot(y_pred[:n],label=f"{distro} - Bed Occupancy")
 #         ax.set_title(distro)
 
@@ -595,11 +526,11 @@ for window in windows:
     if w.test_end >= len(df):
         continue
         
-    x_test = x_full[w.train_start:w.test_end]
-    y_test = y_full[w.train_start:w.test_end]
+    x_test = x_full[w.train_test_window]
+    y_test = y_full[w.train_test_window]
 
-    x_train = x_full[w.train_start:w.train_end]
-    y_train = y_full[w.train_start:w.train_end]
+    x_train = x_full[w.train_window]
+    y_train = y_full[w.train_window]
 
     result = fit_SEIR(x_train, y_train,x_test,y_test, initial_guess_comp,
                       los_cutoff=los_cutoff)
@@ -613,21 +544,7 @@ ax.set_xlim(600,1300)
 plt.title("SEIR-Models")
 plt.show()
 
-#%%
-from dataprep import load_mutant_distribution
 
-df_mutant = load_mutant_distribution()
-# df_mutant = df_mutant.reset_index()
-# df_mutant = df_mutant.drop(columns="index")
-df_mutant.plot()
-df_mutant
-
-#%%
-
-df_mutant = df_mutant.reindex(df.index,method="nearest")
-# df_mutant = df_mutant.reindex(df.index)
-df_mutant.plot()
-df_mutant
 #%% Generate Video 2
 ##animation
 
@@ -659,9 +576,8 @@ if True:
 
         line1, = ax1.plot(y_full, color="black",label="ICU Bedload")
         ax12 = ax1.twinx()
-        # df_mutant.plot(ax=ax12)
-        
-        # ax12.plot(df_mutant.values)
+
+        mutant_lines = ax12.plot(df_mutant.values)
 
         span1 = ax1.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Los convolution edge window")
         span2 = ax1.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,label=f"Training = {params.train_width-los_cutoff} days")
@@ -700,8 +616,10 @@ if True:
         
         legend1 = ax1.legend(handles = plot_lines,loc="upper left")
         legend2 = ax1.legend(handles = [line1, line2, span1, span2, span3],loc="upper right")
+        legend3 = ax1.legend(mutant_lines,df_mutant.columns,loc="lower right")
         ax1.add_artist(legend1)
         ax1.add_artist(legend2)
+        ax1.add_artist(legend3)
 
         ax1.set_title(f"ICU Occupancy")
         ax1.set_xticks(xtick_pos)
@@ -734,15 +652,15 @@ if True:
             ax32.bar([distro],test_errors[i],label="Test",color=c)
 
 
-        lim = .5e7
+        lim = .4
         ax3.set_ylim(0,lim)
-        ax3.set_title("Train Error")
+        ax3.set_title("Relative Train Error")
         ax3.set_xticks(distro_to_fit)        
         ax3.set_xticklabels(distro_to_fit,rotation=75)
         ax3.set_ylabel("Relative Error")
 
         ax32.set_ylim(0,lim)
-        ax32.set_title("Test Error")
+        ax32.set_title("Relative Test Error")
         ax32.set_xticks(distro_to_fit)
         ax32.set_xticklabels(distro_to_fit,rotation=75)
         ax32.set_ylabel("Relative Error")
