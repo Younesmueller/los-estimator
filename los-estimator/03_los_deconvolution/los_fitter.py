@@ -54,6 +54,9 @@ sentinel_los_berlin = np.array([0.01387985, 0.04901323, 0.0516157 , 0.05530254, 
        0.        , 0.        , 0.        ])
 
 
+
+
+
 distributions = {
     "lognorm": [1, 0],
     "weibull": [1, 15],
@@ -99,6 +102,22 @@ DISTROS = {
     "sentinel":  lambda x: np.asarray(sentinel_los_berlin, dtype=float),
 }
 
+def get_curve_init_params(curve_init_params, curve_fit_boundaries, fit_transition_rate):
+    if fit_transition_rate:
+        init_transition_rate = 0.014472729492187482
+        init_delay = 2
+
+        curve_init_params_pre = (init_transition_rate, init_delay)
+        curve_fit_boundaries_pre = ((0, 1),(0,10))
+        if curve_init_params is None:
+            curve_init_params = curve_init_params_pre
+        if curve_fit_boundaries is None:
+            curve_fit_boundaries = curve_fit_boundaries_pre
+    else:
+        curve_init_params = [1,0]
+        curve_fit_boundaries = []
+    return curve_init_params, curve_fit_boundaries
+
 def generate_kernel(distro, fun_params, kernel_size):
     *params, scaling_fac = fun_params
     pdf = DISTROS[distro]
@@ -132,10 +151,15 @@ def stitch_together_multidim_kernel(past_kernels, kernel):
     return kernels
 
 
+
+    
 # Objective function for direct kernel fit
-def objective_fit_kernel_to_series(distro, kernel_width, los_cutoff, error_fun=mse):
-    def objective_function(params, inc, icu, past_kernels=None):
-        transition_rate, delay, *fun_params = params
+def objective_fit_kernel_to_series(distro, kernel_width, los_cutoff,fit_transition_rate, error_fun=mse):
+    def objective_function(params, inc, icu, transition_rate=None, delay=None, past_kernels=None):
+        if fit_transition_rate:
+            transition_rate, delay, *fun_params = params
+        else:
+            fun_params = params
 
         kernel = generate_kernel(distro, fun_params, kernel_width)
         if past_kernels is not None:
@@ -148,6 +172,7 @@ def objective_fit_kernel_to_series(distro, kernel_width, los_cutoff, error_fun=m
 
 
 
+
 def fit_kernel_to_series(
         distro,
         x_train,
@@ -156,56 +181,82 @@ def fit_kernel_to_series(
         y_test,
         kernel_width,
         los_cutoff,
-        curve_init_params,
-        curve_fit_boundaries,
+        curve_init_params=None,
+        curve_fit_boundaries=None,
         distro_boundaries=None,
         distro_init_params=None,
         past_kernels=None,
         method="L-BFGS-B",
-        error_fun="mse"
+        error_fun="mse",
+        fit_transition_rate=False,
     ):
         error_fun = get_error_fun(error_fun)
 
         if distro_boundaries is None:
             distro_boundaries = boundaries[distro] + [(None, None)]
 
-        if not distro_init_params:
+        if distro_init_params is None or len(distro_init_params) == 0:
             stretching_init = 1
             distro_init_params = distributions[distro] + [stretching_init]
 
-        params = np.concatenate((curve_init_params, distro_init_params))
+        curve_init_params, curve_fit_boundaries = get_curve_init_params(
+            curve_init_params, curve_fit_boundaries, fit_transition_rate
+        )            
+        
+        obj_fun = objective_fit_kernel_to_series(distro, kernel_width, los_cutoff,fit_transition_rate, error_fun)
 
-        obj_fun = objective_fit_kernel_to_series(distro, kernel_width, los_cutoff, error_fun)
+        params = ()
+        args = (x_train,y_train)
+        min_boundaries = ()
 
-        minimize_args = (x_train, y_train)
+        if fit_transition_rate:
+            params += (*curve_init_params,)
+            min_boundaries += (*curve_fit_boundaries,)
+        else:
+            args += (*curve_init_params,)
+
         if past_kernels is not None:
-            minimize_args = (x_train, y_train, past_kernels)
+            args += (past_kernels,) 
+
+        params += (*distro_init_params,)
+        min_boundaries += (*distro_boundaries,)
+
+        obj_fun(params, *args)        
 
         result = minimize(
             obj_fun,
             params,
-            args=minimize_args,
-            bounds=curve_fit_boundaries + distro_boundaries,
+            args=args,
+            bounds=min_boundaries,
             method=method,
         )
+        
+        if fit_transition_rate:
+            distro_params = result.x[2:]
+            curve_params = result.x[:2]
+        else:
+            distro_params = result.x
+            curve_params = curve_init_params
 
         # Generate the fitted kernel and predictions
-        fitted_kernel = generate_kernel(distro, result.x[2:], kernel_width)        
+        fitted_kernel = generate_kernel(distro, distro_params, kernel_width)        
         if past_kernels is None:            
-            y_pred = calc_its_convolution(x_test, fitted_kernel, *result.x[:2], los_cutoff)
+            y_pred = calc_its_convolution(x_test, fitted_kernel, *curve_params, los_cutoff)
         else:
             kernels = stitch_together_multidim_kernel(past_kernels, fitted_kernel)
-            y_pred = calc_its_convolution(x_test, kernels, *result.x[:2], los_cutoff)
+            y_pred = calc_its_convolution(x_test, kernels, *curve_params, los_cutoff)
         
         train_len = len(x_train)
-        train_err = obj_fun(result.x, x_train, y_train, past_kernels)
-        test_err = obj_fun(result.x, x_test[train_len-los_cutoff:], y_test[train_len-los_cutoff:], past_kernels)
+        train_err = obj_fun(result.x, x_train, y_train, *args[2:] )
+        test_err = obj_fun(result.x, x_test[train_len-los_cutoff:], y_test[train_len-los_cutoff:],*args[2:])
 
         relative_error = np.abs((y_pred - y_test) / (y_test+1))
         relative_error[np.isnan(relative_error)] = 0
 
+        complete_params = np.concatenate((curve_params, distro_params))
+
         return {
-            "params": result.x,
+            "params": complete_params,
             "kernel": fitted_kernel,
             "curve": y_pred,
             "train_error": train_err,

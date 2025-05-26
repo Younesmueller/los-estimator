@@ -73,8 +73,7 @@ def load_icu_occupancy(start_day, end_day):
     return df_icu
 
 
-def load_mutant_distribution():
-    p = '../data/VOC_VOI_Tabelle.xlsx'
+def load_mutant_distribution(p = '../data/VOC_VOI_Tabelle.xlsx'):
     raw_df = pd.read_excel(p, sheet_name=1)
     c = [col for col in raw_df.columns if "Anteil" in col]
     df = raw_df[c]
