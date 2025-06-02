@@ -79,8 +79,6 @@ def generate_run_name(params):
     run_name = f"{timestamp}_dev"
 
     run_name+=f"_step{params.step}_train{params.train_width}_test{params.test_width}"
-    if params.use_manual_transition_rate:
-        run_name += "_manual_transition"
     if params.fit_admissions:
         run_name += "_fit_admissions"
     else:

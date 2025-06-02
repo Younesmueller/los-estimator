@@ -11,6 +11,8 @@ import seaborn as sns
 import shutil
 import timeit 
 
+import functools
+from matplotlib.patches import Patch
 import time
 from numba import njit
 from tqdm import tqdm
@@ -56,6 +58,12 @@ sentinel_end_day = date_to_day(sentinel_end_date)
 #%%
 
 df_occupancy, real_los, df_init, df_mutant, xtick_pos, xtick_label, new_icu_date = load_all_data(los_file, init_params_file, mutants_file, start_day, end_day)
+
+df_mutant_selection = df_mutant.copy()
+df_mutant_selection["Omikron_BA.1/2"] = df_mutant_selection["Omikron_BA.1"] + df_mutant_selection["Omikron_BA.2"]
+df_mutant_selection["Omikron_BA.4/5"] = df_mutant_selection["Omikron_BA.4"] + df_mutant_selection["Omikron_BA.5"]
+df_mutant_selection = df_mutant_selection[['Delta_AY.1','Omikron_BA.1/2','Omikron_BA.4/5']]
+
 new_icu_day = date_to_day(new_icu_date)
 
 #%%
@@ -95,7 +103,6 @@ df_mutant.plot()
 params = types.SimpleNamespace()
 params.kernel_width = 120
 params.los_cutoff = 60 # Ca. 90% of all patients are discharged after 41 days
-params.use_manual_transition_rate = False
 params.smooth_data = False
 params.train_width = 42 + params.los_cutoff
 params.test_width = 21 #28 *4
@@ -138,174 +145,121 @@ class WindowInfo:
         self.test_window = slice(self.test_start,self.test_end)
 
 #%%
-# Fitting the LoS curves, as well as the delay and probability
-debug_windows = False
-debug_distros = False
-only_linear = False
-less_windows = False
+# Next steps:
+# 1. Methode, die trainiert, basierend auf den Windows und einer distro...
+# 2. Aufbrechen in Äußere Schleife- distros
+# 3. Ist die Struktur, wie ich das in Variablen speichere sinnvoll?
+#      - Nein, nimm distro als index
+# 4. Umstellen der plots auf plotly
 
-nono = ["beta","invgauss","gamma","weibull","lognorm"] + ["sentinel","block"]
-
-# Reimport for debugging
-from los_fitter import fit_SEIR
-from convolutional_model import calc_its_convolution
-from los_fitter import generate_kernel, fit_kernel_to_series
-from compartmental_model import calc_its_comp
-
-def a
-distro_to_fit = list(distributions.keys())
-distro_to_fit += ["SEIR"]
-distro_to_fit = [distro for distro in distro_to_fit if distro not in nono]
-
-fit_transition_rate = not (params.use_manual_transition_rate or params.fit_admissions)
-
-
-fit_results_by_window = []
-trans_rates = []
-delay = []
-
-# --- Prepare input series once ---
 def select_series(df, params):
     if params.fit_admissions:
         col = "new_icu_smooth" if params.smooth_data else "new_icu"
     else:
         col = "AnzahlFall" if params.smooth_data else "daily"
     return df[col].values, df["icu"].values
-
-x_full, y_full = select_series(df_occupancy, params)
-
-
-#####################################
-############ DEBUGGING###############
-#####################################
-if debug_distros:
-    distro_to_fit = ["linear","SEIR"]
-if only_linear:
-    distro_to_fit = ["linear"]
-l = list(enumerate(windows))
-if less_windows:
-    l = l[:3]
-elif debug_windows:
-    l = [l[10]]
-#####################################
-
-
-
-kernels_per_week = {}
-
-for distro in distro_to_fit:
-    if distro == "SEIR":
-        kernels_per_week[distro] = None
-    kernels_per_week[distro] = np.zeros((x_full.shape[0],params.kernel_width))
-
-first_loop = True
-for window_counter, window in l:
-    # print("#"*50)
-    print(f"Window {window_counter + 1}/{len(windows)}")
-    # print("#"*50)
+# --- Helper to pick init values from previous runs or df_init ---
+def get_initial_params(distro, fit_results_by_window, df_init, params,window_id):
+    # Try using last parametrization
+    if params.reuse_last_parametrization:
+        for prev in reversed(fit_results_by_window[:window_id]):
+            if not prev:
+                continue
+            fr = prev.get(distro, {})
+            if "params" in fr:
+                return fr["params"][2:]
     
-    w = WindowInfo(window)
+    # fallback to df_init
+    if distro in df_init.index:
+        return df_init.loc[distro, "params"]
+    return []
+
+
+#%%
+
+class SeriesData:
+    def __init__(self,df_occupancy,params):
+        self.x_full,self.y_full = select_series(df_occupancy, params)        
+        self._calc_windows(params)            
+
+    def _calc_windows(self,params):
+        start = 0
+        if params.fit_admissions:
+            start = new_icu_day + params.train_width
+        self.windows = np.arange(start,len(self.x_full)-params.kernel_width, params.step)
+        self.window_infos = [WindowInfo(window) for window in self.windows]
+        self.n_windows = len(self.windows)
+    
+    @ functools.lru_cache
+    def get_train_data(self, window_id:int):
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        w = self.window_infos[window_id]
+        return self.x_full[w.train_window], self.y_full[w.train_window]
+    
+    @ functools.lru_cache
+    def get_test_data(self,window_id):    
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        w = self.window_infos[window_id]
+        return self.x_full[w.train_test_window], self.y_full[w.train_test_window]
+    
+    @ functools.lru_cache
+    def get_window_info(self,window_id):
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        return self.window_infos[window_id]
+
+    def __iter__(self):
+        for idx in range(self.n_windows):
+            train_data = self.get_train_data(idx)
+            test_data = self.get_test_data(idx)
+            window_info = self.get_window_info(idx)
+            yield idx, window_info,train_data, test_data
+    
+    def __len__(self):
+        return self.n_windows
+series_data = SeriesData(df_occupancy, params)
+
+
+class SeriesFitResult:
+    def __init__(self, distro, window_infos):
+        self.distro = distro
+        self.window_infos = window_infos
+        self.fit_results = [None] * len(window_infos)
+        self.train_relative_error = None
+        self.test_relative_error = None
+
+    def bake(self):
+        self._collect_errors()
+        return self
+
+    def _collect_errors(self):
+        self.errors_collected = True
+        train_err = np.empty(len(self.window_infos))
+        test_err = np.empty(len(self.window_infos))
+        for i, fr in enumerate(self.fit_results):
+            if fr is None:
+                train_err[i] = np.inf
+                test_err[i] = np.inf
+                continue
+            train_err[i] = fr.rel_train_error            
+            test_err[i] = fr.rel_test_error
+        self.train_relative_error = train_err
+        self.test_relative_error = test_err
+
+    def __getitem__(self, window_id):
+        if window_id >= len(self.fit_results):
+            raise IndexError(f"Window ID {window_id} out of range for {len(self.fit_results)} windows.")
+        return self.fit_results[window_id]
+    def __setitem__(self, window_id, value):
+        if window_id >= len(self.fit_results):
+            raise IndexError(f"Window ID {window_id} out of range for {len(self.fit_results)} windows.")
+        self.fit_results[window_id] = value
+
         
-    x_test = x_full[w.train_test_window] #TODO: Rework so that x_test only contains the test window.
-    y_test = y_full[w.train_test_window]
-
-    x_train = x_full[w.train_window]
-    y_train = y_full[w.train_window]
-
-    curve_init_params = None
-    curve_fit_boundaries = None
-    if params.use_manual_transition_rate:
-        init_delay = 2 # Todo: Remove
-
-        transition_rate = manual_transition_rates[windows[None,"i"]]# Which counter?
-        curve_init_params = [transition_rate, init_delay]
-        curve_fit_boundaries = [
-            (transition_rate*.9,transition_rate*1.1),
-            (init_delay,init_delay)
-        ]
-    if params.fit_admissions:
-        curve_init_params = [1, 0]
-        curve_fit_boundaries = [(1, 1),(0,0)]
 
     
-    fit_results = {}
-    
-    for distro_counter,distro in enumerate(distro_to_fit):
-        # print(f"Fitting {distro} - {distro_counter+1}/{len(distro_to_fit)}")
-        
-        init_values = []
-        if params.reuse_last_parametrization:
-            for fr in reversed(fit_results_by_window):
-                fr = fr[distro]
-                if "params" in fr:
-                    init_values = fr['params'][2:]
-                    break
-        if len(init_values) == 0:
-            if distro in df_init.index:
-                init_values = df_init.loc[distro]["params"]
-            
-
-        boundaries = [(val,val) for val in init_values]
-        try:
-            if distro == "SEIR":
-                result_dict= fit_SEIR(
-                    x_train,
-                    y_train,
-                    x_test,
-                    y_test,
-                    initial_guess_comp=[1/7,1,0],
-                    los_cutoff=params.los_cutoff,
-                    )
-                y_pred = calc_its_comp(x_full,*result_dict["params"],y_full[0])
-            else:      
-                
-                past_kernels = None          
-                if not first_loop:
-                    past_kernels = kernels_per_week[distro][w.train_start:w.train_start + params.los_cutoff]              
-                result_dict = fit_kernel_to_series(
-                    distro,
-                    x_train,
-                    y_train,
-                    x_test,
-                    y_test,
-                    params.kernel_width,
-                    params.los_cutoff,
-                    curve_init_params,
-                    curve_fit_boundaries,
-                    distro_init_params=init_values,
-                    past_kernels = past_kernels,
-                    error_fun=params.error_fun,
-                    fit_transition_rate=params.use_manual_transition_rate,
-                    )
-                
-                if first_loop:
-                    kernels_per_week[distro][:] = result_dict["kernel"]
-                else:
-                    kernels_per_week[distro][w.train_start:] = result_dict["kernel"]
-                y_pred = calc_its_convolution(x_full, kernels_per_week[distro], *result_dict["params"][:2],params.los_cutoff)
-
-            trans_rates.append(result_dict["params"][1])
-            delay.append(result_dict["params"][0])
-
-            relative_errors = np.abs(y_pred-y_full)/(y_full+1)
-            result_dict["train_relative_error"] = np.mean(relative_errors[w.train_window])
-            result_dict["test_relative_error"] =  np.mean(relative_errors[w.test_window])
-
-        except Exception as e:            
-            print(f"\tError in {distro}:",e)
-            # import traceback
-            # traceback.print_exc()
-            min_result = types.SimpleNamespace()
-            min_result.success = False
-            result_dict = {"minimization_result":min_result}
-
-        if result_dict["minimization_result"].success == False:
-            print(f"\tFailed to fit {distro}")
-        result_dict["success"] = result_dict["minimization_result"].success
-        fit_results[distro] = result_dict
-
-    fit_results_by_window.append(fit_results)
-    first_loop = False
 
 #%%
 import types
@@ -313,11 +267,10 @@ from pathlib import Path
 
 import numpy as np
 
-from los_fitter import fit_SEIR, fit_kernel_to_series
+from los_fitter import fit_SEIR, fit_kernel_to_series, SingleFitResult
 from convolutional_model import calc_its_convolution
 from compartmental_model import calc_its_comp
 
-timeit.timeit()
 # --- Configuration flags (could come from argparse or a config object) ---
 DEBUG_WINDOWS = False
 DEBUG_DISTROS = False
@@ -327,111 +280,85 @@ LESS_WINDOWS = False
 # Distributions we explicitly skip
 EXCLUDE_DISTROS = {"beta", "invgauss", "gamma", "weibull", "lognorm", "sentinel", "block"}
 
-# --- Prepare input series once ---
-def select_series(df, params):
-    if params.fit_admissions:
-        col = "new_icu_smooth" if params.smooth_data else "new_icu"
-    else:
-        col = "AnzahlFall" if params.smooth_data else "daily"
-    return df[col].values, df["icu"].values
+# --- Prepare input 
 
 x_full, y_full = select_series(df_occupancy, params)
 
 # --- Build list of distros to fit ---
 base_distros = [d for d in distributions if d not in EXCLUDE_DISTROS]
-all_distros = base_distros + ["SEIR"]
+all_distros = base_distros + ["compartmental"]
 if DEBUG_DISTROS:
-    distro_to_fit = ["linear", "SEIR"]
+    distro_to_fit = ["linear", "compartmental"]
 elif ONLY_LINEAR:
     distro_to_fit = ["linear"]
 else:
     distro_to_fit = [d for d in all_distros if d not in EXCLUDE_DISTROS]
 
 # --- Window enumeration with optional debugging slicing ---
-window_indices = list(enumerate(windows))
+window_data = list(series_data)
+
 if LESS_WINDOWS:
-    window_indices = window_indices[:3]
+    window_data = window_data[:3]
 elif DEBUG_WINDOWS:
-    window_indices = window_indices[10:11]
+    window_data = window_data[10:11]
 
 # --- Prepare kernel storage ---
 kernels_per_week = {
-    d: (None if d == "SEIR" else np.zeros((len(x_full), params.kernel_width)))
+    d: (None if d == "compartmental" else np.zeros((len(x_full), params.kernel_width)))
     for d in distro_to_fit
 }
 
-fit_results_by_window = []
+all_fit_results = {distro:SeriesFitResult(distro, series_data.window_infos) for distro in distro_to_fit}
+fit_results_by_window = [{} for i in range(len(window_data))]
 trans_rates = []
 delays = []
 
-# --- Helper to pick init values from previous runs or df_init ---
-def get_initial_params(distro, fit_results_by_window, df_init):
-    # try last successful window
-    for prev in reversed(fit_results_by_window):
-        fr = prev.get(distro, {})
-        if "params" in fr:
-            return fr["params"][2:]
-    # fallback to df_init
-    if distro in df_init.index:
-        return df_init.loc[distro, "params"]
-    return []
-
+import tqdm
 # --- Main loop ---
-first_window = True
-for idx, window in window_indices:
-    print(f"Window {idx + 1}/{len(windows)}")
-    w = WindowInfo(window)
 
-    # Train/test slices
-    x_train, y_train = x_full[w.train_window], y_full[w.train_window]
-    x_test,  y_test  = x_full[w.train_test_window], y_full[w.train_test_window]
-
+for distro in distro_to_fit:
+    print(f"Distro: {distro}")   
+    failed_windows = []
+    first_window = True
     # SEIR always uses its own fitter
-    fit_results = {}
-
-    for distro in distro_to_fit:
+    for window_id, window_info, train_data, test_data in tqdm.tqdm(window_data):
+        w = window_info
+    
         # Build curve_init and boundary tuples if needed
         curve_init, curve_bounds = None, None
         if params.fit_admissions:
             curve_init = [1, 0]
             curve_bounds = [(1, 1), (0, 0)]
 
-        # reuse_manual_transition_rate logic
-        if params.use_manual_transition_rate:
-            # TODO: map window → manual_transition_rates correctly
-            rate = manual_transition_rates.get(window, 1.0)
-            curve_init = [rate, 2]
-            curve_bounds = [(rate * 0.9, rate * 1.1), (2, 2)]
-
         # per‐distro initialization
-        init_vals = get_initial_params(distro, fit_results_by_window, df_init)
+        init_vals = get_initial_params(distro, fit_results_by_window, df_init, params,window_id)
         distro_bounds = [(v, v) for v in init_vals]
 
         try:
-            if distro == "SEIR":
+            if distro == "compartmental":
                 result = fit_SEIR(
-                    x_train, y_train, x_test, y_test,
+                    *train_data,*test_data,
                     initial_guess_comp=[1/7, 1, 0],
                     los_cutoff=params.los_cutoff,
                 )
                 y_pred = calc_its_comp(x_full, *result["params"], y_full[0])
             else:
-                past_k = None if first_window else kernels_per_week[distro][
-                    w.train_start : w.train_start + params.los_cutoff
-                ]
-                result = fit_kernel_to_series(
+                past_k = None
+                if not first_window:
+                    past_k = kernels_per_week[distro][w.train_start : w.train_start + params.los_cutoff]
+                result, result_obj = fit_kernel_to_series(
                     distro,
-                    x_train, y_train, x_test, y_test,
+                    *train_data,*test_data,
                     params.kernel_width, params.los_cutoff,
                     curve_init, curve_bounds,
                     distro_init_params=init_vals,
                     past_kernels=past_k,
                     error_fun=params.error_fun,
-                    fit_transition_rate=params.use_manual_transition_rate,
+                    fit_transition_rate=not params.fit_admissions,
                 )
                 # update kernel store
                 kernel_full = kernels_per_week[distro]
-                k = result["kernel"]
+                k = result_obj.kernel
                 if first_window:
                     kernel_full[:] = k
                 else:
@@ -448,364 +375,48 @@ for idx, window in window_indices:
             rel_err = np.abs(y_pred - y_full) / (y_full + 1)
             result["train_relative_error"] = np.mean(rel_err[w.train_window])
             result["test_relative_error"]  = np.mean(rel_err[w.test_window])
+            result_obj.rel_train_error = np.mean(rel_err[w.train_window])
+            result_obj.rel_test_error = np.mean(rel_err[w.test_window])
 
         except Exception as e:
             print(f"\tError fitting {distro}: {e}")
             dummy = types.SimpleNamespace(success=False)
             result = {"minimization_result": dummy, "success": False}
+            result_obj = SingleFitResult()
+
 
         result["success"] = result["minimization_result"].success
         if not result["success"]:
-            print(f"\tFailed to fit {distro}")
-        fit_results[distro] = result
+            failed_windows.append(window_id)
+        fit_results_by_window[window_id][distro] = result
+        all_fit_results[distro][window_id] = result_obj
 
-    fit_results_by_window.append(fit_results)
-    first_window = False
+        first_window = False
+    if failed_windows:
+        print(f"Failed windows for {distro}: {failed_windows}")
 
-#%%
-
-def animate_2(show_plt, graph_colors, real_los, df_mutant, xtick_pos, xtick_label, new_icu_day, params, run_name, animation_folder, windows, WindowInfo, distro_to_fit, fit_results_by_window, x_full, y_full):
-    debug = True
-    if True:
-        if not debug:
-            path = animation_folder
-            if os.path.exists(path):
-                import shutil
-                shutil.rmtree(path)
-            os.makedirs(path)
-
-        window_counter = 1
-        stuff = list(zip(windows,fit_results_by_window))
-        if debug:
-            stuff = [stuff[min(10,len(stuff)-1)]]
-        for window, fit_results in stuff:
-            print(f"Animation Window {window_counter}/{len(windows)}")
-            window_counter+=1
-            fig = plt.figure(figsize=(17, 10),dpi=150)
-            gs = gridspec.GridSpec(2, 4,height_ratios=[2,1])
-            ax1 = fig.add_subplot(gs[0, :4])
-            ax11 = ax1.twinx()
-            ax2 = fig.add_subplot(gs[1,:2])
-            ax3 = fig.add_subplot(gs[1, 2])
-            ax32 = fig.add_subplot(gs[1, 3])
-
-            w = WindowInfo(window)
-
-            line1, = ax1.plot(y_full, color="black",label="ICU Bedload")
-            ax12 = ax1.twinx()
-
-            mutant_lines = ax12.plot(df_mutant.values)
-
-            span1 = ax1.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Los convolution edge window")
-            span2 = ax1.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,label=f"Training = {params.train_width-params.los_cutoff} days")
-            span3 = ax1.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,label=f"Test")
-            ax1.axvline(w.train_end,color="black",linestyle="-",linewidth=1)
-
-            label = "COVID Incidence (scaled)"
-            if params.fit_admissions:
-                label = "New ICU Admissions (scaled)"
-            line2, = ax11.plot(x_full,linestyle="--",label=label)
-        # use scientific noatation for y axis
-            ax11.ticklabel_format(axis="y",style="sci",scilimits=(0,0))
-            ma = np.nanmax(x_full)
-            ax11.set_ylim(-ma/7.5,ma*4)
-
-            plot_lines  = []
-            replace_names = {"block":"Constant Discharge","sentinel":"Baseline: Sentinel"}
-            for distro in distro_to_fit:
-                result = fit_results[distro]
-                name = replace_names.get(distro,distro.capitalize())
-                if "minimization_result" in result and result["minimization_result"].success == False:
-                    ax2.plot([],[],label=name)
-                    l, = ax1.plot([],[],label=name)
-                    plot_lines.append(l)
-                    i+=1
-                    continue
-                ax2.plot(result['kernel'], label=name)
-                c = ax2.get_lines()[-1].get_color()
-                y = result['curve'][params.los_cutoff:]
-            
-                s = np.arange(len(y))+params.los_cutoff+w.train_start
-                l, = ax1.plot(s,y, label=f"{distro.capitalize()}")
-                plot_lines.append(l)
-            
-            ax2.plot(real_los, color="black",label="Sentinel LoS Charité")
-        
-            legend1 = ax1.legend(handles = plot_lines,loc="upper left")
-            legend2 = ax1.legend(handles = [line1, line2, span1, span2, span3],loc="upper right")
-            legend3 = ax1.legend(mutant_lines,df_mutant.columns,loc="lower right")
-            ax1.add_artist(legend1)
-            ax1.add_artist(legend2)
-            ax1.add_artist(legend3)
-
-            ax1.set_title(f"ICU Occupancy")
-            ax1.set_xticks(xtick_pos)
-            ax1.set_xticklabels(xtick_label)
-            if params.fit_admissions:
-                ax1.set_xlim(new_icu_day-30,1300)
-            else:
-                ax1.set_xlim(70,1300)
-            ax1.set_ylim(-200,6000)
-            ax1.set_ylabel("Occupied Beds")
-            ax11.set_ylabel("(Incidence)")
-            ax2.legend(loc = "upper right",fancybox=True,ncol=2)
-            ax2.set_ylim(0,0.1)
-            ax2.set_xlim(-2,80)
-            ax2.set_ylabel("Discharge Probability")
-            ax2.set_xlabel("Days after admission")
-            ax2.set_title(f"Estimated LoS Kernels")
-
-
-            train_errors = [fit_results[distro]['train_relative_error'] for distro in distro_to_fit]
-            test_errors = [fit_results[distro]['test_relative_error'] for distro in distro_to_fit]
-
-            nan_val = -1e5
-            train_errors = [nan_val if error == np.inf else error for error in train_errors]
-            test_errors =  [nan_val if error == np.inf else error for error in test_errors]
-        
-            for i, distro in enumerate(distro_to_fit):
-                patch, = ax3.bar([distro],train_errors[i],label="Train",color=graph_colors[i])
-                c = patch.get_facecolor()
-                ax32.bar([distro],test_errors[i],label="Test",color=c)
-
-
-            lim = .4
-            ax3.set_ylim(0,lim)
-            ax3.set_title("Relative Train Error")
-            ax3.set_xticks(distro_to_fit)        
-            ax3.set_xticklabels(distro_to_fit,rotation=75)
-            ax3.set_ylabel("Relative Error")
-
-            ax32.set_ylim(0,lim)
-            ax32.set_title("Relative Test Error")
-            ax32.set_xticks(distro_to_fit)
-            ax32.set_xticklabels(distro_to_fit,rotation=75)
-            ax32.set_ylabel("Relative Error")
-
-            plt.suptitle(f"Deconvolution Training Process\n{run_name.replace('_',' ')}",fontsize=16)
-            plt.tight_layout()
-            if debug:
-                show_plt()
-            else:
-                plt.savefig(animation_folder + f"fit_{window:04d}.png")
-                plt.close()
-            plt.clf()            
-    return window
-#%%
-
-for window, fit_results in list(zip(windows,fit_results_by_window)):
-
-    train_errors = [fit_results[distro]['train_relative_error'] for distro in distro_to_fit]
-    test_errors = [fit_results[distro]['test_relative_error'] for distro in distro_to_fit]
-    # check if contains nans
-
-    
-    plt.plot(train_errors,label="Train")
-    plt.plot(test_errors,label="Test")
-plt.show()
-
-#%%
-import os
-from pathlib import Path
-import shutil
-
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-# Configuration constants
-FIGSIZE = (17, 10)
-DPI = 150
-GRAPH_HEIGHT_RATIOS = [2, 1]
-KERNEL_XLIMIT = (-2, 80)
-KERNEL_YLIMIT = (0, 0.1)
-MAIN_YLIMIT = (-200, 6000)
-ERROR_LIM = 0.4
-
-def ensure_clean_folder(path: Path, debug: bool):
-    if not debug:
-        if path.exists():
-            shutil.rmtree(path)
-        path.mkdir(parents=True, exist_ok=True)
-
-def plot_window(window_idx: int,
-                window: int,
-                fit_results: dict,
-                total: int,
-                params,
-                windows,
-                x_full, y_full,
-                df_mutant,
-                real_los,
-                distro_to_fit,
-                graph_colors,
-                xtick_pos, xtick_label,
-                run_name,
-                animation_folder: Path,
-                debug: bool):
-    # Prepare figure and axes
-    fig = plt.figure(figsize=FIGSIZE, dpi=DPI)
-    gs = gridspec.GridSpec(2, 4, height_ratios=GRAPH_HEIGHT_RATIOS)
-    ax_main = fig.add_subplot(gs[0, :])
-    ax_inc  = ax_main.twinx()
-    ax_kernel   = fig.add_subplot(gs[1, :2])
-    ax_err_train = fig.add_subplot(gs[1, 2])
-    ax_err_test  = fig.add_subplot(gs[1, 3])
-    ax_mutant = ax_main.twinx()
-
-    w = WindowInfo(window)
-
-    # --- Main ICU bedload and spans ---
-    line_bedload, = ax_main.plot(y_full, color="black", label="ICU Bedload")
-    spans = [
-        ax_main.axvspan(w.train_start, w.train_los_cutoff,   color="magenta", alpha=0.1, label="LoS convolution edge"),
-        ax_main.axvspan(w.train_los_cutoff, w.train_end,     color="red",     alpha=0.2, label=f"Training ({params.train_width - params.los_cutoff}d)"),
-        ax_main.axvspan(w.test_start,     w.test_end,        color="blue",    alpha=0.05, label="Test"),
-    ]
-    ax_main.axvline(w.train_end, color="black", linewidth=1)
-
-    # --- Incidence or admissions ---
-    label_inc = "New ICU Admissions (scaled)" if params.fit_admissions else "COVID Incidence (scaled)"
-    line_inc, = ax_inc.plot(x_full, linestyle="--", label=label_inc)
-    ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
-    max_inc = np.nanmax(x_full)
-    ax_inc.set_ylim(-max_inc/7.5, max_inc*4)
-
-    # --- Kernel & deconvolution curves ---
-    kernel_handles, main_handles = [], []
-    replace_names = {"block":"Constant Discharge","sentinel":"Baseline: Sentinel"}
-
-    for distro, color in zip(distro_to_fit, graph_colors):
-        result = fit_results[distro]
-        display_name = replace_names.get(distro, distro.capitalize())
-
-        if (res := result.get("minimization_result")) and not res.success:
-            # Plot dummy for legend
-            kernel_handles.append(ax_kernel.plot([], [], label=display_name)[0])
-            main_handles.append(ax_main.plot([], [], label=display_name, color=color)[0])
-            continue
-
-        # Kernel
-        kh, = ax_kernel.plot(result["kernel"], label=display_name)
-        kernel_handles.append(kh)
-
-        # Deconvolution curve
-        y = result["curve"][params.los_cutoff:]
-        x = np.arange(len(y)) + params.los_cutoff + w.train_start
-        mh, = ax_main.plot(x, y, label=display_name, color=kh.get_color())
-        main_handles.append(mh)
-
-    # True LoS
-    ax_kernel.plot(real_los, color="black", label="Sentinel LoS Charité")
-
-    # --- Mutants overlay ---
-    mutant_handles = ax_mutant.plot(df_mutant.values)
-    for tl in mutant_handles:
-        tl.set_alpha(0.6)
-    ax_mutant.set_ylabel("Mutant counts")
-
-    # --- Legends ---
-    ax_main.legend(handles=main_handles, loc="upper left")
-    ax_main.legend(handles=[line_bedload, line_inc, *spans], loc="upper right")
-    ax_main.legend(handles=mutant_handles, labels=list(df_mutant.columns), loc="lower right")
-    ax_kernel.legend(loc="upper right", fancybox=True, ncol=2)
-
-    # --- Axis formatting ---
-    ax_main.set_title("ICU Occupancy")
-    ax_main.set_xticks(xtick_pos)
-    ax_main.set_xticklabels(xtick_label)
-    ax_main.set_xlim((new_icu_day - 30, 1300) if params.fit_admissions else (70, 1300))
-    ax_main.set_ylim(MAIN_YLIMIT)
-    ax_main.set_ylabel("Occupied Beds")
-    ax_inc.set_ylabel("(Incidence)")
-
-    ax_kernel.set_xlim(*KERNEL_XLIMIT)
-    ax_kernel.set_ylim(*KERNEL_YLIMIT)
-    ax_kernel.set_xlabel("Days after admission")
-    ax_kernel.set_ylabel("Discharge Probability")
-    ax_kernel.set_title("Estimated LoS Kernels")
-
-    # --- Error bars ---
-    train_errors = [fit_results[d]["train_relative_error"] for d in distro_to_fit]
-    test_errors  = [fit_results[d]["test_relative_error"]  for d in distro_to_fit]
-
-    ax_err_train.bar(distro_to_fit, train_errors, label="Train", color=graph_colors)
-    ax_err_test.bar(distro_to_fit,  test_errors,  label="Test",  color=graph_colors)
-
-    for ax, title in ((ax_err_train, "Relative Train Error"), (ax_err_test, "Relative Test Error")):
-        ax.set_ylim(0, ERROR_LIM)
-        ax.set_title(title)
-        ax.set_xticklabels(distro_to_fit, rotation=75)
-        ax.set_ylabel("Relative Error")
-
-    # --- Final touches ---
-    plt.suptitle(f"Deconvolution Training Process\n{run_name.replace('_', ' ')}", fontsize=16)
-    plt.tight_layout()
-
-    if debug:
-        show_plt()
-    else:
-        out_file = animation_folder / f"fit_{window:04d}.png"
-        plt.savefig(out_file)
-        plt.close(fig)
-    plt.clf()
-
-def create_animation_plots(windows,
-                           fit_results_by_window,
-                           animation_folder: str,
-                           params,
-                           x_full, y_full,
-                           df_mutant,
-                           real_los,
-                           distro_to_fit,
-                           graph_colors,
-                           xtick_pos, xtick_label,
-                           run_name,
-                           debug: bool = True):
-    animation_folder = Path(animation_folder)
-    ensure_clean_folder(animation_folder, debug)
-
-    total = len(windows)
-    # If debugging, just take the first 10 windows (or fewer)
-    indices = list(range(total))
-    if debug:
-        indices = [min(10,total)]
-    for idx in indices:
-        window = windows[idx]
-        fit_results = fit_results_by_window[idx]
-        print(f"Animation Window {idx+1}/{total}")
-        plot_window(idx+1,
-                    window,
-                    fit_results,
-                    total,
-                    params,
-                    windows,
-                    x_full, y_full,
-                    df_mutant,
-                    real_los,
-                    distro_to_fit,
-                    graph_colors,
-                    xtick_pos, xtick_label,
-                    run_name,
-                    animation_folder,
-                    debug)
-
-create_animation_plots(windows,
-    fit_results_by_window,
-    animation_folder,
-    params,
-    x_full, y_full,
-    df_mutant,
-    real_los,
-    distro_to_fit,
-    graph_colors,
-    xtick_pos, xtick_label,
-    run_name,
-    debug=True)
+for distro, fit_result in all_fit_results.items():
+    fit_result.bake()
+    a = fit_result.train_relative_error.mean()
+    b = fit_result.test_relative_error.mean()
+    print(f"{distro[:7]}\t Mean Train Error: {float(a):.2f}, Mean Test Error: {float(b):.2f}")
 #%% Generate Video 2
 ##animation
+# pair each distribution with a color from graph_colors
+replace_names = {"block":"Constant Discharge","sentinel":"Baseline: Sentinel"}
+replace_short_names =  {"exponential":"exp","gaussian":"gauss","compartmental":"comp"}
+short_distro_names = [distro if distro not in replace_short_names else replace_short_names[distro] for distro in distro_to_fit]
+
+distro_colors = {distro: graph_colors[i] for i, distro in enumerate(distro_to_fit)}
+distro_patches = [
+    Patch(color=distro_colors[distro], label=replace_names.get(distro, distro.capitalize()))
+    for distro in distro_to_fit
+]
+
 
 debug = True
+show_mutants = True
+hide_failed = True
 if True:
     if not debug:
         path = animation_folder
@@ -815,70 +426,101 @@ if True:
         os.makedirs(path)
 
     window_counter = 1
+    stuff2 = list(enumerate(series_data.window_infos))
     stuff = list(zip(windows,fit_results_by_window))
     if debug:
-        stuff = [stuff[min(10,len(stuff)-1)]]
-    for window, fit_results in stuff:
+        xx = 31
+        stuff = [stuff[min(xx,len(stuff)-1)]]
+        stuff2 = [stuff2[min(xx,len(stuff2)-1)]]
+    for window_id, window_info in stuff2:
+        fit_results = fit_results_by_window[window_id]
         print(f"Animation Window {window_counter}/{len(windows)}")
         window_counter+=1
 
-        fig = plt.figure(figsize=(17, 10),dpi=150)
-        gs = gridspec.GridSpec(2, 4,height_ratios=[2,1])
-        ax_main = fig.add_subplot(gs[0, :4])
-        ax_inc = ax_main.twinx()
-        ax_kernel = fig.add_subplot(gs[1,:2])
-        ax_err_train = fig.add_subplot(gs[1, 2])
-        ax_err_test = fig.add_subplot(gs[1, 3])
-        ax_mutant = ax_main.twinx()
+        
+        if show_mutants:
+            fig = plt.figure(figsize=(17, 10),dpi=150)
+            gs = gridspec.GridSpec(3, 4,height_ratios=[5,1,3])
+            ax_main = fig.add_subplot(gs[0, :4])
+            ax_inc = ax_main.twinx()
+            ax_kernel = fig.add_subplot(gs[2,:2])
+            ax_err_train = fig.add_subplot(gs[2, 2])
+            ax_err_test = fig.add_subplot(gs[2, 3])
+            ax_mutant = fig.add_subplot(gs[1, :4])
+        else:
+            fig = plt.figure(figsize=(17, 10),dpi=150)
+            gs = gridspec.GridSpec(2, 4,height_ratios=[2,1])
+            ax_main = fig.add_subplot(gs[0, :4])
+            ax_inc = ax_main.twinx()
+            ax_kernel = fig.add_subplot(gs[1,:2])
+            ax_err_train = fig.add_subplot(gs[1, 2])
+            ax_err_test = fig.add_subplot(gs[1, 3])
 
-        w = WindowInfo(window)
+        w = window_info
 
         # Plot main window
         line_bedload, = ax_main.plot(y_full, color="black",label="ICU Bedload")
+        zero = np.zeros_like(y_full)
 
-        mutant_lines = ax_mutant.plot(df_mutant.values)
 
-        span_los_cutoff = ax_main.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Los convolution edge window")
+   
+                
+
+        span_los_cutoff = ax_main.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Train Window (Convolution Edge) = {params.train_width} days")
         span_train = ax_main.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,label=f"Training = {params.train_width-params.los_cutoff} days")
-        span_test = ax_main.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,label=f"Test")
+        span_test = ax_main.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,label=f"Test Window = {params.test_width} days")
         ax_main.axvline(w.train_end,color="black",linestyle="-",linewidth=1)
 
-        label = "COVID Incidence (scaled)"
+        label = "COVID Incidence (Scaled)"
         if params.fit_admissions:
-            label = "New ICU Admissions (scaled)"
-        line_inc, = ax_inc.plot(x_full,linestyle="--",label=label)
-        # use scientific noatation for y axis
+            label = "New ICU Admissions (Scaled)"
+
+
+        line_inc, = ax_inc.plot(x_full,linestyle="--",label=label)        
         ax_inc.ticklabel_format(axis="y",style="sci",scilimits=(0,0))
         ma = np.nanmax(x_full)
         ax_inc.set_ylim(-ma/7.5,ma*4)
 
         plot_lines  = []
-        replace_names = {"block":"Constant Discharge","sentinel":"Baseline: Sentinel"}
+        
         for distro in distro_to_fit:
-            result = fit_results[distro]
+            result_obj = all_fit_results[distro].fit_results[window_id]
             name = replace_names.get(distro,distro.capitalize())
-            if "minimization_result" in result and result["minimization_result"].success == False:
-                ax_kernel.plot([],[],label=name)
-                l, = ax_main.plot([],[],label=name)
-                plot_lines.append(l)
-                i+=1
+            if hide_failed and not result_obj.success:
                 continue
-            ax_kernel.plot(result['kernel'], label=name)
-            c = ax_kernel.get_lines()[-1].get_color()
-            y = result['curve'][params.los_cutoff:]
-            
+            c = distro_colors[distro]
+            if not result_obj.success:
+                c = "grey"
+            ax_kernel.plot(result_obj.kernel, label=name, color=c)
+            y = result_obj.curve[params.los_cutoff:]
             s = np.arange(len(y))+params.los_cutoff+w.train_start
-            l, = ax_main.plot(s,y, label=f"{distro.capitalize()}")
+            l, = ax_main.plot(s,y, label=f"{distro.capitalize()}", color=c)
             plot_lines.append(l)
             
         ax_kernel.plot(real_los, color="black",label="Sentinel LoS Charité")
         
-        legend1 = ax_main.legend(handles = plot_lines,loc="upper left")
+        for i, distro in enumerate(distro_to_fit):
+            c = distro_colors[distro]
+            train_err = all_fit_results[distro].train_relative_error[window_id]
+            test_err = all_fit_results[distro].test_relative_error[window_id]
+            
+            if hide_failed and not all_fit_results[distro][window_id].success:
+                ax_err_train.bar(i,1e100,color="lightgrey",hatch="/")
+                ax_err_test.bar(i, 1e100,color="lightgrey",hatch="/")
+                ax_err_train.bar(i,train_err,color="black")
+                ax_err_test.bar(i,test_err,color="black")
+                continue
+            ax_err_train.bar(i,train_err,label="Train",color=c)
+            ax_err_test.bar(i,test_err,label="Test",color=c)
+            
+
+      
+
+        legend1 = ax_main.legend(handles=distro_patches, loc="upper left", fancybox=True,ncol=2)
         legend2 = ax_main.legend(handles = [line_bedload, line_inc, span_los_cutoff, span_train, span_test],loc="upper right")
-        legend3 = ax_main.legend(mutant_lines,df_mutant.columns,loc="lower right")
+        
         ax_main.add_artist(legend1)
         ax_main.add_artist(legend2)
-        ax_main.add_artist(legend3)
 
         ax_main.set_title(f"ICU Occupancy")
         ax_main.set_xticks(xtick_pos)
@@ -889,8 +531,37 @@ if True:
             ax_main.set_xlim(70,1300)
         ax_main.set_ylim(-200,6000)
         ax_main.set_ylabel("Occupied Beds")
+        
+        if show_mutants:
+
+            mutant_lines = []
+            for col in df_mutant_selection.columns:
+                line, = ax_mutant.plot(df_mutant_selection[col].values)
+                mutant_lines.append(line)
+                ax_mutant.fill_between(range(len(y_full)), df_mutant_selection[col].values, 0, alpha=0.3)              
+        
+            ax_mutant.legend(mutant_lines,df_mutant_selection.columns,loc="upper right")
+            ax_mutant.set_xticks([])
+            ax_mutant.set_xticklabels([])
+            ax_mutant.set_xticks(xtick_pos)
+            tmp_xtick = [label.split("\n")[1:] for label in xtick_label]
+            tmp_xtick = [label[0] if label else ""  for label in tmp_xtick]
+            ax_mutant.set_xticklabels(tmp_xtick)
+            if params.fit_admissions:
+                ax_mutant.set_xlim(new_icu_day-30,1300)
+            else:
+                ax_mutant.set_xlim(70,1300)
+            ax_mutant.set_title("Variants of Concern")
+            ax_mutant.set_ylabel("Variant Share (%)")
+
+
+
+
         ax_inc.set_ylabel("(Incidence)")
-        ax_kernel.legend(loc = "upper right",fancybox=True,ncol=2)
+        if params.fit_admissions:
+            ax_inc.set_ylabel("New ICU Admissions (scaled)")
+        replace_names = {"block": "Constant Discharge", "sentinel": "Baseline: Sentinel"}        
+        ax_kernel.legend(handles=distro_patches, loc="upper right", fancybox=True, ncol=2, )
         ax_kernel.set_ylim(0,0.1)
         ax_kernel.set_xlim(-2,80)
         ax_kernel.set_ylabel("Discharge Probability")
@@ -898,26 +569,20 @@ if True:
         ax_kernel.set_title(f"Estimated LoS Kernels")
 
 
-        train_errors = [fit_results[distro]['train_relative_error'] for distro in distro_to_fit]
-        test_errors = [fit_results[distro]['test_relative_error'] for distro in distro_to_fit]
-
-        for i, distro in enumerate(distro_to_fit):
-            patch, = ax_err_train.bar([distro],train_errors[i],label="Train",color=graph_colors[i])
-            c = patch.get_facecolor()
-            ax_err_test.bar([distro],test_errors[i],label="Test",color=c)
+        
 
 
         lim = .4
         ax_err_train.set_ylim(0,lim)
         ax_err_train.set_title("Relative Train Error")
-        ax_err_train.set_xticks(distro_to_fit)        
-        ax_err_train.set_xticklabels(distro_to_fit,rotation=75)
+        ax_err_train.set_xticks(range(len(distro_to_fit)))
+        ax_err_train.set_xticklabels(short_distro_names,rotation=75)
         ax_err_train.set_ylabel("Relative Error")
 
         ax_err_test.set_ylim(0,lim)
         ax_err_test.set_title("Relative Test Error")
-        ax_err_test.set_xticks(distro_to_fit)
-        ax_err_test.set_xticklabels(distro_to_fit,rotation=75)
+        ax_err_test.set_xticks(range(len(distro_to_fit)))
+        ax_err_test.set_xticklabels(short_distro_names,rotation=75)
         ax_err_test.set_ylabel("Relative Error")
 
         plt.suptitle(f"Deconvolution Training Process\n{run_name.replace('_',' ')}",fontsize=16)
@@ -925,12 +590,28 @@ if True:
         if debug:
             show_plt()
         else:
-            plt.savefig(animation_folder + f"fit_{window:04d}.png")
+            plt.savefig(animation_folder + f"fit_{w.train_start:04d}.png")
             plt.close()
         plt.clf()
 
-window = animate_2(show_plt, graph_colors, real_los, df_mutant, xtick_pos, xtick_label, new_icu_day, params, run_name, animation_folder, windows, WindowInfo, distro_to_fit, fit_results_by_window, x_full, y_full)
 
+#%%
+
+all_train_errors_linear = []
+for window, fit_results in  list(zip(windows,fit_results_by_window)):
+    all_train_errors_linear.append(fit_results["linear"]['train_relative_error'])
+all_train_errors_linear = np.array(all_train_errors_linear)
+
+all_train_errors_linear2 = all_fit_results["linear"].train_relative_error
+
+
+plt.plot(all_train_errors_linear,label="Linear Train Error")
+plt.plot(all_train_errors_linear2,label="Linear Train Error new system)")
+plt.legend()
+plt.show()
+#%%
+
+plt.plot(all_train_errors_linear-all_train_errors_linear2)
 
 #%% Generate Video 2
 ##animation
@@ -1160,7 +841,7 @@ for distro in distro_to_fit:
     _train_errs = np.zeros(len(fit_results_by_window))*np.nan
     _test_errs = np.zeros(len(fit_results_by_window))*np.nan
     for i,fit_results in enumerate(fit_results_by_window):
-        if distro =="SEIR":
+        if distro =="compartmental":
             _train_errs[i] = fit_results[distro]["train_error"][0]
             _test_errs[i] = fit_results[distro]["test_error"][0]
         else:
@@ -1238,7 +919,7 @@ for distro in distro_to_fit:
     _train_errs = np.zeros(len(fit_results_by_window))*np.nan
     _test_errs = np.zeros(len(fit_results_by_window))*np.nan
     for i,fit_results in enumerate(fit_results_by_window):
-        if distro =="SEIR":
+        if distro =="compartmental":
             _train_errs[i] = fit_results[distro]["train_error"][0]
             _test_errs[i] = fit_results[distro]["test_error"][0]
         else:
@@ -1348,6 +1029,7 @@ for distro in distro_to_fit:
 
 if "sentinel" in distro_to_fit:
     from scipy.optimize import minimize
+from matplotlib.patches import Patch
 
     # Fit transition rates manually
     tr = np.array([fit_results["sentinel"]["params"][0] for fit_results in fit_results_by_window])

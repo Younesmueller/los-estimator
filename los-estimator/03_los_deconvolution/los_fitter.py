@@ -173,6 +173,46 @@ def objective_fit_kernel_to_series(distro, kernel_width, los_cutoff,fit_transiti
 
 
 
+class SingleFitResult:
+    def __init__(self, 
+        distro=None,
+        train_data=None,
+        test_data=None,
+        success=None,
+        minimization_result=None,
+        train_error=None,
+        test_error=None,
+        rel_train_error=None,
+        rel_test_error=None,
+        kernel=None,
+        curve=None,
+        params=None
+    ):        
+        self.distro = distro
+        self.train_data = train_data
+        self.test_data = test_data
+        self.success = success or False
+        self.minimization_result = minimization_result
+        self.train_error = train_error
+        self.test_error = test_error
+        self.rel_train_error = rel_train_error
+        self.rel_test_error = rel_test_error
+        self.kernel = kernel
+        self.curve = curve
+        self.params = params #TODO: Split in Curve params and distro params
+    def __repr__(self):
+        # return a string with all variables
+        return (f"SingleFitResult(distro={self.distro}, "
+                f"success={self.success}, "
+                f"train_error={self.train_error}, "
+                f"test_error={self.test_error}, "
+                f"rel_train_error={self.rel_train_error}, "
+                f"rel_test_error={self.rel_test_error}, "
+                f"kernel={self.kernel.shape}, "
+                f"curve={self.curve.shape}, "
+                f"params={self.params})")
+        
+
 def fit_kernel_to_series(
         distro,
         x_train,
@@ -255,6 +295,22 @@ def fit_kernel_to_series(
 
         complete_params = np.concatenate((curve_params, distro_params))
 
+        fit_results = SingleFitResult(
+            distro=distro,
+            train_data=x_train,
+            test_data=x_test,
+            success=result.success,
+            minimization_result=result,
+            train_error=train_err,
+            test_error=test_err,
+            rel_train_error=relative_error[:len(x_train)],
+            rel_test_error=relative_error[len(x_train):],
+            kernel=fitted_kernel,
+            curve=y_pred,
+            params=complete_params
+        )
+        
+
         return {
             "params": complete_params,
             "kernel": fitted_kernel,
@@ -263,7 +319,7 @@ def fit_kernel_to_series(
             "test_error": test_err,
             "minimization_result": result,
             "relative_error": relative_error,
-        }
+        }, fit_results
 
 def objective_compartemental(error_fun):    
     def objective_function(params,inc,icu,los_cutoff):

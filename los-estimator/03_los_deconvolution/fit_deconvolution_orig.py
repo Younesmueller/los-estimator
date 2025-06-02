@@ -534,7 +534,7 @@ plt.show()
 #%% Generate Video 2
 ##animation
 
-debug = False
+debug = True
 if True:
     if not debug:
         path = animation_folder
