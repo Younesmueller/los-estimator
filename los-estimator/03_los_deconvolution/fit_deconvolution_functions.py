@@ -90,6 +90,8 @@ def generate_run_name(params):
     run_name += "_" + params.error_fun
     if params.reuse_last_parametrization:
         run_name += "_reuse_last_parametrization"
+    if params.variable_kernels:
+        run_name += "_variable_kernels"
     return run_name
 
 
@@ -127,7 +129,7 @@ def create_result_folders(run_name):
 
 
 
-def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_results_by_window, window, debug):
+def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_results_by_window, debug):
     path = animation_folder+"/alt_animation/"
     if os.path.exists(path):
         import shutil
@@ -170,7 +172,7 @@ def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_resu
         all_kernel_ax.set_title("All Kernels (unscaled)")
         all_occ_ax.set_title("All Occupancies")
         exp_ax.set_title("EXP,SEIR Occupancy")
-        plt.suptitle(f"Deconvolution kernels at {window}\n{run_name.replace('_',' ')}",fontsize=16)
+        plt.suptitle(f"Deconvolution kernels at {windows[i]}\n{run_name.replace('_',' ')}",fontsize=16)
         plt.tight_layout()
         plt.savefig(path + f"kernels_{windows[i]}")
         if debug:
