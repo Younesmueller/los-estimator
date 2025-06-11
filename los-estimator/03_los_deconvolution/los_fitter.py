@@ -356,5 +356,22 @@ def fit_SEIR(x_train, y_train,x_test,y_test, initial_guess_comp,los_cutoff,metho
         "test_error": test_err,
         "minimization_result": result,
     }
+    relative_error = np.abs((y_pred - y_test) / (y_test+1))
+    relative_error[np.isnan(relative_error)] = 0
+
+    result_obj = SingleFitResult(
+        distro="compartmental",
+        train_data=x_train,
+        test_data=x_test,
+        success=result.success,
+        minimization_result=result,
+        train_error=train_err,
+        test_error=test_err,
+        rel_train_error=relative_error[:len(x_train)],
+        rel_test_error=relative_error[len(x_train):],
+        kernel=np.zeros(1),
+        curve=y_pred,
+        params=result.x
+    )
         
-    return result_dict
+    return result_dict, result_obj

@@ -128,19 +128,17 @@ def create_result_folders(run_name):
     return results_folder,figures_folder,animation_folder
 
 
-
-def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_results_by_window, debug):
+def run_pulse_model(run_name, animation_folder, all_fit_results, series_data, debug):
     path = animation_folder+"/alt_animation/"
     if os.path.exists(path):
         import shutil
         shutil.rmtree(path)
     os.makedirs(path)
-    ran = range(len(fit_results_by_window))
+    ran = range(series_data.n_windows)
     if debug:
         ran = ran[10:12]
     for i in ran:
         print(f"Print kernels {i+1}/{len(ran)}")
-        fit_results = fit_results_by_window[i]
         n = 60
         x_in = np.zeros(n)
         x_in[0] = 100
@@ -149,18 +147,18 @@ def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_resu
         all_kernel_ax = axs[2][0]
         all_occ_ax = axs[2][1]
         exp_ax = axs[2][2]
-        for distro,ax in zip(distro_to_fit,flaxs):
-            res = fit_results[distro]
+        for distro,ax in zip(all_fit_results,flaxs):
+            fr = all_fit_results[distro][i]
             if distro == "SEIR":
-                y_pred = calc_its_comp(x_in,*res["params"],0)
+                y_pred = calc_its_comp(x_in,*fr.params,0)
             else:
-                y_pred = calc_its_convolution(x_in, res["kernel"], *res["params"][:2],los_cutoff=0)
+                y_pred = calc_its_convolution(x_in, fr.kernel, *fr.params[:2],los_cutoff=0)
             ax.plot(y_pred[:n],label=f"{distro} - Bed Occupancy")
             ax.set_title(distro)
 
             all_occ_ax.plot(y_pred[:n],label=distro)
-            all_kernel_ax.plot(res["kernel"][:n],label=distro)
-            ax.plot(res["kernel"][:n]*899,color="black",linestyle="--",label=f"{distro} - Kernel (scaled)")
+            all_kernel_ax.plot(fr.kernel[:n],label=distro)
+            ax.plot(fr.kernel[:n]*899,color="black",linestyle="--",label=f"{distro} - Kernel (scaled)")
             ax.set_ylim(-5,101)
             ax.legend()
             if distro in ["SEIR","exponential"]:
@@ -172,9 +170,9 @@ def run_pulse_model(run_name, animation_folder, windows, distro_to_fit, fit_resu
         all_kernel_ax.set_title("All Kernels (unscaled)")
         all_occ_ax.set_title("All Occupancies")
         exp_ax.set_title("EXP,SEIR Occupancy")
-        plt.suptitle(f"Deconvolution kernels at {windows[i]}\n{run_name.replace('_',' ')}",fontsize=16)
+        plt.suptitle(f"Deconvolution kernels at {series_data.window_infos[i].train_start}\n{run_name.replace('_',' ')}",fontsize=16)
         plt.tight_layout()
-        plt.savefig(path + f"kernels_{windows[i]}")
+        plt.savefig(path + f"kernels_{series_data.window_infos[i].train_start}")
         if debug:
             plt.show()    
         else:
