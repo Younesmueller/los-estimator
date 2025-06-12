@@ -1,3 +1,10 @@
+# X Eliminate distro_to_fit
+# X Eliminate all_fit_results_by_window
+# eliminate all data structures that are not needed
+# eliminate result_object
+# Put visualisations into functions
+
+
 #%%
 # reload imports
 %load_ext autoreload
@@ -172,21 +179,6 @@ def select_series(df, params):
     else:
         col = "AnzahlFall" if params.smooth_data else "daily"
     return df[col].values, df["icu"].values
-# --- Helper to pick init values from previous runs or df_init ---
-def get_initial_params(distro, fit_results_by_window, df_init, params,window_id):
-    # Try using last parametrization
-    if params.reuse_last_parametrization:
-        for prev in reversed(fit_results_by_window[:window_id]):
-            if not prev:
-                continue
-            fr = prev.get(distro, {})
-            if "params" in fr:
-                return fr["params"][2:]
-
-    # fallback to df_init
-    if distro in df_init.index:
-        return df_init.loc[distro, "params"]
-    return []
 
 
 
@@ -197,6 +189,7 @@ class SeriesData:
     def __init__(self,df_occupancy,params):
         self.x_full,self.y_full = select_series(df_occupancy, params)
         self._calc_windows(params)
+        self.n_days = len(self.x_full)
 
     def _calc_windows(self,params):
         start = 0
@@ -299,25 +292,15 @@ class SeriesFitResult:
 
 
 class MultiSeriesFitResults(OrderedDict):
-    def __init__(self, distro_to_fit,*args, **kwargs):
+    def __init__(self, distros,*args, **kwargs):
         super().__init__(*args, **kwargs)
-        for distro in distro_to_fit:
+        for distro in distros:
             self[distro] = SeriesFitResult(distro)
         self.distros = list(self.keys())
         self.results = list(self.values())
 
-    # def bake(self):
-    #     for fit_result in self.values():
-    #         fit_result.bake()
-    #     self.train_relative_errors = np.array([fr.train_relative_errors for fr in self.results])
-    #     self.test_relative_errors = np.array([fr.test_relative_errors for fr in self.results])
-    #     self.successes = np.array([fr.successes for fr in self.results])
-    #     return self
-
-
-
     def __repr__(self):
-        return f"MultiSeriesFitResults(distros={self.distro_to_fit}, n_windows={self.n_windows})"
+        return f"MultiSeriesFitResults(distros={self.distros}, n_windows={self.n_windows})"
 
 def get_initial_params(all_fit_results, distro, params, window_id):
     fit_result = all_fit_results[distro]
@@ -384,7 +367,6 @@ kernels_per_week = {
 }
 
 all_fit_results = MultiSeriesFitResults(distro_to_fit)
-fit_results_by_window = [{} for i in range(len(window_data))]
 trans_rates = []
 delays = []
 
@@ -412,17 +394,17 @@ for distro in distro_to_fit:
 
         try:
             if distro == "compartmental":
-                result, result_obj = fit_SEIR(
+                result_dict, result_obj = fit_SEIR(
                     *train_data,*test_data,
                     initial_guess_comp=[1/7, 1, 0],
                     los_cutoff=params.los_cutoff,
                 )
-                y_pred = calc_its_comp(x_full, *result["params"], y_full[0])
+                y_pred = calc_its_comp(x_full, *result_obj.params, y_full[0])
             else:
                 past_k = None
                 if not first_window and params.variable_kernels:
                     past_k = kernels_per_week[distro][w.train_start : w.train_start + params.los_cutoff]
-                result, result_obj = fit_kernel_to_series(
+                result_dict, result_obj = fit_kernel_to_series(
                     distro,
                     *train_data,*test_data,
                     params.kernel_width, params.los_cutoff,
@@ -440,31 +422,30 @@ for distro in distro_to_fit:
                 else:
                     kernel_full[w.train_start :] = k
                 y_pred = calc_its_convolution(
-                    x_full, kernel_full, *result["params"][:2], params.los_cutoff
+                    x_full, kernel_full, *result_obj.params[:2], params.los_cutoff
                 )
 
             # record transition & delay
-            trans_rates.append(result["params"][1])
-            delays.append(result["params"][0])
+            trans_rates.append(result_obj.params[1])
+            delays.append(result_obj.params[0])
 
             # compute errors
             rel_err = np.abs(y_pred - y_full) / (y_full + 1)
-            result["train_relative_error"] = np.mean(rel_err[w.train_window])
-            result["test_relative_error"]  = np.mean(rel_err[w.test_window])
+            result_dict["train_relative_error"] = np.mean(rel_err[w.train_window])
+            result_dict["test_relative_error"]  = np.mean(rel_err[w.test_window])
             result_obj.rel_train_error = np.mean(rel_err[w.train_window])
             result_obj.rel_test_error = np.mean(rel_err[w.test_window])
 
         except Exception as e:
             print(f"\tError fitting {distro}: {e}")
             dummy = types.SimpleNamespace(success=False)
-            result = {"minimization_result": dummy, "success": False}
+            result_dict = {"minimization_result": dummy, "success": False}
             result_obj = SingleFitResult()
 
 
-        result["success"] = result["minimization_result"].success
-        if not result["success"]:
+        result_dict["success"] = result_dict["minimization_result"].success
+        if not result_dict["success"]:
             failed_windows.append(window_id)
-        fit_results_by_window[window_id][distro] = result
         all_fit_results[distro].append(window_info,result_obj)
 
         first_window = False
@@ -476,9 +457,41 @@ for distro, fit_result in all_fit_results.items():
     a = fit_result.train_relative_errors.mean()
     b = fit_result.test_relative_errors.mean()
     print(f"{distro[:7]}\t Mean Train Error: {float(a):.2f}, Mean Test Error: {float(b):.2f}")
-#%% Generate Video 
-##animation
-# pair each distribution with a color from graph_colors
+#%% Calculate Summary
+train_errors_by_distro = np.array([result.train_relative_errors for result in all_fit_results.results]).T
+df_train = pd.DataFrame(train_errors_by_distro, columns=all_fit_results.distros)
+
+test_errors_by_distro = np.array([result.test_relative_errors for result in all_fit_results.results]).T
+df_test = pd.DataFrame(test_errors_by_distro, columns=all_fit_results.distros)
+
+fails = 1 - np.array([result.successes for result in all_fit_results.results])
+df_failures = pd.DataFrame(fails.T, columns=all_fit_results.distros)
+# Compute mean finite loss and failure rate for each model
+summary = pd.DataFrame(index=all_fit_results.distros)
+summary["Mean Loss Train"] = df_train.replace(np.inf, np.nan).mean()
+summary["Median Loss Train"] = df_train.replace(np.inf, np.nan).median()
+summary["Failure Rate Train"] = df_failures.mean()
+summary["Upper Quartile Train"] = df_train.quantile(0.75)
+summary["Lower Quartile Train"] = df_train.quantile(0.25)
+
+summary["Mean Loss Test"] = df_test.replace(np.inf, np.nan).mean()
+summary["Median Loss Test"] = df_test.replace(np.inf, np.nan).median()
+summary["Failure Rate Test"] = df_failures.mean()
+# add column for mean loss without oultiers
+col = "Mean Loss Test (no outliers)"
+summary[col] = np.nan
+
+# Find outliers
+for distro in all_fit_results.distros:
+    Q1 = df_test[distro].quantile(0.25)
+    Q3 = df_test[distro].quantile(0.75)
+    IQR = Q3 - Q1
+    # filter out outliers
+    mask = (df_test[distro] < (Q1 - 1.5 * IQR)) | (df_test[distro] > (Q3 + 1.5 * IQR))
+    summary.at[distro,col] = df_test[distro][~mask].mean()
+summary
+
+#%%
 replace_names = {"block":"Constant Discharge","sentinel":"Baseline: Sentinel"}
 replace_short_names =  {"exponential":"exp","gaussian":"gauss","compartmental":"comp"}
 short_distro_names = [distro if distro not in replace_short_names else replace_short_names[distro] for distro in all_fit_results]
@@ -488,6 +501,18 @@ distro_patches = [
     Patch(color=distro_colors[distro], label=replace_names.get(distro, distro.capitalize()))
     for distro in all_fit_results
 ]
+
+
+#%%
+# save test errors and failure rates in csv
+df_test.to_csv(results_folder + "test_errors.csv")
+df_failures.to_csv(results_folder + f"failure_rates.csv")
+summary.to_csv(results_folder + "summary.csv")
+
+
+#%% Generate Video 
+##animation
+# pair each distribution with a color from graph_colors
 
 
 debug = True
@@ -552,8 +577,8 @@ if True:
 
         plot_lines  = []
 
-        for distro,result in all_fit_results.items():
-            result_obj = result.fit_results[window_id]
+        for distro,result_series in all_fit_results.items():
+            result_obj = result_series.fit_results[window_id]
             name = replace_names.get(distro,distro.capitalize())
             if hide_failed and not result_obj.success:
                 continue
@@ -673,19 +698,14 @@ for window_id, window_info, train_data, test_data in tqdm.tqdm(window_data):
     x_train, y_train = train_data
     x_test, y_test = test_data
 
-    result,result_obj = fit_SEIR(*train_data,*test_data, initial_guess_comp,
+    result_dict,result_obj = fit_SEIR(*train_data,*test_data, initial_guess_comp,
                       los_cutoff=params.los_cutoff)
-    y_pred_b = calc_its_comp(x_test, *result["params"],y_test[0])
+    y_pred_b = calc_its_comp(x_test, *result_obj.params,y_test[0])
     xs2 = np.arange(w.train_end,w.test_end)
     ax.plot(xs2,y_pred_b[params.train_width:],color=graph_colors[1])
 ax.set_xlim(*xlims)
 plt.title("SEIR-Models")
 plt.show()
-#%%
-#Save results
-import pickle
-with open(results_folder + "fit_results.pkl","wb") as f:
-    pickle.dump(fit_results_by_window,f)
 #%%
 # Plot number of failed fits and successfull fits
 plt.figure(figsize=(10,5),dpi=150)
@@ -693,54 +713,13 @@ for i,distro in enumerate(all_fit_results):
     plt.bar(i,all_fit_results[distro].n_success,color=graph_colors[i],label=distro.capitalize())
 plt.xticks(np.arange(len(all_fit_results)),all_fit_results.keys(),rotation=45)
 plt.title("Number of successful fits")
-plt.axhline(len(fit_results_by_window),color="red",linestyle="--",label="Total")
+plt.axhline(series_data.n_days,color="red",linestyle="--",label="Total")
 plt.xticks(rotation=45)
 plt.savefig(figures_folder + "successful_fits.png")
 
 show_plt()
 
 #%%
-
-# Convert losses to DataFrame
-train_errors_by_distro = np.array([result.train_relative_errors for result in all_fit_results.results]).T
-df_train = pd.DataFrame(train_errors_by_distro, columns=all_fit_results.distros)
-
-test_errors_by_distro = np.array([result.test_relative_errors for result in all_fit_results.results]).T
-df_test = pd.DataFrame(test_errors_by_distro, columns=all_fit_results.distros)
-
-fails = 1 - np.array([result.successes for result in all_fit_results.results])
-df_failures = pd.DataFrame(fails.T, columns=all_fit_results.distros)
-# Compute mean finite loss and failure rate for each model
-summary = pd.DataFrame(index=all_fit_results.distros)
-summary["Mean Loss Train"] = df_train.replace(np.inf, np.nan).mean()
-summary["Median Loss Train"] = df_train.replace(np.inf, np.nan).median()
-summary["Failure Rate Train"] = df_failures.mean()
-summary["Upper Quartile Train"] = df_train.quantile(0.75)
-summary["Lower Quartile Train"] = df_train.quantile(0.25)
-
-summary["Mean Loss Test"] = df_test.replace(np.inf, np.nan).mean()
-summary["Median Loss Test"] = df_test.replace(np.inf, np.nan).median()
-summary["Failure Rate Test"] = df_failures.mean()
-# add column for mean loss without oultiers
-col = "Mean Loss Test (no outliers)"
-summary[col] = np.nan
-
-# Find outliers
-for distro in all_fit_results.distros:
-    Q1 = df_test[distro].quantile(0.25)
-    Q3 = df_test[distro].quantile(0.75)
-    IQR = Q3 - Q1
-    # filter out outliers
-    mask = (df_test[distro] < (Q1 - 1.5 * IQR)) | (df_test[distro] > (Q3 + 1.5 * IQR))
-    summary.at[distro,col] = df_test[distro][~mask].mean()
-summary
-
-#%%
-# save test errors and failure rates in csv
-df_test.to_csv(results_folder + "test_errors.csv")
-df_failures.to_csv(results_folder + f"failure_rates.csv")
-summary.to_csv(results_folder + "summary.csv")
-
 #%%
 
 # Visualization
@@ -767,6 +746,7 @@ def viz(col2, col1,ylim=None,save_path=None):
     show_plt()
 viz("Median Loss Train", "Failure Rate Train",          save_path=figures_folder +  "median_loss_vs_failure_rate_train.png")
 viz("Median Loss Test", "Failure Rate Test",save_path=figures_folder +  "median_loss_vs_failure_rate_test.png")
+col = "Mean Loss Test (no outliers)"
 viz(col, "Failure Rate Test",save_path=figures_folder +  "mean_loss_vs_failure_rate_test.png")
 #%%
 # sorted summary
@@ -841,7 +821,7 @@ for distro_id, distro in enumerate(all_fit_results.distros):
     ax.grid()
 
     # plot trans rates in ax2
-    x = [w.window for w in all_fit_results[distro].window_infos]
+    x = series_data.windows
     ax2.bar(x, all_fit_results[distro].transition_rates, width=15 ,label="Transition Probability")
     ax2.grid()
     ax2.set_ylim(-.01,0.1)
@@ -849,8 +829,9 @@ for distro_id, distro in enumerate(all_fit_results.distros):
     ax4.plot(x, all_fit_results[distro].train_relative_errors,label = "Train Error")
     ax4.plot(x, all_fit_results[distro].test_relative_errors,label = "Test Error")
     # mark nan and inf values
-    for i in range(len(x)):
-        if fit_results_by_window[i][distro]["minimization_result"].success == False:
+    fit_series = all_fit_results[distro]
+    for i, fit_result in enumerate(fit_series.fit_results):
+        if not fit_result.success:
             ax4.axvline(x[i],color="red",alpha=.5)
     ax4.axvline(-np.inf,color="red",label="Failed Fit",alpha=.5)
     # ax4.axvspan(sentinel_start_day,sentinel_end_day, color="green", alpha=0.1,label="Sentinel Window")
@@ -886,8 +867,8 @@ for distro_id, distro in enumerate(all_fit_results.distros):
         x = np.arange(w.train_end,w.test_end)
         l2, = ax.plot(x, y, color=graph_colors[1])
 
-    ax4.plot(windows,train_errors_by_distro.T[distro_id],color=graph_colors[0])
-    ax4.plot(windows,test_errors_by_distro.T[distro_id], color=graph_colors[1])
+    ax4.plot(series_data.windows,train_errors_by_distro.T[distro_id],color=graph_colors[0])
+    ax4.plot(series_data.windows,test_errors_by_distro.T[distro_id], color=graph_colors[1])
 
 ax.set_ylim(-100,6000)
 if params.fit_admissions:
@@ -913,29 +894,25 @@ show_plt()
 
 #%%
 fig,ax= plt.subplots(1,1,figsize=(15,7.5),sharex=True)
-ax.plot(y_full, color="black",label="Real" ,alpha=.8,linestyle="--")
-
-for distro in distro_to_fit:
-    for i,fit_results in enumerate(fit_results_by_window):
-        if fit_results[distro]["minimization_result"].success == False:
+for distro_id, distro in enumerate(all_fit_results.distros):
+    fr_series = all_fit_results[distro]
+    for w,fit_result in zip(fr_series.window_infos,fr_series.fit_results):
+        
+        if not fit_result.success:
             continue
-        window = windows[i]
-        w = WindowInfo(window)
-        result = fit_results[distro]
-        y = result['curve']
 
-        _y = y[params.los_cutoff:params.train_width]
-        l1, = ax.plot(
-            np.arange(w.train_los_cutoff,w.train_end)[:len(_y)],
-            _y,
-            color=graph_colors[0],
-        )
-        _y = y[params.train_width:params.train_width+params.test_width]
-        l2, = ax.plot(
-            np.arange(w.train_end,w.test_end)[:len(_y)],
-            _y,
-            color=graph_colors[1],
-        )
+        y = fit_result.curve[params.los_cutoff:params.train_width]
+        x = np.arange(w.train_los_cutoff,w.train_end)
+        l1, = ax.plot(x, y, color=graph_colors[0])
+
+        y = fit_result.curve[params.train_width:params.train_width+params.test_width]
+        x = np.arange(w.train_end,w.test_end)
+        l2, = ax.plot(x, y, color=graph_colors[1])
+
+    ax4.plot(series_data.windows,train_errors_by_distro.T[distro_id],color=graph_colors[0])
+    ax4.plot(series_data.windows,test_errors_by_distro.T[distro_id], color=graph_colors[1])
+
+ax.plot(y_full, color="black",label="Real" ,alpha=.8,linestyle="--")
 
 ax.set_ylim(-100,6000)
 ax.set_xlim(*xlims)
@@ -957,10 +934,10 @@ for distro, fit_results in all_fit_results.items():
     # plot real kernel
     ax.plot(real_los,color='black',label="Real")
 
-    for result in fit_results.fit_results:
-        if not result.success:
+    for fit_result in fit_results.fit_results:
+        if not fit_result.success:
             continue
-        y = result.kernel
+        y = fit_result.kernel
         ax.plot(y,alpha=0.3,color=graph_colors[0])
 
     plt.grid()
@@ -974,21 +951,15 @@ for distro, fit_results in all_fit_results.items():
 
 
 
-
-def calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupancy, windows, distro_to_fit, fit_results_by_window):
-    if "sentinel" not in distro_to_fit:
+def calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupancy, windows, all_fit_results):
+    if "sentinel" not in all_fit_results.distros:
         return
 
     from scipy.optimize import minimize
     from matplotlib.patches import Patch
 
     # Fit transition rates manually
-    tr = np.array([fit_results["sentinel"]["params"][0] for fit_results in fit_results_by_window])
-    tr = np.insert(tr,0,tr[0])
-
-
-    # Fit transition rates manually
-    tr = np.array([fit_results["sentinel"]["params"][0] for fit_results in fit_results_by_window])
+    tr = all_fit_results["linear"].transition_rates
     tr = np.insert(tr,0,tr[0])
     mps = np.array([
         [0,0.001],
@@ -1046,7 +1017,7 @@ def calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupanc
     print(obj_fun(result.x))
     print(result.x.reshape(-1,2))
 
-calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupancy, windows, distro_to_fit, fit_results_by_window)
+calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupancy, series_data.windows, all_fit_results)
 
 # %%
 
@@ -1059,8 +1030,8 @@ y = df_occupancy["icu"].values/df_occupancy["AnzahlFall"].values
 ax1.plot(y,label="icu incidence ratio")
 ax1.set_title("ICU Occupancy")
 ax1.legend()
-for i,distro in enumerate(distro_to_fit):
-    ax2.plot(windows, all_fit_results[distro].transition_rates,label=distro)
+for i,distro in enumerate(all_fit_results.distros):
+    ax2.plot(series_data.windows, all_fit_results[distro].transition_rates,label=distro)
 ax2.axhline(0,color="black",linestyle="--")
 ax2.legend()
 ax2.set_title("Transition Rates")
@@ -1068,45 +1039,31 @@ ax2.set_title("Transition Rates")
 plt.savefig(figures_folder + "transition_rates_and_icu.png")
 show_plt()
 #%%
-# Generate ensemble of predictions
-all_predictions_combined = []
-for i, fit_results in enumerate(fit_results_by_window):
-    window = windows[i]
-    pred = np.zeros((len(df_occupancy),len(distro_to_fit)))*np.nan
-    for window_counter,distro in enumerate(distro_to_fit):
-        if fit_results[distro]["minimization_result"].success == False:
-            continue
-        result = fit_results[distro]
-        y = result['curve']
-        w = WindowInfo(window)
-        _y = y[params.train_width:params.train_width+params.test_width]
-        pred[w.train_end:w.test_end,window_counter] = _y
-    all_predictions_combined.append(pred)
-all_predictions_combined = np.array(all_predictions_combined)
-all_predictions_combined.shape # in shape (n_windows, n_days, n_distros)
 
+all_predictions_combined = np.empty((series_data.n_windows,series_data.n_days,len(all_fit_results)),dtype=np.float32)
+for distro_count,result_series in enumerate(all_fit_results.results):
+    for window_id, fit_result in enumerate(result_series.fit_results):
+        y = fit_result.curve[params.train_width:params.train_width+params.test_width]
+        w = result_series.window_infos[window_id]
+        all_predictions_combined[window_id, w.train_end:w.test_end, distro_count] = y
 #%%
-distros = []
-for i, distro in enumerate(distro_to_fit):
-    if distro in ["cauchy","exponential","t","gaussian","sentinel"]:
-        distros.append((i,distro))
+
 fig,(ax,ax2) = plt.subplots(2,1,figsize=(10,5),sharex=True,dpi=150)
 # plot icu and incidence
 ax.plot(y_full, color="black",label="ICU Bedload")
-for i, window in enumerate(windows):
+for i, window in enumerate(series_data.windows):
     w = WindowInfo(window)
     x = np.arange(w.train_end,w.test_end)
-    for j, distro in distros:
+    for j, distro in enumerate(all_fit_results.distros):
         y = all_predictions_combined[i,w.train_end:w.test_end,j]
         ax.plot(x,y,color=graph_colors[j],alpha=1)
 ax.set_ylim(-100,6000)
 ax.set_title("All Predictions")
 ax.legend()
-
-transition_rates = np.array([[fit_results[distro]["params"][0] for fit_results in fit_results_by_window] for distro in distro_to_fit])
+transition_rates = np.array([[fit_result.params[0] for fit_result in all_fit_results[distro]] for distro in all_fit_results.distros])
 lines =[]
-for i,distro in distros:
-    l, = ax2.plot(windows, transition_rates[i],label=distro)
+for i,distro in enumerate(all_fit_results.distros):
+    l, = ax2.plot(series_data.windows, transition_rates[i],label=distro)
     lines.append(l)
 ax2.legend(handles=lines,ncol=2,loc="upper right")
 ax2.set_xticks(xtick_pos[::2])
@@ -1122,11 +1079,9 @@ show_plt()
 #%%
 # plot all errors in a graph
 fig,ax = plt.subplots(1,1,figsize=(10,5),dpi=150)
-for i, distro in enumerate(distro_to_fit):
-    train_errors = [fit_results[distro]["train_error"] for fit_results in fit_results_by_window]
-    test_errors = [fit_results[distro]["test_error"] for fit_results in fit_results_by_window]
-    ax.plot(windows,train_errors,label=f"{distro.capitalize()} Train")
-    ax.plot(windows,test_errors,label=f"{distro.capitalize()} Test")
+for i, distro in enumerate(all_fit_results):
+    ax.plot(series_data.windows,all_fit_results[distro].train_relative_errors,label=f"{distro.capitalize()} Train")
+    ax.plot(series_data.windows,all_fit_results[distro].test_relative_errors,label=f"{distro.capitalize()} Test")
 ax.legend()
 ax.set_title("All Errors")
 ax.set_xticks(xtick_pos[::2])
