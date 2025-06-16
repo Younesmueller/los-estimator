@@ -27,6 +27,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 sys.path.append("../02_fit_los_distributions/")
+from fit_deconvolution_visualizations import *
 from dataprep import load_los, load_incidences, load_icu_occupancy, load_mutant_distribution
 from compartmental_model import calc_its_comp
 from los_fitter import distributions, calc_its_convolution, fit_SEIR
@@ -72,13 +73,22 @@ df_mutant_selection["Omikron_BA.4/5"] = df_mutant_selection["Omikron_BA.4"] + df
 df_mutant_selection = df_mutant_selection[['Delta_AY.1','Omikron_BA.1/2','Omikron_BA.4/5']]
 
 new_icu_day = date_to_day(new_icu_date)
+#%%
+
+visualization_data = types.SimpleNamespace()
+visualization_data.xtick_pos = xtick_pos
+visualization_data.xtick_label = xtick_label
+visualization_data.real_los = real_los
+visualization_data.show_plt = show_plt
+visualization_data.graph_colors = graph_colors
+vd = visualization_data
 
 #%%
 manual_transition_rates = get_manual_transition_rates(df_occupancy)
 
 plt.plot(manual_transition_rates,label="Manual Transition Rates")
 plt.title("Manual Transition Rates")
-plt.xticks(xtick_pos[::4],xtick_label[::4])
+plt.xticks(vd.xtick_pos[::4],vd.xtick_label[::4])
 show_plt()
 
 
@@ -90,7 +100,7 @@ for ax in axs:
 axs[-1].axvline(new_icu_date,color="black",linestyle="--",label="First ICU")
 
 plt.suptitle("Incidences and ICU Occupancy")
-show_plt()
+vd.show_plt()
 
 #%%
 fig,ax = plt.subplots(2,1,figsize=(10,5),sharex=True)
@@ -128,8 +138,8 @@ params.ideas.presenting_err = ["..."]
 #%%
 
 
-
 run_name = generate_run_name(params)
+params.run_name = run_name
 
 print("###################################################################")
 print("Run Name:")
@@ -137,7 +147,7 @@ print(run_name)
 print("###################################################################")
 
 
-results_folder, figures_folder, animation_folder = create_result_folders(run_name)
+results_folder, figures_folder, animation_folder = create_result_folders(params.run_name)
 #%%
 
 if params.fit_admissions:
@@ -149,6 +159,9 @@ if params.fit_admissions:
 else:
     start = 0
 windows = np.arange(start,len(df_occupancy)-params.kernel_width, params.step)
+#%%
+
+
 #%%
 class WindowInfo:
     def __init__(self,window):
@@ -317,7 +330,12 @@ def get_initial_params(all_fit_results, distro, params, window_id):
 
 
 
+#%%
 
+visualization_data.xlims = xlims
+visualization_data.results_folder = results_folder
+visualization_data.figures_folder = figures_folder
+visualization_data.animation_folder = animation_folder
 
 #%%
 import types
@@ -457,6 +475,9 @@ for distro, fit_result in all_fit_results.items():
     a = fit_result.train_relative_errors.mean()
     b = fit_result.test_relative_errors.mean()
     print(f"{distro[:7]}\t Mean Train Error: {float(a):.2f}, Mean Test Error: {float(b):.2f}")
+#%%
+for distro, fit_result in all_fit_results.items():
+    fit_result.bake()        
 #%% Calculate Summary
 train_errors_by_distro = np.array([result.train_relative_errors for result in all_fit_results.results]).T
 df_train = pd.DataFrame(train_errors_by_distro, columns=all_fit_results.distros)
@@ -502,191 +523,44 @@ distro_patches = [
     for distro in all_fit_results
 ]
 
+visualization_data.replace_names = replace_names
+visualization_data.distro_colors = distro_colors
+visualization_data.short_distro_names = short_distro_names
+visualization_data.distro_patches = distro_patches
 
 #%%
 # save test errors and failure rates in csv
-df_test.to_csv(results_folder + "test_errors.csv")
-df_failures.to_csv(results_folder + f"failure_rates.csv")
-summary.to_csv(results_folder + "summary.csv")
+df_test.to_csv(vd.results_folder + "test_errors.csv")
+df_failures.to_csv(vd.results_folder + f"failure_rates.csv")
+summary.to_csv(vd.results_folder + "summary.csv")
 
 
 #%% Generate Video 
 ##animation
 # pair each distribution with a color from graph_colors
 
+DEBUG_ANIMATION = True
+DEBUG_HIDE_FAILED = True
 
-debug = True
-show_mutants = True
-hide_failed = True
-if True:
-    if not debug:
-        path = animation_folder
-        if os.path.exists(path):
-            import shutil
-            shutil.rmtree(path)
-        os.makedirs(path)
-
-    window_counter = 1
-    to_enumerate = list(enumerate(series_data.window_infos))
-    if debug:
-        xx = 2
-        to_enumerate = [to_enumerate[min(xx,len(to_enumerate)-1)]]
-    for window_id, window_info in to_enumerate:
-        print(f"Animation Window {window_counter}/{len(windows)}")
-        window_counter+=1
-
-
-        if show_mutants:
-            fig = plt.figure(figsize=(17, 10),dpi=150)
-            gs = gridspec.GridSpec(3, 4,height_ratios=[5,1,3])
-            ax_main = fig.add_subplot(gs[0, :4])
-            ax_inc = ax_main.twinx()
-            ax_kernel = fig.add_subplot(gs[2,:2])
-            ax_err_train = fig.add_subplot(gs[2, 2])
-            ax_err_test = fig.add_subplot(gs[2, 3])
-            ax_mutant = fig.add_subplot(gs[1, :4])
-        else:
-            fig = plt.figure(figsize=(17, 10),dpi=150)
-            gs = gridspec.GridSpec(2, 4,height_ratios=[2,1])
-            ax_main = fig.add_subplot(gs[0, :4])
-            ax_inc = ax_main.twinx()
-            ax_kernel = fig.add_subplot(gs[1,:2])
-            ax_err_train = fig.add_subplot(gs[1, 2])
-            ax_err_test = fig.add_subplot(gs[1, 3])
-
-        w = window_info
-
-        # Plot main window
-        line_bedload, = ax_main.plot(y_full, color="black",label="ICU Bedload")
-        zero = np.zeros_like(y_full)
-
-        span_los_cutoff = ax_main.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,label=f"Train Window (Convolution Edge) = {params.train_width} days")
-        span_train = ax_main.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,label=f"Training = {params.train_width-params.los_cutoff} days")
-        span_test = ax_main.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,label=f"Test Window = {params.test_width} days")
-        ax_main.axvline(w.train_end,color="black",linestyle="-",linewidth=1)
-
-        label = "COVID Incidence (Scaled)"
-        if params.fit_admissions:
-            label = "New ICU Admissions (Scaled)"
-
-
-        line_inc, = ax_inc.plot(x_full,linestyle="--",label=label)
-        ax_inc.ticklabel_format(axis="y",style="sci",scilimits=(0,0))
-        ma = np.nanmax(x_full)
-        ax_inc.set_ylim(-ma/7.5,ma*4)
-
-        plot_lines  = []
-
-        for distro,result_series in all_fit_results.items():
-            result_obj = result_series.fit_results[window_id]
-            name = replace_names.get(distro,distro.capitalize())
-            if hide_failed and not result_obj.success:
-                continue
-            c = distro_colors[distro]
-            ax_kernel.plot(result_obj.kernel, label=name, color=c)
-            y = result_obj.curve[params.los_cutoff:]
-            s = np.arange(len(y))+params.los_cutoff+w.train_start
-            l, = ax_main.plot(s,y, label=f"{distro.capitalize()}", color=c)
-            plot_lines.append(l)
-
-        ax_kernel.plot(real_los, color="black",label="Sentinel LoS Charité")
-
-        for i, (distro, fit_result) in enumerate(all_fit_results.items()):
-            c = distro_colors[distro]
-            train_err = fit_result.train_relative_errors[window_id]
-            test_err = fit_result.test_relative_errors[window_id]
-
-            if hide_failed and not fit_result[window_id].success:
-                ax_err_train.bar(i,1e100,color="lightgrey",hatch="/")
-                ax_err_test.bar(i, 1e100,color="lightgrey",hatch="/")
-                ax_err_train.bar(i,train_err,color="black")
-                ax_err_test.bar(i,test_err,color="black")
-                continue
-            ax_err_train.bar(i,train_err,label="Train",color=c)
-            ax_err_test.bar(i,test_err,label="Test",color=c)
-
-        legend1 = ax_main.legend(handles=distro_patches, loc="upper left", fancybox=True,ncol=2)
-        legend2 = ax_main.legend(handles = [line_bedload, line_inc, span_los_cutoff, span_train, span_test],loc="upper right")
-
-        ax_main.add_artist(legend1)
-        ax_main.add_artist(legend2)
-
-        ax_main.set_title(f"ICU Occupancy")
-        ax_main.set_xticks(xtick_pos)
-        ax_main.set_xticklabels(xtick_label)
-        ax_main.set_xlim(*xlims)
-        ax_main.set_ylim(-200,6000)
-        ax_main.set_ylabel("Occupied Beds")
-
-        if show_mutants:
-
-            mutant_lines = []
-            for col in df_mutant_selection.columns:
-                line, = ax_mutant.plot(df_mutant_selection[col].values)
-                mutant_lines.append(line)
-                ax_mutant.fill_between(range(len(y_full)), df_mutant_selection[col].values, 0, alpha=0.3)
-
-            ax_mutant.legend(mutant_lines,df_mutant_selection.columns,loc="upper right")
-            ax_mutant.set_xticks([])
-            ax_mutant.set_xticklabels([])
-            ax_mutant.set_xticks(xtick_pos)
-            tmp_xtick = [label.split("\n")[1:] for label in xtick_label]
-            tmp_xtick = [label[0] if label else ""  for label in tmp_xtick]
-            ax_mutant.set_xticklabels(tmp_xtick)
-            ax_mutant.set_xlim(*xlims)
-            ax_mutant.set_title("Variants of Concern")
-            ax_mutant.set_ylabel("Variant Share (%)")
-
-
-
-
-        ax_inc.set_ylabel("(Incidence)")
-        if params.fit_admissions:
-            ax_inc.set_ylabel("New ICU Admissions (scaled)")
-        replace_names = {"block": "Constant Discharge", "sentinel": "Baseline: Sentinel"}
-        ax_kernel.legend(handles=distro_patches, loc="upper right", fancybox=True, ncol=2, )
-        ax_kernel.set_ylim(0,0.1)
-        ax_kernel.set_xlim(-2,80)
-        ax_kernel.set_ylabel("Discharge Probability")
-        ax_kernel.set_xlabel("Days after admission")
-        ax_kernel.set_title(f"Estimated LoS Kernels")
-
-
-        lim = .4
-        ax_err_train.set_ylim(0,lim)
-        ax_err_train.set_title("Relative Train Error")
-        ax_err_train.set_xticks(range(len(all_fit_results)))
-        ax_err_train.set_xticklabels(short_distro_names,rotation=75)
-        ax_err_train.set_ylabel("Relative Error")
-
-        ax_err_test.set_ylim(0,lim)
-        ax_err_test.set_title("Relative Test Error")
-        ax_err_test.set_xticks(range(len(all_fit_results)))
-        ax_err_test.set_xticklabels(short_distro_names,rotation=75)
-        ax_err_test.set_ylabel("Relative Error")
-
-        plt.suptitle(f"Deconvolution Training Process\n{run_name.replace('_',' ')}",fontsize=16)
-        plt.tight_layout()
-        if debug:
-            show_plt()
-        else:
-            plt.savefig(animation_folder + f"fit_{w.train_start:04d}.png")
-            plt.close()
-        plt.clf()
-
-
+visualize_fit_deconvolution(
+        all_fit_results,
+        series_data,
+        params,
+        vd,
+        df_mutant_selection,
+        DEBUG_ANIMATION,
+        DEBUG_HIDE_FAILED,
+        )
 
 #%%
 # Run models on a pulse
 
-
-run_pulse_model(run_name, animation_folder, all_fit_results, series_data, debug=True)
+run_pulse_model(params.run_name, vd.animation_folder, all_fit_results, series_data, debug=True)
 
 #%%
 
 # Just fit SEIR-Model
 from los_fitter import fit_SEIR
-from scipy.optimize import minimize
 
 initial_guess_comp = [1/7,0.02,0]
 
@@ -703,27 +577,19 @@ for window_id, window_info, train_data, test_data in tqdm.tqdm(window_data):
     y_pred_b = calc_its_comp(x_test, *result_obj.params,y_test[0])
     xs2 = np.arange(w.train_end,w.test_end)
     ax.plot(xs2,y_pred_b[params.train_width:],color=graph_colors[1])
-ax.set_xlim(*xlims)
+ax.set_xlim(*vd.xlims)
 plt.title("SEIR-Models")
 plt.show()
 #%%
-# Plot number of failed fits and successfull fits
-plt.figure(figsize=(10,5),dpi=150)
-for i,distro in enumerate(all_fit_results):
-    plt.bar(i,all_fit_results[distro].n_success,color=graph_colors[i],label=distro.capitalize())
-plt.xticks(np.arange(len(all_fit_results)),all_fit_results.keys(),rotation=45)
-plt.title("Number of successful fits")
-plt.axhline(series_data.n_days,color="red",linestyle="--",label="Total")
-plt.xticks(rotation=45)
-plt.savefig(figures_folder + "successful_fits.png")
 
-show_plt()
+plot_successful_fits(all_fit_results, series_data, vd)
 
 #%%
 #%%
 
 # Visualization
-def viz(col2, col1,ylim=None,save_path=None):
+def new_func(graph_colors, all_fit_results, summary, params, vd)
+def plot_err_failure_rate(col2, col1,ylim=None,save_path=None):
     fig, ax = plt.subplots(figsize=(8, 6),dpi=150)
 
     for i, distro in enumerate(all_fit_results.distros):
@@ -731,23 +597,27 @@ def viz(col2, col1,ylim=None,save_path=None):
             continue
         val1 = summary[col1][distro]
         val2 = summary[col2][distro]
-        ax.scatter(val1, val2, s=100, label=distro, color=graph_colors[i])
+        ax.scatter(val1, val2, s=100, label=distro, color=vd.graph_colors[i])
         ax.annotate(distro, (val1, val2), fontsize=9, xytext=(5,5), textcoords='offset points')
 
-    # Labels and formatting
+# Labels and formatting
     ax.set_xlabel(col1)
     ax.set_ylabel(col2)
-    ax.set_title(f"Model Performance: {col1} vs. {col2}\n{run_name.replace('_',' ')}")
+    ax.set_title(f"Model Performance: {col1} vs. {col2}\n{params.run_name.replace('_',' ')}")
     if ylim is not None:
         ax.set_ylim(ylim)
     plt.grid(True)
     if save_path is not None:
         plt.savefig(save_path)
-    show_plt()
-viz("Median Loss Train", "Failure Rate Train",          save_path=figures_folder +  "median_loss_vs_failure_rate_train.png")
-viz("Median Loss Test", "Failure Rate Test",save_path=figures_folder +  "median_loss_vs_failure_rate_test.png")
+    vd.show_plt()
+plot_err_failure_rate(
+    "Median Loss Train",
+    "Failure Rate Train",
+    save_path=vd.figures_folder + "median_loss_vs_failure_rate_train.png")
+plot_err_failure_rate("Median Loss Test", "Failure Rate Test",save_path=vd.figures_folder +  "median_loss_vs_failure_rate_test.png")
 col = "Mean Loss Test (no outliers)"
-viz(col, "Failure Rate Test",save_path=figures_folder +  "mean_loss_vs_failure_rate_test.png")
+plot_err_failure_rate(col, "Failure Rate Test",save_path=vd.figures_folder +  "mean_loss_vs_failure_rate_test.png")
+
 #%%
 # sorted summary
 sorted_summary = summary.sort_values("Median Loss Test")
@@ -757,7 +627,7 @@ plt.legend()
 plt.title("Median Loss")
 xticks = list(sorted_summary.index)
 plt.xticks(np.arange(len(xticks)),xticks,rotation=45)
-show_plt()
+vd.show_plt()
 #%%
 
 plt.figure(figsize=(10,5),dpi=150)
@@ -767,24 +637,24 @@ plt.xticks(np.arange(len(distro_and_n))+1,distro_and_n,rotation=45)
 plt.title("Train Error")
 plt.ylabel("Relative Train Error")
 plt.tight_layout()
-plt.savefig(figures_folder + "train_error_boxplot.png")
-show_plt()
+plt.savefig(vd.figures_folder + "train_error_boxplot.png")
+vd.show_plt()
 
 plt.figure(figsize=(10,5),dpi=150)
 plt.boxplot(test_errors_by_distro)
 plt.xticks(np.arange(len(distro_and_n))+1,distro_and_n,rotation=45)
-plt.title(f"Test Error\n{run_name}")
+plt.title(f"Test Error\n{params.run_name}")
 plt.ylabel(f"Relative Error")
 plt.tight_layout()
-plt.savefig(figures_folder + "test_error_boxplot.png")
-show_plt()
+plt.savefig(vd.figures_folder + "test_error_boxplot.png")
+vd.show_plt()
 #%%
 fig = plt.figure(figsize=(10,5))
 sns.stripplot(data=train_errors_by_distro, jitter=0.2)
 plt.xticks(np.arange(len(all_fit_results)),all_fit_results.distros,rotation=45)
-plt.title(f"Train Error\n{run_name}")
-plt.savefig(figures_folder + "train_error_stripplot.png")
-show_plt()
+plt.title(f"Train Error\n{params.run_name}")
+plt.savefig(vd.figures_folder + "train_error_stripplot.png")
+vd.show_plt()
 
 
 
@@ -815,9 +685,9 @@ for distro_id, distro in enumerate(all_fit_results.distros):
     ax.axvspan(sentinel_start_day,sentinel_end_day, color="green", alpha=0.1,label="Sentinel Window")
     ax.legend(loc="upper left")
     ax.set_ylim(-100,6000)
-    ax.set_xticks(xtick_pos[::2])
-    ax.set_xticklabels(xtick_label[::2])
-    ax.set_xlim(*xlims)
+    ax.set_xticks(vd.xtick_pos[::2])
+    ax.set_xticklabels(vd.xtick_label[::2])
+    ax.set_xlim(*vd.xlims)
     ax.grid()
 
     # plot trans rates in ax2
@@ -840,10 +710,10 @@ for distro_id, distro in enumerate(all_fit_results.distros):
     ax4.set_title("Error")
     ax4.grid()
 
-    plt.suptitle(f"{distro.capitalize()} Distribution\n{run_name}")
+    plt.suptitle(f"{distro.capitalize()} Distribution\n{params.run_name}")
     plt.tight_layout()
-    plt.savefig(figures_folder + f"prediction_error_{distro}_fit.png")
-    show_plt()
+    plt.savefig(vd.figures_folder + f"prediction_error_{distro}_fit.png")
+    vd.show_plt()
 #%%
 fig,(ax,ax4)= plt.subplots(2,1,figsize=(12,6),sharex=True,dpi=300)
 ax.plot(y_full, color="black",label="Real" ,alpha=.8,linestyle="--")
@@ -872,25 +742,25 @@ for distro_id, distro in enumerate(all_fit_results.distros):
 
 ax.set_ylim(-100,6000)
 if params.fit_admissions:
-    ax.set_xlim(*xlims)
+    ax.set_xlim(*vd.xlims)
 ax.grid()
 ax.legend()
 ax4.axvline(-np.inf,color="red",label="Failed Fit",alpha=.5)
 ax4.legend(["Train Errors","Test Errors"],loc="upper right")
 ax4.set_ylim(-1e4,1e5)
 ax4.grid()
-# ax4.set_xticks(xtick_pos,xtick_label)
+# ax4.set_xticks(vp.xtick_pos,vp.xtick_label)
 
 ax4.set_xlabel("Time")
 ax4.set_ylabel("Error")
 ax.set_ylabel("ICU")
 # set xticks
-ax.set_xticks(xtick_pos[::2])
-ax.set_xticklabels(xtick_label[::2])
-ax.set_xlim(*xlims)
-ax.set_title(f"All Predictions\n{run_name}")
-plt.savefig(figures_folder + "prediction_error_all_distros.png")
-show_plt()
+ax.set_xticks(vd.xtick_pos[::2])
+ax.set_xticklabels(vd.xtick_label[::2])
+ax.set_xlim(*vd.xlims)
+ax.set_title(f"All Predictions\n{params.run_name}")
+plt.savefig(vd.figures_folder + "prediction_error_all_distros.png")
+vd.show_plt()
 
 #%%
 fig,ax= plt.subplots(1,1,figsize=(15,7.5),sharex=True)
@@ -915,15 +785,15 @@ for distro_id, distro in enumerate(all_fit_results.distros):
 ax.plot(y_full, color="black",label="Real" ,alpha=.8,linestyle="--")
 
 ax.set_ylim(-100,6000)
-ax.set_xlim(*xlims)
+ax.set_xlim(*vd.xlims)
 ax.grid()
 
 ax.plot([],[],color=graph_colors[0],label = f"All Distros Train")
 ax.plot([],[],color=graph_colors[1],label = f"All Distros Prediction")
 ax.legend()
-ax.set_title(f"All Models\n{run_name}")
-plt.savefig(figures_folder + "prediction_error_all_fits.png")
-show_plt()
+ax.set_title(f"All Models\n{params.run_name}")
+plt.savefig(vd.figures_folder + "prediction_error_all_fits.png")
+vd.show_plt()
 
 
 # %%
@@ -932,7 +802,7 @@ show_plt()
 for distro, fit_results in all_fit_results.items():
     fig, ax = plt.subplots(figsize=(10,5))
     # plot real kernel
-    ax.plot(real_los,color='black',label="Real")
+    ax.plot(vd.real_los,color='black',label="Real")
 
     for fit_result in fit_results.fit_results:
         if not fit_result.success:
@@ -942,11 +812,11 @@ for distro, fit_results in all_fit_results.items():
 
     plt.grid()
     plt.legend()
-    plt.title(f"{distro.capitalize()} Kernel\n{run_name}")
+    plt.title(f"{distro.capitalize()} Kernel\n{params.run_name}")
     plt.ylim(-0.005,0.3)
     plt.tight_layout()
-    plt.savefig(figures_folder + f"all_kernels_{distro}.png")
-    show_plt()
+    plt.savefig(vd.figures_folder + f"all_kernels_{distro}.png")
+    vd.show_plt()
 #%%
 
 
@@ -997,7 +867,7 @@ def calculate_manual_transition_rates_from_sentinel_distro(show_plt, df_occupanc
     plt.plot(np.abs(ys-tr_y),label="Difference")
     plt.grid()
     plt.legend()
-    show_plt()
+    vd.show_plt()
     manual_points = np.array(
         [[0,               5.26125540e-02],
         [ 4.79999995e+01,  5.29817366e-02],
@@ -1036,8 +906,8 @@ ax2.axhline(0,color="black",linestyle="--")
 ax2.legend()
 ax2.set_title("Transition Rates")
 # ax2.set_ylim(-.03,0.2)
-plt.savefig(figures_folder + "transition_rates_and_icu.png")
-show_plt()
+plt.savefig(vd.figures_folder + "transition_rates_and_icu.png")
+vd.show_plt()
 #%%
 
 all_predictions_combined = np.empty((series_data.n_windows,series_data.n_days,len(all_fit_results)),dtype=np.float32)
@@ -1066,16 +936,16 @@ for i,distro in enumerate(all_fit_results.distros):
     l, = ax2.plot(series_data.windows, transition_rates[i],label=distro)
     lines.append(l)
 ax2.legend(handles=lines,ncol=2,loc="upper right")
-ax2.set_xticks(xtick_pos[::2])
-ax2.set_xticklabels(xtick_label[::2])
+ax2.set_xticks(vd.xtick_pos[::2])
+ax2.set_xticklabels(vd.xtick_label[::2])
 # ax2.set_ylim(-.03,1.03)
 ax2.set_ylim(-.01,.075)
 ax2.set_xlim(50,1300)
 ax2.set_title("Transition Rates")
 
 plt.tight_layout()
-plt.savefig(figures_folder + "transition_rates.png")
-show_plt()
+plt.savefig(vd.figures_folder + "transition_rates.png")
+vd.show_plt()
 #%%
 # plot all errors in a graph
 fig,ax = plt.subplots(1,1,figsize=(10,5),dpi=150)
@@ -1084,12 +954,12 @@ for i, distro in enumerate(all_fit_results):
     ax.plot(series_data.windows,all_fit_results[distro].test_relative_errors,label=f"{distro.capitalize()} Test")
 ax.legend()
 ax.set_title("All Errors")
-ax.set_xticks(xtick_pos[::2])
-ax.set_xticklabels(xtick_label[::2])
+ax.set_xticks(vd.xtick_pos[::2])
+ax.set_xticklabels(vd.xtick_label[::2])
 plt.grid()
 
 #%%
-message = f"Finished Run - {run_name}"
+message = f"Finished Run - {params.run_name}"
 print(message)
 os.system(f'msg * "{message}"')
 

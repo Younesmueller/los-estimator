@@ -177,3 +177,7 @@ def run_pulse_model(run_name, animation_folder, all_fit_results, series_data, de
             plt.show()    
         else:
             plt.clf()
+
+
+
+
