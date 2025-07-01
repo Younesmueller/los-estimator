@@ -1,0 +1,5 @@
+distribution,success_rate,mean_train_error,mean_test_error,std_train_error,std_test_error
+lognorm,0.036585365853658534,inf,inf,,
+weibull,0.08536585365853659,inf,inf,,
+gamma,1.0,0.8729203850160854,0.8875518842243969,0.08451524719039216,0.0993257507129655
+exponential,0.9634146341463414,inf,inf,,
