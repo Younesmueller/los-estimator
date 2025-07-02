@@ -188,17 +188,3 @@ def visualize_fit_deconvolution(
             plt.savefig(vd.animation_folder + f"fit_{w.train_start:04d}.png")
             plt.close()
         plt.clf()
-
-
-def plot_successful_fits(all_fit_results, series_data, vd):
-    # Plot number of failed fits and successfull fits
-    plt.figure(figsize=(10,5),dpi=150)
-    for i,distro in enumerate(all_fit_results):
-        plt.bar(i,all_fit_results[distro].n_success,color=vd.graph_colors[i],label=distro.capitalize())
-    plt.xticks(np.arange(len(all_fit_results)),all_fit_results.keys(),rotation=45)
-    plt.title("Number of successful fits")
-    plt.axhline(series_data.n_windows,color="red",linestyle="--",label="Total")
-    plt.xticks(rotation=45)
-    plt.savefig(vd.figures_folder + "successful_fits.png")
-    vd.show_plt()
-    
