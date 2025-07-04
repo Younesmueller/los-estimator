@@ -12,10 +12,10 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Integration_example.py",
+            "name": "run_analysis.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/integration_example.py",
+            "program": "${workspaceFolder}/run_analysis.py",
             "console": "integratedTerminal"
         },
 

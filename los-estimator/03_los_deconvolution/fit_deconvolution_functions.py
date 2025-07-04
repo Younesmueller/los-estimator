@@ -16,16 +16,12 @@ import matplotlib.gridspec as gridspec
 sys.path.append("../02_fit_los_distributions/")
 from dataprep import load_los, load_incidences, load_icu_occupancy, load_mutant_distribution
 from compartmental_model import calc_its_comp
+import utils
 from los_fitter import distributions, calc_its_convolution, fit_SEIR
 #%%
 
 
-def get_graph_colors():
-    # take matplotlib standart color wheel
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    # add extra color palette
-    colors += ["#FFA07A","#20B2AA","#FF6347","#808000","#FF00FF","#FFD700","#00FF00","#00FFFF","#0000FF","#8A2BE2"]
-    return colors
+
 
 
 def load_inc_beds(start_day, end_day):
@@ -68,10 +64,15 @@ def load_all_data(los_file, init_params_file, mutants_file, start_day, end_day):
     df_init = load_init_parameters(init_params_file)
     df_mutant = load_mutant_distribution(mutants_file)
     df_mutant = df_mutant.reindex(df_occupancy.index,method="nearest")
+    df_mutant["Omikron_BA.1/2"] = df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
+    df_mutant["Omikron_BA.4/5"] = df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
+    df_mutant = df_mutant[['Delta_AY.1','Omikron_BA.1/2','Omikron_BA.4/5']]
+
 
     xtick_pos, xtick_label = generate_xticks(df_occupancy)
     new_icu_date = df_occupancy.index[df_occupancy["new_icu"]>0][0]
-    return df_occupancy,real_los,df_init,df_mutant,xtick_pos,xtick_label,new_icu_date
+    new_icu_day = utils.date_to_day(new_icu_date,start_day)
+    return df_occupancy,real_los,df_init,df_mutant,xtick_pos,xtick_label,new_icu_date, new_icu_day
 
 
 def generate_run_name(params):

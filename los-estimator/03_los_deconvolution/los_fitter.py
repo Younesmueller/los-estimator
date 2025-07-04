@@ -202,6 +202,8 @@ class SingleFitResult:
         self.params = params #TODO: Split in Curve params and distro params
     def __repr__(self):
         # return a string with all variables
+        if self is None:
+            return None
         return (f"SingleFitResult(distro={self.distro}, "
                 f"success={self.success}, "
                 f"train_error={self.train_error}, "

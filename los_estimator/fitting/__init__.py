@@ -1,6 +1,3 @@
-"""Fitting and deconvolution algorithms."""
+from .multi_series_fitter import MultiSeriesFitter
 
-from .distributions import DistributionFitter
-from .deconvolution import DeconvolutionEngine
-
-__all__ = ["DistributionFitter", "DeconvolutionEngine"]
+__all__ = ["MultiSeriesFitter"]
