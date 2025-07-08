@@ -1,0 +1,39 @@
+"""Input data visualization components."""
+
+from .base import VisualizerBase
+from .context import VisualizationContext
+import matplotlib.pyplot as plt
+
+
+class InputDataVisualizer(VisualizerBase):
+    """Visualizer for input data analysis."""
+    
+    def __init__(self, visualization_context: VisualizationContext, data=None):
+        super().__init__()
+        self.vc: VisualizationContext = visualization_context
+        self.data = data
+        self.save_figs = False
+        self.show_figs = True
+        
+    def show_input_data(self):
+        """Show overview of input data."""
+        axs = self.data.df_occupancy.plot(subplots=True)
+        axs[-1].axvline(self.data.new_icu_date, color="black", linestyle="--", label="First ICU")
+        plt.suptitle("Incidences and ICU Occupancy")
+        self._show()
+
+    def plot_icu_data(self):
+        """Plot ICU-specific data."""
+        fig, ax = self._get_subplots(2, 1, figsize=(10, 5), sharex=True)
+
+        self.data.df_occupancy["new_icu_smooth"].plot(ax=ax[1], label="new_icu", color="orange")
+        self.data.df_occupancy["icu"].plot(ax=ax[0], label="AnzahlFall")
+        ax[0].set_title("Tägliche Neuzugänge ICU, geglättet")
+        ax[1].set_title("ICU Bettenbelegung")
+        plt.tight_layout()
+        self._show()
+        
+    def plot_mutant_data(self):
+        """Plot mutant/variant data."""
+        self.data.df_mutant.plot()
+        plt.show()

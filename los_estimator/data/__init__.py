@@ -1,19 +1,20 @@
-#%% 
+"""Data loading and preparation utilities for LOS estimation."""
+
 import os
 import sys
 import numpy as np
 import pandas as pd
 import types
 from pathlib import Path
-
 from collections import defaultdict
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-def date_to_day(date, start_day):\
-    return (date - pd.Timestamp(start_day)).days
-def day_to_date(day, start_day):
-    return pd.Timestamp(start_day) + pd.Timedelta(days=day)
+# Import data preparation utilities
+from .dataprep import (
+    load_los, load_incidences, load_age_groups, load_hospitalizations,
+    date_to_day, day_to_date, prepare_time_series, validate_data_consistency
+)
 
 
 class DataLoader:
