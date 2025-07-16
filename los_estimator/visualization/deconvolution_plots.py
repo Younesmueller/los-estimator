@@ -8,7 +8,8 @@ from typing import Optional, Union, List
 
 from .base import VisualizerBase
 from .context import VisualizationContext
-from ..core import MultiSeriesFitResults, SeriesData, Params
+from ..fitting import MultiSeriesFitResults
+from ..core import SeriesData, Params
 
 
 class DeconvolutionPlots(VisualizerBase):

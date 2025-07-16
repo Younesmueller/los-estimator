@@ -1,6 +1,15 @@
 import numpy as np
 from scipy.stats import lognorm, weibull_min, norm, expon, gamma, beta, cauchy, t, invgauss
 
+
+def generate_kernel(distro, fun_params, kernel_size):
+    *params, scaling_fac = fun_params
+    pdf = DISTROS[distro]
+    x = np.arange(kernel_size, dtype=float) * scaling_fac
+    kernel = pdf(x, *params)
+    result = kernel / kernel.sum()
+    return result
+
 sentinel_los_berlin = np.array([0.01387985, 0.04901323, 0.0516157 , 0.05530254, 0.04706137,
        0.05421817, 0.05074821, 0.04576014, 0.03838647, 0.03318152,
        0.03513338, 0.02819345, 0.03079592, 0.02645847, 0.02884407,

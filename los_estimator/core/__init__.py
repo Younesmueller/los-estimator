@@ -5,9 +5,6 @@ from .data_classes import (
     VisualizationContext,
     WindowInfo,
     SeriesData,
-    SingleFitResult,
-    SeriesFitResult,
-    MultiSeriesFitResults,
     Utils
 )
 
@@ -15,10 +12,7 @@ __all__ = [
     "Params",
     "VisualizationContext", 
     "WindowInfo",
-    "SeriesData",
-    "SingleFitResult", 
-    "SeriesFitResult",
-    "MultiSeriesFitResults",
+    "SeriesData",    
     "Utils"
 ]
 

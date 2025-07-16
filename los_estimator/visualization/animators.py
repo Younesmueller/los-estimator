@@ -11,7 +11,8 @@ from typing import Optional
 
 from .deconvolution_plots import DeconvolutionPlots
 from .context import VisualizationContext
-from ..core import MultiSeriesFitResults, SeriesData, Params
+from ..core import SeriesData, Params
+from ..fitting import MultiSeriesFitResults
 
 
 class DeconvolutionAnimator(DeconvolutionPlots):

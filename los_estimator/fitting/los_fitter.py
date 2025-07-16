@@ -4,45 +4,10 @@ from numba import njit
 from scipy.optimize import minimize
 from los_estimator.fitting.models.convolutional_model import calc_its_convolution
 from los_estimator.fitting.models.compartmental_model import calc_its_comp
-from los_estimator.core.data_classes import SingleFitResult
-from .distributions import distributions, boundaries, DISTROS
+from .distributions import distributions, boundaries, generate_kernel
+from .fit_results import SingleFitResult
+from .errors import get_error_fun
 
-@njit
-def weighted_mse(x,y):
-    le = len(x)
-    weights = np.exp(np.linspace(0,2,le))
-    weights /= weights.sum()
-    return np.sum(((x - y) ** 2)*weights)
-
-@njit
-def mse(x, y):
-    return np.mean((x - y) ** 2)
-
-def generate_kernel(distro, fun_params, kernel_size):
-    *params, scaling_fac = fun_params
-    pdf = DISTROS[distro]
-    x = np.arange(kernel_size, dtype=float) * scaling_fac
-    kernel = pdf(x, *params)
-    result = kernel / kernel.sum()
-    return result
-
-
-def get_error_fun(error_fun):
-    if error_fun == "mse":
-        return mse
-    elif error_fun == "weighted_mse":
-        return weighted_mse
-    else:
-        raise ValueError(f"Unknown Error Function: {error_fun}")
-
-
-
-# Objective function for direct kernel fit
-def objective_fit_kernel_to_sentinel(distro):
-    def objective_function(params, observed):
-        kernel = generate_kernel(distro, params, observed.shape[0])
-        return mse(kernel, observed)
-    return objective_function
 
 def stitch_together_multidim_kernel(past_kernels, kernel):
     kernels = np.zeros((len(past_kernels)+1,kernel.shape[0]))
@@ -51,10 +16,9 @@ def stitch_together_multidim_kernel(past_kernels, kernel):
     return kernels
 
 
-
     
 # Objective function for direct kernel fit
-def objective_fit_kernel_to_series_to_incidence(distro, kernel_width, los_cutoff, fit_transition_rate, error_fun=mse):
+def objective_fit_kernel_to_series_to_incidence(distro, kernel_width, los_cutoff, fit_transition_rate, error_fun):
     raise NotImplementedError("This function is deprecated. Use objective_fit_kernel_to_series_to_admissions instead.")
     def objective_function(params, inc, icu, transition_rate=None, delay=None, past_kernels=None):
         if fit_transition_rate:
@@ -72,7 +36,7 @@ def objective_fit_kernel_to_series_to_incidence(distro, kernel_width, los_cutoff
     return objective_function
 
 
-def objective_fit_kernel_to_series_to_admissions(distro, kernel_width, los_cutoff, error_fun=mse):
+def objective_fit_kernel_to_series_to_admissions(distro, kernel_width, los_cutoff, error_fun):
     transition_rate, delay = 1,0
     def objective_function(params, inc, icu, past_kernels=None):
         kernel = generate_kernel(distro, params, kernel_width)

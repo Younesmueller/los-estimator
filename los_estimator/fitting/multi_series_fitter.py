@@ -1,10 +1,15 @@
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict
-from los_estimator.core import MultiSeriesFitResults, SeriesFitResult
+from collections import defaultdict, OrderedDict
 from los_estimator.fitting.los_fitter import fit_SEIR, calc_its_comp, fit_kernel_to_series_the_real_one, calc_its_convolution, SingleFitResult
+from .fit_results import SingleFitResult, SeriesFitResult, MultiSeriesFitResults
+
+
 
 class MultiSeriesFitter:
+    all_fit_results: MultiSeriesFitResults
+    
     def __init__(self, series_data, params, distributions: list[str], init_parameters):
         self.series_data = series_data
         self.params = params        
