@@ -25,8 +25,6 @@ from .visualization import (
     Visualizer
 )
 
-# Utility functions
-from .utils import compare_fit_results, create_result_folders, generate_run_name
 
 __version__ = "1.0.0"
 

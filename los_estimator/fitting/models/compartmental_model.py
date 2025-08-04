@@ -1,6 +1,8 @@
 import numpy as np
 from numba import njit
 
+
+
 @njit
 def calc_its_comp(inc, discharge_rate, transition_rate, delay,init):
     int_delay = int(delay)

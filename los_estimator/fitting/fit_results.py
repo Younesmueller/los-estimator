@@ -2,37 +2,26 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict, OrderedDict
+from dataclasses import dataclass
 
 
 
-
+@dataclass
 class SingleFitResult:
-    def __init__(self, 
-        distro=None,
-        train_data=None,
-        test_data=None,
-        success=None,
-        minimization_result=None,
-        train_error=None,
-        test_error=None,
-        rel_train_error=None,
-        rel_test_error=None,
-        kernel=None,
-        curve=None,
-        params=None
-    ):        
-        self.distro = distro
-        self.train_data = train_data
-        self.test_data = test_data
-        self.success = success or False
-        self.minimization_result = minimization_result
-        self.train_error = train_error
-        self.test_error = test_error
-        self.rel_train_error = rel_train_error
-        self.rel_test_error = rel_test_error
-        self.kernel = kernel
-        self.curve = curve
-        self.params = params #TODO: Split in Curve params and distro params
+    distro: str=None
+    train_data: object=None
+    test_data: object=None
+    success: bool=None
+    minimization_result: object=None
+    train_error: object=None
+    test_error: object=None
+    rel_train_error: object=None
+    rel_test_error: object=None
+    kernel: object=None
+    curve: object=None
+    params: object=None
+    #TODO: Split in Curve params and distro params
+
     def __repr__(self):
         # return a string with all variables
         if self is None:
@@ -49,6 +38,16 @@ class SingleFitResult:
 
 
 class SeriesFitResult:
+    distro: str
+    window_infos: list
+    fit_results: list
+    train_relative_errors: np.ndarray
+    test_relative_errors: np.ndarray
+    successes: list
+    n_success: np.ndarray
+    all_kernels: np.ndarray
+    transition_rates: np.ndarray
+    transition_delays: np.ndarray
     def __init__(self, distro):
         self.distro = distro
         self.window_infos = []
@@ -60,10 +59,6 @@ class SeriesFitResult:
         self.all_kernels: np.ndarray = None
 
     def append(self, window_info, fit_result):
-        # if not isinstance(window_info, WindowInfo):
-        #     raise TypeError("window_info must be an instance of WindowInfo")
-        # if not isinstance(fit_result, SingleFitResult):
-        #     raise TypeError("fit_result must be an instance of SingleFitResult")
         self.window_infos.append(window_info)
         self.fit_results.append(fit_result)
             
@@ -107,6 +102,18 @@ class SeriesFitResult:
 
 
 class MultiSeriesFitResults(OrderedDict):
+    results: list[SeriesFitResult]
+    distros: list[str]
+    n_windows: int
+    train_errors_by_distro: np.ndarray
+    test_errors_by_distro: np.ndarray
+    successes_by_distro: np.ndarray
+    failures_by_distro: np.ndarray
+    n_success_by_distro: np.ndarray
+    transition_rates_by_distro: np.ndarray
+    transition_delays_by_distro: np.ndarray
+    summary: pd.DataFrame
+
     def __init__(self, distros=None,*args, **kwargs):
         super().__init__(*args, **kwargs)
         if distros is not None:

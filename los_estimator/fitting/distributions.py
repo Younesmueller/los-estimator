@@ -1,15 +1,34 @@
 import numpy as np
+from dataclasses import dataclass
 from scipy.stats import lognorm, weibull_min, norm, expon, gamma, beta, cauchy, t, invgauss
+from enum import Enum
+
+class DistributionTypes:
+    """Enum for available distribution types."""
+    LOGNORM = "lognorm"
+    WEIBULL = "weibull"
+    GAUSSIAN = "gaussian"
+    EXPONENTIAL = "exponential"
+    GAMMA = "gamma"
+    BETA = "beta"
+    CAUCHY = "cauchy"
+    T = "t"
+    INVGAUSS = "invgauss"
+    LINEAR = "linear"
+    BLOCK = "block"
+    SENTINEL = "sentinel"
+    
+
+@dataclass
+class Distribution:
+    """Data class for distribution information."""
+    name: str
+    init_values: list
+    boundaries: list
+    pdf: callable
 
 
-def generate_kernel(distro, fun_params, kernel_size):
-    *params, scaling_fac = fun_params
-    pdf = DISTROS[distro]
-    x = np.arange(kernel_size, dtype=float) * scaling_fac
-    kernel = pdf(x, *params)
-    result = kernel / kernel.sum()
-    return result
-
+# Sentinel data
 sentinel_los_berlin = np.array([0.01387985, 0.04901323, 0.0516157 , 0.05530254, 0.04706137,
        0.05421817, 0.05074821, 0.04576014, 0.03838647, 0.03318152,
        0.03513338, 0.02819345, 0.03079592, 0.02645847, 0.02884407,
@@ -46,51 +65,102 @@ sentinel_los_berlin = np.array([0.01387985, 0.04901323, 0.0516157 , 0.05530254, 
        0.        , 0.00043375, 0.        , 0.        , 0.        ,
        0.        , 0.        , 0.        ])
 
+class DistributionsClass:
+    """Collection of probability distributions for model fitting."""    
+    
+    def generate_kernel(self, distro, fun_params, kernel_size):
+        """Generate a kernel using the specified distribution."""
+        *params, scaling_fac = fun_params
+        pdf = self.get_pdf(distro)
+        x = np.arange(kernel_size, dtype=float) * scaling_fac
+        kernel = pdf(x, *params)
+        result = kernel / kernel.sum()
+        return result    
+    
+    _distributions = {
+        DistributionTypes.LOGNORM: Distribution(
+            name=DistributionTypes.LOGNORM,
+            init_values=[1, 0],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, sigma, μ: lognorm.pdf(x, s=sigma, scale=np.exp(μ))
+        ),
+        DistributionTypes.WEIBULL: Distribution(
+            name=DistributionTypes.WEIBULL,
+            init_values=[1, 15],
+            boundaries=[(1, None), (0, None)],
+            pdf=lambda x, k, λ: weibull_min.pdf(x, c=k, scale=λ)
+        ),
+        DistributionTypes.GAUSSIAN: Distribution(
+            name=DistributionTypes.GAUSSIAN,
+            init_values=[0, 1],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, μ, sigma: norm.pdf(x, loc=μ, scale=sigma)
+        ),
+        DistributionTypes.EXPONENTIAL: Distribution(
+            name=DistributionTypes.EXPONENTIAL,
+            init_values=[1],
+            boundaries=[(0.001, None)],
+            pdf=lambda x, λ: expon.pdf(x, scale=1/λ)
+        ),
+        DistributionTypes.GAMMA: Distribution(
+            name=DistributionTypes.GAMMA,
+            init_values=[2, 2],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, a, s: gamma.pdf(x, a=a, scale=s)
+        ),
+        DistributionTypes.BETA: Distribution(
+            name=DistributionTypes.BETA,
+            init_values=[2, 2],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, a, b: beta.pdf(x, a=a, b=b)
+        ),
+        DistributionTypes.CAUCHY: Distribution(
+            name=DistributionTypes.CAUCHY,
+            init_values=[0, 1],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, μ, s: cauchy.pdf(x, loc=μ, scale=s)
+        ),
+        DistributionTypes.T: Distribution(
+            name=DistributionTypes.T,
+            init_values=[10, 0, 1],
+            boundaries=[(0, None), (0, None), (0, None)],
+            pdf=lambda x, v, μ, s: t.pdf(x, df=v, loc=μ, scale=s)
+        ),
+        DistributionTypes.INVGAUSS: Distribution(
+            name=DistributionTypes.INVGAUSS,
+            init_values=[1, 0],
+            boundaries=[(0, None), (0, None)],
+            pdf=lambda x, μ, loc: invgauss.pdf(x, μ, loc=loc)
+        ),
+        DistributionTypes.LINEAR: Distribution(
+            name=DistributionTypes.LINEAR,
+            init_values=[40],
+            boundaries=[(0, None)],
+            pdf=lambda x, L: np.clip(-x/L + 1, 0, None)
+        ),
+        DistributionTypes.BLOCK: Distribution(
+            name=DistributionTypes.BLOCK,
+            init_values=[],
+            boundaries=[],
+            pdf=lambda x: np.eye(1, len(x), 1, dtype=float).ravel()
+        ),
+        DistributionTypes.SENTINEL: Distribution(
+            name=DistributionTypes.SENTINEL,
+            init_values=[], 
+            boundaries=[],
+            pdf=lambda x: np.asarray(sentinel_los_berlin, dtype=float)
+        ),
+    }
+    
+    def __getitem__(self,distro_name):
+        """Get the distribution by name."""
+        if distro_name in self._distributions:
+            return self._distributions[distro_name]
+        else:
+            raise ValueError(f"Unknown Distribution: {distro_name}")
+    
+    def get_pdf(self, distro_name):
+        """Returns the PDF function for the given distribution type."""
+        return self[distro_name].pdf
 
-
-
-
-distributions = {
-    "lognorm": [1, 0],
-    "weibull": [1, 15],
-    "gaussian": [0, 1],
-    "exponential": [1],
-    "gamma": [2, 2],
-    "beta": [2, 2],
-    "cauchy": [0, 1],
-    "t": [10, 0, 1],
-    "invgauss": [1, 0],
-    "linear": [40],
-    "block": [],
-    "sentinel": [],
-}
-
-boundaries = {
-    "lognorm": [(0, None), (0, None)],
-    "weibull": [(1, None), (0, None)],
-    "gaussian": [(0, None), (0, None)],
-    "exponential": [(0.001, None)],
-    "gamma": [(0, None), (0, None)],
-    "beta": [(0, None), (0, None)],
-    "cauchy": [(0, None), (0, None)],
-    "t": [(0, None), (0, None), (0, None)],
-    "invgauss": [(0, None), (0, None)],
-    "linear": [(0, None)],
-    "block": [],
-    "sentinel": [],
-}
-
-DISTROS = {
-    "lognorm":   lambda x, sigma, μ: lognorm.pdf(x, s=sigma,   scale=np.exp(μ)),
-    "weibull":   lambda x, k, λ: weibull_min.pdf(x, c=k, scale=λ),
-    "gaussian":  lambda x, μ, sigma: norm.pdf(x, loc=μ,     scale=sigma),
-    "exponential":lambda x, λ:  expon.pdf(x, scale=1/λ),
-    "gamma":     lambda x, a, s: gamma.pdf(x, a=a,      scale=s),
-    "beta":      lambda x, a, b: beta.pdf(x, a=a,       b=b),
-    "cauchy":    lambda x, μ, s: cauchy.pdf(x, loc=μ,   scale=s),
-    "t":         lambda x, v, μ, s: t.pdf(x, df=v,      loc=μ, scale=s),
-    "invgauss":  lambda x, μ, loc: invgauss.pdf(x, μ, loc=loc),
-    "linear":    lambda x, L: np.clip(-x/L + 1, 0, None),
-    "block":     lambda x: np.eye(1, len(x), 1, dtype=float).ravel(),
-    "sentinel":  lambda x: np.asarray(sentinel_los_berlin, dtype=float),
-}
+Distributions = DistributionsClass()

@@ -1,18 +1,137 @@
 """Core data classes and structures for LOS estimation."""
+from typing import OrderedDict
+from attr import dataclass
+import numpy as np
+import pandas as pd
+import types
 
-from .data_classes import (
-    Params,
-    VisualizationContext,
-    WindowInfo,
-    SeriesData,
-    Utils
-)
+import functools
+import matplotlib.pyplot as plt
+
+
 
 __all__ = [
     "Params",
     "VisualizationContext", 
     "WindowInfo",
     "SeriesData",    
-    "Utils"
 ]
+
+
+@dataclass
+class Params:
+    kernel_width: int
+    los_cutoff: int
+    smooth_data: bool
+    train_width: int
+    test_width: int
+    step: int    
+    error_fun: str
+    reuse_last_parametrization: bool
+    variable_kernels: bool
+    distributions: list[str]
+    ideas = types.SimpleNamespace(
+        los_change_penalty=["..."],
+        fitting_err=["mse", "mae", "rel_err", "weighted_mse", "inv_rel_err", "capacity_err", "..."],
+        presenting_err=["..."]
+    )
+
+default_params = Params(
+    kernel_width=120,
+    los_cutoff=60,
+    smooth_data=False,
+    train_width=42 + 60,
+    test_width=21, 
+    step=7,
+    error_fun="mse",
+    reuse_last_parametrization=True,
+    variable_kernels=True,
+    distributions=[
+         "lognorm",
+        # "weibull",
+        "gaussian",
+        "exponential",
+        # "gamma",
+        # "beta",
+        "cauchy",
+        "t",
+        # "invgauss",
+        "linear",
+        # "block",
+        # "sentinel",
+        "compartmental",
+    ]
+)
+
+class VisualizationContext(types.SimpleNamespace):
+    pass
+
+class WindowInfo:
+    def __init__(self,window,params):
+        self.window = window        
+        self.train_end = self.window
+        self.train_start = self.window - params.train_width
+        self.train_los_cutoff = self.train_start + params.los_cutoff
+        self.test_start = self.train_end
+        self.test_end = self.test_start + params.test_width
+        
+        self.train_window = slice(self.train_start,self.train_end)
+        self.train_test_window = slice(self.train_start,self.test_end)
+        self.test_window = slice(self.test_start,self.test_end)
+
+        self.params = params
+        
+    def __repr__(self):
+        return f"WindowInfo(window={self.window}, train_start={self.train_start}, train_end={self.train_end}, test_start={self.test_start}, test_end={self.test_end})"
+
+
+class SeriesData:
+    def __init__(self,x_full,y_full,params,new_icu_day):
+        self.params = params
+        self.new_icu_day = new_icu_day
+        self.x_full = x_full
+        self.y_full = y_full
+        self._calc_windows(params)
+        self.n_days = len(self.x_full)
+
+    def _calc_windows(self,params):
+        start = self.new_icu_day + params.train_width
+        self.windows = np.arange(start,len(self.x_full)-params.kernel_width, params.step)
+        self.window_infos = [WindowInfo(window,params) for window in self.windows]
+        self.n_windows = len(self.windows)
+
+    @ functools.lru_cache
+    def get_train_data(self, window_id:int):
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        w = self.window_infos[window_id]
+        return self.x_full[w.train_window], self.y_full[w.train_window]
+
+    @ functools.lru_cache
+    def get_test_data(self,window_id):
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        w = self.window_infos[window_id]
+        return self.x_full[w.train_test_window], self.y_full[w.train_test_window]
+
+    @ functools.lru_cache
+    def get_window_info(self,window_id):
+        if window_id > len(self.windows):
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
+        return self.window_infos[window_id]
+
+    def __iter__(self):
+        for idx in range(self.n_windows):
+            train_data = self.get_train_data(idx)
+            test_data = self.get_test_data(idx)
+            window_info = self.get_window_info(idx)
+            yield idx, window_info,train_data, test_data
+
+    def __len__(self):
+        return self.n_windows
+    
+    def __repr__(self):
+        return f"SeriesData(n_windows={self.n_windows}, kernel_width={self.params.kernel_width}, los_cutoff={self.params.los_cutoff})"
+        
+
 

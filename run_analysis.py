@@ -4,6 +4,7 @@
 %autoreload 2
 import os
 
+from attr import dataclass
 import numpy as np
 import pandas as pd
 import types
@@ -11,11 +12,14 @@ from pathlib import Path
 import shutil
 import time
 from collections import defaultdict
-from los_estimator.core import *
 
+from los_estimator.core import *
 from los_estimator.data import DataLoader
+from los_estimator.fitting.errors import ErrorType
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
+from los_estimator.config import DataConfig, ModelConfig, OutputConfig
+
 
 from comparison_data_loader import load_comparison_data
 
@@ -65,6 +69,13 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         print("❌ Some distributions failed the comparison.")
 
 #%%
+from los_estimator.core import *
+from los_estimator.data import DataLoader
+from los_estimator.fitting.errors import ErrorType
+from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
+from los_estimator.fitting import MultiSeriesFitter
+from los_estimator.config import DataConfig, ModelConfig, OutputConfig
+
 
 class LOSEstimator:
     def __init__(self,data_config,output_config,params,debug_configuration):
@@ -81,10 +92,7 @@ class LOSEstimator:
     
 
     def load_data(self):
-        dir = os.getcwd()
-        os.chdir("C:\data\src\los-estimator\los-estimator\data")
         self.data = self.data_loader.load_all_data()
-        os.chdir(dir)
         vc = self.visualization_context
         vc.xtick_pos = self.data.xtick_pos
         vc.xtick_label = self.data.xtick_label
@@ -141,10 +149,7 @@ class LOSEstimator:
         run_name = f"{timestamp}_dev"
 
         run_name+=f"_step{params.step}_train{params.train_width}_test{params.test_width}"
-        if params.fit_admissions:
-            run_name += "_fit_admissions"
-        else:
-            run_name += "_fit_incidence"
+        run_name += "_fit_admissions"
         if params.smooth_data:
             run_name += "_smoothed"
         else:
@@ -168,10 +173,15 @@ class LOSEstimator:
         if vis:
             self.visualize_results()
 
+    def select_series(self, df, params):
+        col = "new_icu_smooth" if params.smooth_data else "new_icu"
+        return df[col].values, df["icu"].values
+
 
 
     def fit(self):
-        self.series_data = SeriesData(self.data.df_occupancy, params, self.data.new_icu_day)
+        series_data = self.select_series(self.data.df_occupancy,self.params)
+        self.series_data = SeriesData(*series_data, params, self.data.new_icu_day)
 
         init_parameters = defaultdict(list)
         for distro, row in self.data.df_init.iterrows():
@@ -183,51 +193,81 @@ class LOSEstimator:
         self.window_data, self.all_fit_results = multi_fitter.fit()
         return self.window_data, self.all_fit_results
 
-data_config = types.SimpleNamespace()
-data_config.los_file = "../01_create_los_profiles/berlin/output_los/los_berlin_all.csv"
-data_config.init_params_file = "../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv"
-data_config.mutants_file = "../data/VOC_VOI_Tabelle.xlsx"
 
-data_config.start_day = "2020-01-01"
-data_config.end_day = "2025-01-01"
-data_config.sentinel_start_date = pd.Timestamp("2020-10-01")
-data_config.sentinel_end_date = pd.Timestamp("2021-06-21")
 
+data_config = DataConfig(
+    base_path="C:/data/src/los-estimator/los-estimator/data",
+    cases_file="./cases.csv",
+    icu_occupancy_file="./Intensivregister_Bundeslaender_Kapazitaeten.csv",
+    los_file="../01_create_los_profiles/berlin/output_los/los_berlin_all.csv",
+    init_params_file="../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv",
+    mutants_file="./VOC_VOI_Tabelle.xlsx",
+    start_day="2020-01-01",
+    end_day="2025-01-01",
+    sentinel_start_date=pd.Timestamp("2020-10-01"),
+sentinel_end_date = pd.Timestamp("2021-06-21")
+)
 output_config = types.SimpleNamespace()
 output_config.results_folder_base = "./results"
 
-params = Params()
-params.kernel_width = 120
-params.los_cutoff = 60 # Ca. 90% of all patients are discharged after 41 days
-params.smooth_data = False
-params.train_width = 42 + params.los_cutoff
-params.test_width = 21 #28 *4
-params.step = 7
-params.fit_admissions = True
-params.error_fun = "mse"# "weighted_mse"
-params.reuse_last_parametrization = True
-params.variable_kernels = True
-params.distributions = [
-    # "lognorm",
-    # "weibull",
-    "gaussian",
-    "exponential",
-    # "gamma",
-    # "beta",
-    "cauchy",
-    "t",
-    # "invgauss",
-    "linear",
-    # "block",
-    # "sentinel",
-    "compartmental",
-]
+params = Params(
+    kernel_width=120,
+    los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
+    smooth_data=False,
+    train_width=42 + 60,
+    test_width=21,  # 28 * 4
+    step=7,    
+    error_fun=ErrorType.MSE,
+    reuse_last_parametrization=True,
+    variable_kernels=True,
+    distributions=[
+        # "lognorm",
+        # "weibull",
+        "gaussian",
+        "exponential",
+        # "gamma",
+        # "beta",
+        "cauchy",
+        "t",
+        # "invgauss",
+        "linear",
+        # "block",
+        # "sentinel",
+        "compartmental",
+    ]
+)
+# params = Params()
+# params.kernel_width = 120
+# params.los_cutoff = 60 # Ca. 90% of all patients are discharged after 41 days
+# params.smooth_data = False
+# params.train_width = 42 + params.los_cutoff
+# params.test_width = 21 #28 *4
+# params.step = 7
+# params.fit_admissions = True
+# params.error_fun = ErrorType.MSE
+# params.reuse_last_parametrization = True
+# params.variable_kernels = True
+# params.distributions = [
+#     # "lognorm",
+#     # "weibull",
+#     "gaussian",
+#     "exponential",
+#     # "gamma",
+#     # "beta",
+#     "cauchy",
+#     "t",
+#     # "invgauss",
+#     "linear",
+#     # "block",
+#     # "sentinel",
+#     "compartmental",
+# ]
 
 
-params.ideas = types.SimpleNamespace()
-params.ideas.los_change_penalty = ["..."]
-params.ideas.fitting_err = ["mse","mae","rel_err","weighted_mse","inv_rel_err","capacity_err","..."]
-params.ideas.presenting_err = ["..."]
+# params.ideas = types.SimpleNamespace()
+# params.ideas.los_change_penalty = ["..."]
+# params.ideas.fitting_err = ["mse","mae","rel_err","weighted_mse","inv_rel_err","capacity_err","..."]
+# params.ideas.presenting_err = ["..."]
 
 debug_configuration = types.SimpleNamespace()
 debug_configuration.ONE_WINDOW = False
@@ -239,4 +279,5 @@ estimator = LOSEstimator(data_config,output_config,params,debug_configuration)
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+
 # %%

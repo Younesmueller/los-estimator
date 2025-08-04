@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict, OrderedDict
-from los_estimator.fitting.los_fitter import fit_SEIR, calc_its_comp, fit_kernel_to_series_the_real_one, calc_its_convolution, SingleFitResult
+from collections import defaultdict
+from los_estimator.fitting.los_fitter import fit_compartmental, calc_its_comp, fit_convolution, calc_its_convolution, SingleFitResult
 from .fit_results import SingleFitResult, SeriesFitResult, MultiSeriesFitResults
 
 
@@ -18,8 +18,6 @@ class MultiSeriesFitter:
         self.exclude_distros: set[str] = set()
         self.all_fit_results: MultiSeriesFitResults = MultiSeriesFitResults()
         self.init_parameters = defaultdict(list, init_parameters)
-        if not params.fit_admissions:
-            raise ValueError("Fitting admissions is not supported in this fitter.")
         self.DEBUG_MODE(False,False,False,False)
 
     def DEBUG_MODE(self,
@@ -47,9 +45,7 @@ class MultiSeriesFitter:
         return distributions
     
     def _get_debug_window_data(self, series_data):
-        # --- Window enumeration with optional debugging slicing ---
         window_data = list(series_data)
-
         if self.DEBUG["LESS_WINDOWS"]:
             window_data = window_data[:3]
         elif self.DEBUG["ONE_WINDOW"]:
@@ -81,9 +77,9 @@ class MultiSeriesFitter:
         all_fit_results.bake()
 
         for distro, fit_result in all_fit_results.items():
-            a = fit_result.train_relative_errors.mean()
-            b = fit_result.test_relative_errors.mean()
-            print(f"{distro[:7]}\t Mean Train Error: {float(a):.2f}, Mean Test Error: {float(b):.2f}")
+            train_mean = fit_result.train_relative_errors.mean()
+            test_mean = fit_result.test_relative_errors.mean()
+            print(f"{distro[:7]}\t Mean Train Error: {float(train_mean):.2f}, Mean Test Error: {float(test_mean):.2f}")
         return self.window_data, all_fit_results
 
     def fit_distro(self,distro):
@@ -95,27 +91,27 @@ class MultiSeriesFitter:
 
         failed_windows = []
         is_first_window = True
-            # SEIR always uses its own fitter
+        
+        # compartmental models always uses its own fitter
         for window_id, window_info, train_data, test_data in tqdm(self.window_data):
             w = window_info
                 
-            init_vals = self.init_parameters.get(distro)
-            if self.params.reuse_last_parametrization:
-                init_vals = self._find_last_valid_parametrization(fit_result, window_id,init_vals)
-                    
-
             try:
                 if distro == "compartmental":
-                    _, result_obj = fit_SEIR(
-                        *train_data,*test_data,
+                    result_obj = fit_compartmental(
+                        train_data,
+                        test_data,
                         initial_guess_comp=[1/7, 1, 0],
                         los_cutoff=params.los_cutoff,
                     )
                     y_pred = calc_its_comp(series_data.x_full, *result_obj.params, series_data.y_full[0])
                 else:
+                    init_vals = self.init_parameters.get(distro)
+                    if self.params.reuse_last_parametrization:
+                        init_vals = self._find_last_valid_parametrization(fit_result, window_id,init_vals)
                     past_kernels = self._find_past_kernels(fit_result, is_first_window, w)
 
-                    result_obj = fit_kernel_to_series_the_real_one(
+                    result_obj = fit_convolution(
                         distro, train_data, test_data,
                         self.params.kernel_width, self.params.los_cutoff,
                         distro_init_params=init_vals,
@@ -125,7 +121,7 @@ class MultiSeriesFitter:
 
                     self._update_past_kernels(fit_result, is_first_window, w, result_obj.kernel)
                     y_pred = calc_its_convolution(
-                        series_data.x_full, fit_result.all_kernels, *result_obj.params[:2], self.params.los_cutoff
+                        series_data.x_full, fit_result.all_kernels, self.params.los_cutoff
                     )
                     
                 rel_err = np.abs(y_pred - series_data.y_full) / (series_data.y_full + 1)
@@ -150,7 +146,7 @@ class MultiSeriesFitter:
         for prev in reversed(fit_result[:window_id]):
             if not prev:
                 continue
-            return prev.params[2:]
+            return prev.params
         return init_vals
 
     
