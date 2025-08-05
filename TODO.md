@@ -4,10 +4,10 @@
     - [x] Core
     - [x] Data
     - [x] Fitting
-    - [ ] Visualization
+    - [x] Visualization
     - [x] new_icu_day nicht mehr berechnen, sondern einfach in die Config tun
-    - [ ] estimation_run xlims y 64
-    - [ ] visualization oconfig
+    - [ ] Config
+    
 - [ ] Documentation
     - [ ] Config
     - [ ] Core

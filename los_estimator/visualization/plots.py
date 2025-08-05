@@ -45,14 +45,12 @@ class Visualizer:
         return colors
     
     def plot_time_series_overview(self, df_occupancy: pd.DataFrame, 
-                                sentinel_range: Optional[Tuple[pd.Timestamp, pd.Timestamp]] = None,
                                 save_path: Optional[str] = None) -> plt.Figure:
         """
         Plot overview of time series data (incidences and ICU occupancy).
         
         Args:
             df_occupancy: DataFrame with occupancy data
-            sentinel_range: Tuple of (start, end) for sentinel period
             save_path: Path to save figure
             
         Returns:
@@ -74,12 +72,6 @@ class Visualizer:
         axes[1].set_title("Daily New ICU Admissions")
         axes[1].set_ylabel("Number of Admissions")
         axes[1].legend()
-        
-        # Add sentinel period highlighting
-        if sentinel_range:
-            for ax in axes:
-                ax.axvspan(sentinel_range[0], sentinel_range[1], 
-                          color="green", alpha=0.1, label="Sentinel Period")
         
         # Format x-axis
         axes[1].tick_params(axis='x', rotation=45)

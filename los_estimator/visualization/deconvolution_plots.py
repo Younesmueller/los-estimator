@@ -236,12 +236,12 @@ class DeconvolutionPlots(VisualizerBase):
             plt.grid()
             self._show(f"all_kernels_{distro}.png")
 
-    def generate_plots_for_run(self, show_plots: Optional[bool] = None, save_figs: Optional[bool] = None):
+    def generate_plots_for_run(self, show_plots: Optional[bool] = None, save_figures: Optional[bool] = None):
         """Generate all plots for a run."""
-        if save_figs is not None:
-            self.save_figs = save_figs
+        if save_figures is not None:
+            self.save_figures = save_figures
         if show_plots is not None:
-            self.show_figs = show_plots
+            self.show_figures = show_plots
             
         self.plot_successful_fits()
         self.plot_err_failure_rates()

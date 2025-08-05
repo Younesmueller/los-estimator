@@ -49,14 +49,14 @@ class VisualizerBase:
         if fig is None:
             fig = plt.gcf()
 
-        if self.visualization_config.save_figs:
+        if self.visualization_config.save_figures:
             if filename:
                 if not filename.endswith('.png'):
                     filename = filename + '.png'
                 full_path = self.visualization_config.figures_folder / filename
                 fig.savefig(full_path, bbox_inches='tight')
 
-        if self.visualization_config.show_figs:
+        if self.visualization_config.show_figures:
             plt.show(block=False)
             plt.pause(0.001)
             plt.show()

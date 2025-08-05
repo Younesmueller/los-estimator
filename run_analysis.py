@@ -75,32 +75,29 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         return  fit_result.train_relative_errors, comp_fit_result.train_relative_errors
 
 #%%
-from los_estimator.estimation_run import LosEstimationRun
+from los_estimator.estimation_run import LosEstimationRun, ConfigSaver
 from los_estimator.config import VisualizationConfig
 
 from los_estimator.fitting.errors import ErrorType
 from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationContext
 
+cfg = ConfigSaver.load_configurations("./default_config.toml")
+
+model_config = cfg["model_config"]
+data_config = cfg["data_config"]
+output_config = cfg["output_config"]
+debug_config = cfg["debug_config"]
+visualization_config = cfg["visualization_config"]
+animation_config = cfg["animation_config"]
 
 
-data_config = DataConfig(
-    base_path="C:/data/src/los-estimator/los-estimator/data",
-    cases_file="./cases.csv",
-    icu_occupancy_file="./Intensivregister_Bundeslaender_Kapazitaeten.csv",
-    los_file="../01_create_los_profiles/berlin/output_los/los_berlin_all.csv",
-    init_params_file="../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv",
-
-    mutants_file="./VOC_VOI_Tabelle.xlsx",
-    # start_day="2020-01-01",
-    start_day="2021-07-29",
-    end_day="2025-01-01",
-    sentinel_start_date=pd.Timestamp("2020-10-01"),
-    sentinel_end_date=pd.Timestamp("2021-06-21")
-)
+def update(obj,**kwargs):
+    for key, value in kwargs.items():
+        setattr(obj, key, value)
+    return obj
 
 
-
-model_config = ModelConfig(
+model_config =update(model_config,
     kernel_width=120,
     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
     smooth_data=False,
@@ -127,31 +124,30 @@ model_config = ModelConfig(
     ]
 )
 
-output_config = OutputFolderConfig("./results")
 
-debug_configuration = DebugConfiguration(
-    one_window=False,
-    less_windows=less_windows,
-    less_distros=False,
-    only_linear=False
-)
+# debug_config = update(debug_config,
+#     one_window=False,
+#     less_windows=less_windows,
+#     less_distros=False,
+#     only_linear=False
+# )
 
-visualization_config = VisualizationConfig(    
-    save_figs=True,
-    show_figs=True,
-)
-animation_config = AnimationConfig(
-    DEBUG_ANIMATION=False,
-    DEBUG_HIDE_FAILED=True,
-    show_figures=True,
-    save_figures=False
-)
+# visualization_config = update(visualization_config,
+#     save_figures=True,
+#     show_figures=True,
+# )
+# animation_config = update(animation_config,
+#     debug_animation=False,
+#     debug_hide_failed=True,
+#     show_figures=True,
+#     save_figures=False
+# )
 
 estimator = LosEstimationRun(
     data_config,
     output_config,
     model_config,
-    debug_configuration,
+    debug_config,
     visualization_config,
     animation_config
 )
@@ -161,4 +157,4 @@ estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
 
-# %%
+

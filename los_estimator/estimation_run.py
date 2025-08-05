@@ -5,14 +5,43 @@ import time
 from collections import defaultdict
 
 from los_estimator.core import *
-from los_estimator.config import VisualizationContext
+from los_estimator.config import *
 from los_estimator.data import DataLoader
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
+import toml
+from dataclasses import asdict
+from dataclasses import fields
 
+
+class ConfigSaver:
+    def dict_to_config(config_dict, config_class):
+        field_names = {field.name for field in fields(config_class)}
+        filtered_dict = {k: v for k, v in config_dict.items() if k in field_names}
+        return config_class(**filtered_dict)
+
+    def load_configurations(path):
+        with open(path, 'r') as f:
+            loaded_config = toml.load(f)
+        
+        configs = {}
+        for name in loaded_config.keys():
+
+            if name not in configuration_type:
+                continue
+
+            configs[name] = ConfigSaver.dict_to_config(loaded_config[name], configuration_type[name])
+        return configs
+
+    def save_configurations(path, configurations):
+        config_dicts = {key: asdict(value) for key, value in configurations.items()}
+        with open(path, 'w') as f:
+            toml.dump(config_dicts, f)
+            
 
 class LosEstimationRun:
-    def __init__(self,data_config,output_config,model_config,debug_configuration,visualization_config,animation_config):
+    def __init__(self,data_config,output_config,model_config,debug_config,visualization_config,animation_config):
+        self.configurations = [data_config,output_config,model_config,debug_config,visualization_config,animation_config]
         self.model_config = model_config
         self.create_run()
         self.output_config = output_config        
@@ -21,19 +50,14 @@ class LosEstimationRun:
 
         self.data = None
         self.data_config = data_config
-        self.debug_configuration = debug_configuration
+        self.debug_config = debug_config
         self.visualization_config = visualization_config
         if self.visualization_config.colors is None:
             self.visualization_config.colors = get_color_palette()
 
-
         self.data_loader = DataLoader(data_config)
         self.visualization_context = VisualizationContext()
-        self.visualization_context.output_folder_config = output_config
-        
-        
         self.input_visualizer = InputDataVisualizer(self.visualization_config,self.visualization_context)
-
         self.animation_config = animation_config
 
 
@@ -92,7 +116,8 @@ class LosEstimationRun:
             model_config=self.model_config,
             visualization_config=self.visualization_config,
             visualization_context=self.visualization_context,
-            animation_config=self.animation_config
+            animation_config=self.animation_config,
+            output_folder_config=self.output_config
         )
 
         
@@ -141,7 +166,7 @@ class LosEstimationRun:
             init_parameters[distro] = row['params']
         
         multi_fitter = MultiSeriesFitter(self.series_data, self.model_config, self.model_config.distributions, init_parameters)
-        multi_fitter.DEBUG_MODE(**self.debug_configuration.__dict__)
+        multi_fitter.DEBUG_MODE(self.debug_config)
 
         self.window_data, self.all_fit_results = multi_fitter.fit()
         return self.window_data, self.all_fit_results
@@ -151,7 +176,7 @@ class LosEstimationRun:
         self.model_config
         self.output_config
         self.data_config
-        self.debug_configuration
+        self.debug_config
         self.visualization_config
         self.visualization_context
         self.animation_config

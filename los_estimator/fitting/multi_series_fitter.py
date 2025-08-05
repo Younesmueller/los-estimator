@@ -18,20 +18,15 @@ class MultiSeriesFitter:
         self.exclude_distros: set[str] = set()
         self.all_fit_results: MultiSeriesFitResults = MultiSeriesFitResults()
         self.init_parameters = defaultdict(list, init_parameters)
-        self.DEBUG_MODE(False,False,False,False)
+        self.debug_config=None
 
-    def DEBUG_MODE(self,
-        ONE_WINDOW:bool = False,
-        LESS_WINDOWS:bool = True,
-        LESS_DISTROS:bool = False,
-        ONLY_LINEAR:bool = False,
-        
-        ):
+    def DEBUG_MODE(self,debug_config):
+        dc = debug_config
         self.DEBUG = {
-            "ONE_WINDOW": ONE_WINDOW,
-            "LESS_WINDOWS": LESS_WINDOWS,
-            "LESS_DISTROS": LESS_DISTROS,
-            "ONLY_LINEAR": ONLY_LINEAR,
+            "ONE_WINDOW":   dc.one_window,
+            "LESS_WINDOWS": dc.less_windows,
+            "LESS_DISTROS": dc.less_distros,
+            "ONLY_LINEAR":  dc.only_linear,
         }
         self.distributions = self._get_debug_distro(self._distributions)
         self.window_data = self._get_debug_window_data(self.series_data)

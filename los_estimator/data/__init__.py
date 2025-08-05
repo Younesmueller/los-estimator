@@ -53,9 +53,9 @@ class DataLoader:
         c = self.data_config
 
         df_occupancy = self.load_inc_beds(c.start_day, c.end_day)
-        real_los, _ = self._load_los(file=c.los_file)
-        df_init = self.load_init_parameters(c.init_params_file)
-        df_mutant = self.load_mutant_distribution(c.mutants_file)
+        real_los, _ = self._load_los(file=c.get_los_file())
+        df_init = self.load_init_parameters(c.get_init_params_file())
+        df_mutant = self.load_mutant_distribution(c.get_mutants_file())
         df_mutant = self.select_mutants(df_occupancy, df_mutant)
 
 
@@ -109,7 +109,7 @@ class DataLoader:
     def _load_incidences(self, start_day, end_day):
         """cases_*.csv contains the germany wide covid data provided from RKI. It is derived from https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv"""
         c = self.data_config
-        df_inc = pd.read_csv(c.cases_file,index_col=0,parse_dates=["Refdatum"])
+        df_inc = pd.read_csv(c.get_cases_file(),index_col=0,parse_dates=["Refdatum"])
         raw = df_inc.copy()
         df_inc = df_inc[["AnzahlFall","daily"]]
 
@@ -128,7 +128,7 @@ class DataLoader:
 
         c = self.data_config
         
-        df_icu = pd.read_csv(c.icu_occupancy_file,parse_dates=["datum"])
+        df_icu = pd.read_csv(c.get_icu_occupancy_file(),parse_dates=["datum"])
         df_icu = df_icu[["datum", "faelle_covid_aktuell","faelle_covid_erstaufnahmen"]]
         df_icu.columns = ["datum","icu","new_icu"]
         df_icu = df_icu.groupby("datum").sum()
