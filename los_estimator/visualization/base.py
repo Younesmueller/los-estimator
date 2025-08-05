@@ -1,25 +1,37 @@
 """Base visualizer class with common functionality."""
 
+from pathlib import Path
 import matplotlib.pyplot as plt
 from typing import Tuple, Optional, List
-from .context import get_color_palette
+from ..config import VisualizationConfig
+
+def get_color_palette() -> List[str]:
+    """Get extended color palette for plotting."""
+    # take matplotlib standard color wheel
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # add extra color palette
+    colors += ["#FFA07A","#20B2AA","#FF6347","#808000","#FF00FF","#FFD700","#00FF00","#00FFFF","#0000FF","#8A2BE2"]
+    return colors
+
+
 
 
 class VisualizerBase:
     """Base class for all visualizers."""
-    
-    def __init__(self, style: str = "seaborn-v0_8", figsize: Tuple[int, int] = (12, 8)):
+
+    def __init__(self, visualization_config: VisualizationConfig):
+        self.visualization_config = visualization_config
         try:
-            plt.style.use(style)
+            plt.style.use(visualization_config.style)
         except OSError:
             plt.style.use("default")
         
-        self.figsize = figsize
-        self.colors = get_color_palette()
+        self.figsize = visualization_config.figsize        
+        self.colors = visualization_config.colors
         
         # Set high-quality defaults
-        plt.rcParams['savefig.facecolor'] = 'white'
-        plt.rcParams['savefig.dpi'] = 300
+        plt.rcParams['savefig.facecolor'] = visualization_config.savefig_facecolor
+        plt.rcParams['savefig.dpi'] = visualization_config.savefig_dpi
         plt.rcParams['figure.dpi'] = 100
 
     def _figure(self, *args, **kwargs) -> plt.Figure:
@@ -37,21 +49,21 @@ class VisualizerBase:
         if fig is None:
             fig = plt.gcf()
 
-        if getattr(self, 'save_figs', False):
-            if filename and not filename.endswith('.png'):
-                filename = filename + '.png'
-            if isinstance(getattr(self, 'figures_folder', ''), str):
-                full_path = self.figures_folder + filename
-            else:
-                full_path = getattr(self, 'figures_folder', '') / filename
-            fig.savefig(full_path, bbox_inches='tight')
+        if self.visualization_config.save_figs:
+            if filename:
+                if not filename.endswith('.png'):
+                    filename = filename + '.png'
+                full_path = self.visualization_config.figures_folder / filename
+                fig.savefig(full_path, bbox_inches='tight')
 
-        if getattr(self, 'show_figs', True):
+        if self.visualization_config.show_figs:
+            plt.show(block=False)
+            plt.pause(0.001)
             plt.show()
         else:
             plt.clf()
 
     def _set_title(self, title: str, *args, **kwargs):
         """Set the title of the current figure."""
-        run_name = getattr(getattr(self, 'model_config', None), 'run_name', '')
+        run_name = self.model_config.run_name
         plt.title(title + "\n" + run_name, *args, **kwargs)

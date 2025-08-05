@@ -7,7 +7,7 @@ A package for analyzing hospital length of stay using deconvolution methods.
 from .core import *
 
 # Configuration classes
-from .config import DataConfig, ModelConfig, OutputConfig
+from .config import DataConfig, ModelConfig,VisualizationContext
 
 # Data loading
 from .data import DataLoader
@@ -17,8 +17,7 @@ from .fitting import MultiSeriesFitter
 from .estimation_run import LosEstimationRun
 
 # Visualization components
-from .visualization import (
-    VisualizationContext, 
+from .visualization import (    
     get_color_palette,
     InputDataVisualizer,
     DeconvolutionPlots,
@@ -44,7 +43,6 @@ __all__ = [
     # Configuration
     "DataConfig",
     "ModelConfig", 
-    "OutputConfig",
     
     # Data
     "DataLoader",

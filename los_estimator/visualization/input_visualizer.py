@@ -1,15 +1,15 @@
 """Input data visualization components."""
 
 from .base import VisualizerBase
-from .context import VisualizationContext
+from ..config import VisualizationContext
 import matplotlib.pyplot as plt
 
 
 class InputDataVisualizer(VisualizerBase):
     """Visualizer for input data analysis."""
     
-    def __init__(self, visualization_context: VisualizationContext, data=None):
-        super().__init__()
+    def __init__(self, visualization_config, visualization_context: VisualizationContext, data=None):
+        super().__init__(visualization_config)        
         self.vc: VisualizationContext = visualization_context
         self.data = data
         self.save_figs = False

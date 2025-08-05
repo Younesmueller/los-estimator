@@ -16,9 +16,7 @@ from collections import defaultdict
 from los_estimator.core import *
 from los_estimator.data import DataLoader
 from los_estimator.fitting.errors import ErrorType
-from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
-from los_estimator.fitting import MultiSeriesFitter
-from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration
+from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationContext
 
 
 from comparison_data_loader import load_comparison_data
@@ -78,6 +76,11 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
 
 #%%
 from los_estimator.estimation_run import LosEstimationRun
+from los_estimator.config import VisualizationConfig
+
+from los_estimator.fitting.errors import ErrorType
+from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationContext
+
 
 
 data_config = DataConfig(
@@ -132,14 +135,30 @@ debug_configuration = DebugConfiguration(
     less_distros=False,
     only_linear=False
 )
-# vis_config = VisualizationContext(
-#     xlims=(-30, 725),
-#     results_folder=output_config.results,
-#     figures_folder=output_config.figures,
-#     animation_folder=output_config.animation
-# )
 
-estimator = LosEstimationRun(data_config,output_config,model_config,debug_configuration)
+visualization_config = VisualizationConfig(    
+    save_figs=True,
+    show_figs=True,
+)
+animation_config = AnimationConfig(
+    DEBUG_ANIMATION=False,
+    DEBUG_HIDE_FAILED=True,
+    show_figures=True,
+    save_figures=False
+)
+
+estimator = LosEstimationRun(
+    data_config,
+    output_config,
+    model_config,
+    debug_configuration,
+    visualization_config,
+    animation_config
+)
+
+
 estimator.run_analysis(vis=False)
-estimator.all_fit_results["gaussian"].all_kernels[0]=0
+
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+
+# %%

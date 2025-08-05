@@ -96,27 +96,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-@dataclass
-class OutputConfig:
-    """Configuration for output and visualization."""
-    results_folder_base: str = "results"
-    save_figs: bool = True
-    show_figs: bool = True
-    save_animations: bool = False
-    dpi: int = 150
-    figsize: tuple = (12, 8)
-    
-    def get_results_folder(self, run_name: str) -> Path:
-        """Get the full results folder path for a run."""
-        return Path(self.results_folder_base) / run_name
-    
-    def get_figures_folder(self, run_name: str) -> Path:
-        """Get the figures folder path for a run."""
-        return self.get_results_folder(run_name) / "figures"
-    
-    def get_animations_folder(self, run_name: str) -> Path:
-        """Get the animations folder path for a run."""
-        return self.get_results_folder(run_name) / "animations"
+
 class DebugConfiguration:
     def __init__(self, one_window=False, less_windows=False, less_distros=False, only_linear=False):
         self.ONE_WINDOW = one_window
@@ -129,9 +109,12 @@ class DebugConfiguration:
 @dataclass
 class OutputFolderConfig:
     base: str
-    run_name: str = "default"
+    run_name: str = None
+    
 
     def build(self):
+        if self.run_name is None:
+            return
         self.base = Path(self.base)
         self.results = self.base / self.run_name
         self.figures = self.results / "figures"
@@ -141,4 +124,45 @@ class OutputFolderConfig:
 
 
 
+    
+@dataclass
+class AnimationConfig:
+    show_figures: bool = False
+    save_figures: bool = True
+    DEBUG_ANIMATION: bool = False
+    DEBUG_HIDE_FAILED: bool = False
+    alternative_names = {"block": "Constant Discharge", "sentinel": "Baseline: Sentinel"}
+    replace_short_names = {"exponential": "exp", "gaussian": "gauss", "compartmental": "comp"}
+    distro_colors=None
+    distro_patches=None
+    
+
+@dataclass
+class VisualizationConfig:
+    """Configuration for output and visualization."""
+    save_figs: bool = True
+    show_figs: bool = True
+
+    output_folder_config: OutputFolderConfig = None
+
+    xlims = (-30, 725) 
+    figsize: tuple = (12, 8)
+    style: str = "seaborn-v0_8"
+    colors: List[str] = None
+    savefig_facecolor  = 'white'
+    savefig_dpi  = 300
+    figure_dpi  = 100
+    
+    
+   
+@dataclass
+class VisualizationContext:
+    xtick_pos: list = None
+    xtick_label: list = None
+    real_los: list = None
+    xlims: tuple = (-30, 725)
+    results_folder: str = ""
+    figures_folder: str = ""
+    animation_folder: str = ""
+    
     

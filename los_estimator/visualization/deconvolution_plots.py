@@ -7,28 +7,27 @@ from matplotlib.patches import Patch
 from typing import Optional, Union, List
 
 from .base import VisualizerBase
-from .context import VisualizationContext
 from ..fitting import MultiSeriesFitResults
 from ..core import SeriesData
-from ..config import ModelConfig
+from ..config import ModelConfig, VisualizationConfig, VisualizationContext
 
 
 class DeconvolutionPlots(VisualizerBase):
     """Plotting functionality for deconvolution analysis."""
 
-    def __init__(self, all_fit_results: MultiSeriesFitResults, series_data: SeriesData, 
-                 model_config: ModelConfig, visualization_context: VisualizationContext):
-        super().__init__()
+    def __init__(self,
+                all_fit_results: MultiSeriesFitResults,
+                series_data: SeriesData,
+                model_config: ModelConfig,
+                visualization_config: VisualizationConfig,
+                visualization_context: VisualizationContext
+                ):
+        super().__init__(visualization_config)
 
         self.vc: VisualizationContext = visualization_context
         self.all_fit_results: MultiSeriesFitResults = all_fit_results
         self.series_data: SeriesData = series_data
         self.model_config: ModelConfig = model_config
-
-        self.figures_folder = self.vc.figures_folder
-        self.save_figs = True
-        self.show_figs = True
-        
     def plot_successful_fits(self):
         """Plot number of failed fits and successful fits."""
         fit_results = self.all_fit_results

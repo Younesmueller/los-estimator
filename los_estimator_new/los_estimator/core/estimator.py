@@ -49,7 +49,7 @@ class LOSEstimator:
     
     def load_data(self, los_file: str, incidence_file: str, icu_file: str,
                   init_params_file: str, mutants_file: str,
-                  start_day: str = "2020-01-01", end_day: str = "2025-01-01") -> Dict:
+                  start_day: str, end_day: str) -> Dict:
         """
         Load all required data files.
         

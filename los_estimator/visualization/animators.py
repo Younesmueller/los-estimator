@@ -10,59 +10,37 @@ from matplotlib.patches import Patch
 from typing import Optional
 
 from .deconvolution_plots import DeconvolutionPlots
-from .context import VisualizationContext
 from ..core import SeriesData
 from ..fitting import MultiSeriesFitResults
-from ..config import ModelConfig
+from ..config import ModelConfig, AnimationConfig, VisualizationConfig, VisualizationContext
 
+from attr import dataclass
 
 class DeconvolutionAnimator(DeconvolutionPlots):
     """Animation functionality for deconvolution analysis."""
-    
-    @classmethod
-    def from_deconvolution_plots(cls, deconv_plot_visualizer: DeconvolutionPlots):
-        """Create an instance of DeconvolutionAnimator from an existing DeconvolutionPlots instance."""
-        return cls(
-            all_fit_results=deconv_plot_visualizer.all_fit_results,
-            series_data=deconv_plot_visualizer.series_data,
-            model_config=deconv_plot_visualizer.model_config,
-            visualization_context=deconv_plot_visualizer.vc
-        )
 
-    def __init__(self, all_fit_results: MultiSeriesFitResults, series_data: SeriesData, 
-                 model_config: ModelConfig, visualization_context: VisualizationContext):
-        super().__init__(all_fit_results, series_data, model_config, visualization_context)
+    def __init__(self,
+                all_fit_results: MultiSeriesFitResults,
+                series_data: SeriesData, 
+                model_config: ModelConfig,
+                visualization_config: VisualizationConfig,
+                visualization_context: VisualizationContext,
+                animation_config: AnimationConfig):
+        super().__init__(all_fit_results, series_data, model_config, visualization_config, visualization_context)
+        self.ac = animation_config
         self._generate_animation_context()
-        self.DEBUG_ANIMATION = False
-        self.DEBUG_HIDE_FAILED = False
     
-    def DEBUG_MODE(self, DEBUG_ANIMATION: bool = True, DEBUG_HIDE_FAILED: bool = True,
-                   SHOW_PLOTS: bool = True, SAVE_PLOTS: bool = False):
-        """Set debug configuration for the animator."""
-        self.DEBUG_ANIMATION = DEBUG_ANIMATION
-        self.DEBUG_HIDE_FAILED = DEBUG_HIDE_FAILED
-        self.show_figs = SHOW_PLOTS
-        self.save_figs = SAVE_PLOTS
 
     def _generate_animation_context(self):    
         """Generate context for animation frames."""
-        alternative_names = {"block": "Constant Discharge", "sentinel": "Baseline: Sentinel"}
-        replace_short_names = {"exponential": "exp", "gaussian": "gauss", "compartmental": "comp"}
-        short_distro_names = [distro if distro not in replace_short_names else replace_short_names[distro] 
-                             for distro in self.all_fit_results]
-
-        distro_colors = {distro: self.vc.graph_colors[i] for i, distro in enumerate(self.all_fit_results)}
-        distro_patches = [
-            Patch(color=distro_colors[distro], label=alternative_names.get(distro, distro.capitalize()))
+        ac = self.ac
+        ac.distro_colors = {distro: self.visualization_config.colors[i] for i, distro in enumerate(self.all_fit_results)}
+        ac.distro_patches = [
+            Patch(color=ac.distro_colors[distro], label=ac.alternative_names.get(distro, distro.capitalize()))
             for distro in self.all_fit_results
         ]
+        self.ac.short_distro_names = [ac.replace_short_names.get(distro,distro) for distro in self.all_fit_results]
 
-        ac = types.SimpleNamespace()
-        ac.alternative_names = alternative_names
-        ac.distro_colors = distro_colors
-        ac.short_distro_names = short_distro_names
-        ac.distro_patches = distro_patches        
-        self.animation_context = ac
 
     def _get_subplots(self, SHOW_MUTANTS):
         """Get subplot configuration for animation."""
@@ -88,7 +66,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
     
     def _create_animation_folder(self):
         """Create folder for animation frames."""
-        path = self.vc.animation_folder
+        path = self.vc.output_folder_config.animation
         if os.path.exists(path):
             import shutil
             shutil.rmtree(path)
@@ -97,7 +75,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
     def _plot_ax_main(self, ax_main, ax_inc, window_id):
         """Plot main axis for animation frame."""
         w, ac, y_full, x_full = (self.series_data.get_window_info(window_id), 
-                                self.animation_context, 
+                                self.ac, 
                                 self.series_data.y_full, 
                                 self.series_data.x_full)
 
@@ -112,8 +90,10 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         ax_main.axvline(w.train_end, color="black", linestyle="-", linewidth=1)
 
         for distro, result_series in self.all_fit_results.items():
+            if window_id >= len(result_series.fit_results):
+                continue
             result_obj = result_series.fit_results[window_id]
-            if self.DEBUG_HIDE_FAILED and not result_obj.success:
+            if self.ac.DEBUG_HIDE_FAILED and not result_obj.success:
                 continue
             
             y = result_obj.curve[self.model_config.los_cutoff:]
@@ -157,12 +137,12 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         if fig is None:
             fig = plt.gcf()
 
-        if self.save_figs:
+        if self.ac.save_figures:
             if filename and not filename.endswith('.png'):
                 filename = filename + '.png'
             fig.savefig(self.figures_folder + filename, bbox_inches='tight')
 
-        if self.show_figs:
+        if self.ac.show_figures:
             plt.show()
         else:
             plt.clf()
@@ -171,13 +151,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         """Create animation of fit deconvolution process."""
         SHOW_MUTANTS = df_mutant is not None
 
-        if not self.DEBUG_ANIMATION:
+        if not self.ac.DEBUG_ANIMATION:
             self._create_animation_folder()
 
         window_counter = 1
         to_enumerate = list(enumerate(self.series_data.window_infos))
 
-        if self.DEBUG_ANIMATION:
+        if self.ac.DEBUG_ANIMATION:
             to_enumerate = [to_enumerate[min(2, len(to_enumerate)-1)]]
 
         for window_id, window_info in to_enumerate:
@@ -196,10 +176,10 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             plt.suptitle(f"Deconvolution Training Process\n{self.model_config.run_name.replace('_', ' ')}", fontsize=16)
 
             plt.tight_layout()
-            if self.DEBUG_ANIMATION:
+            if self.ac.DEBUG_ANIMATION:
                 plt.show()
             else:
-                plt.savefig(self.vc.animation_folder + f"fit_{w.train_start:04d}.png")
+                plt.savefig(self.vc.animation_folder / f"fit_{w.train_start:04d}.png")
                 plt.close()
             plt.clf()
 
@@ -225,13 +205,15 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
     def _plot_ax_errors(self, ax_err_train, ax_err_test, window_id):
         """Plot error bars on axes."""
-        ac = self.animation_context
+        ac = self.ac
         for i, (distro, fit_result) in enumerate(self.all_fit_results.items()):
+            if window_id >= len(fit_result.fit_results):
+                continue
             c = ac.distro_colors[distro]
             train_err = fit_result.train_relative_errors[window_id]
             test_err = fit_result.test_relative_errors[window_id]
 
-            if self.DEBUG_HIDE_FAILED and not fit_result[window_id].success:
+            if self.ac.DEBUG_HIDE_FAILED and not fit_result[window_id].success:
                 ax_err_train.bar(i, 1e100, color="lightgrey", hatch="/")
                 ax_err_test.bar(i, 1e100, color="lightgrey", hatch="/")
                 ax_err_train.bar(i, train_err, color="black")
@@ -255,11 +237,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
     def _plot_ax_kernel(self, ax_kernel, window_id):
         """Plot kernel on axis."""
-        ac = self.animation_context
+        ac = self.ac
         for distro, result_series in self.all_fit_results.items():
+            if window_id >= len(result_series.fit_results):
+                continue
             result_obj = result_series.fit_results[window_id]
             name = ac.alternative_names.get(distro, distro.capitalize())
-            if self.DEBUG_HIDE_FAILED and not result_obj.success:
+            if self.ac.DEBUG_HIDE_FAILED and not result_obj.success:
                 continue
                 
             ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
