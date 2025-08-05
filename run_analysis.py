@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 print("Let's Go!")
 #%%
 less_windows = True
-compare_all_fit_results = load_comparison_data(less_windows)
+compare_all_fit_results = load_comparison_data(less_windows,new=True)
 print("Comparison data loaded successfully.")
 #%%
 def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
@@ -48,8 +48,15 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
             print(f"❌ Distribution {distro} not found in comparison results.")
             all_successful = False
             continue
+        
 
         comp_fit_result = compare_all_fit_results[distro]
+        if not np.allclose(fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4):
+            print(f"❌ Kernel comparison failed for distribution: {distro}")
+            print(f"Kernel Difference: {np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max():.4f}")
+            print("-" * 50)
+            all_successful = False
+            continue
 
         train_error_diff = np.abs(fit_result.train_relative_errors.mean() - comp_fit_result.train_relative_errors.mean())
         test_error_diff = np.abs(fit_result.test_relative_errors.mean() - comp_fit_result.test_relative_errors.mean())
@@ -67,6 +74,7 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         print("✅ All distributions compared successfully!")
     else:
         print("❌ Some distributions failed the comparison.")
+        return  fit_result.train_relative_errors, comp_fit_result.train_relative_errors
 
 #%%
 from los_estimator.estimation_run import LosEstimationRun
@@ -78,11 +86,13 @@ data_config = DataConfig(
     icu_occupancy_file="./Intensivregister_Bundeslaender_Kapazitaeten.csv",
     los_file="../01_create_los_profiles/berlin/output_los/los_berlin_all.csv",
     init_params_file="../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv",
+
     mutants_file="./VOC_VOI_Tabelle.xlsx",
-    start_day="2020-01-01",
+    # start_day="2020-01-01",
+    start_day="2021-07-29",
     end_day="2025-01-01",
     sentinel_start_date=pd.Timestamp("2020-10-01"),
-sentinel_end_date = pd.Timestamp("2021-06-21")
+    sentinel_end_date=pd.Timestamp("2021-06-21")
 )
 
 
@@ -122,10 +132,14 @@ debug_configuration = DebugConfiguration(
     less_distros=False,
     only_linear=False
 )
+# vis_config = VisualizationContext(
+#     xlims=(-30, 725),
+#     results_folder=output_config.results,
+#     figures_folder=output_config.figures,
+#     animation_folder=output_config.animation
+# )
 
 estimator = LosEstimationRun(data_config,output_config,model_config,debug_configuration)
-estimator.run_analysis(vis=True)
-
+estimator.run_analysis(vis=False)
+estimator.all_fit_results["gaussian"].all_kernels[0]=0
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
-
-# %%

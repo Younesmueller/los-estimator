@@ -39,19 +39,19 @@ class WindowInfo:
 
 
 class SeriesData:
-    def __init__(self,x_full,y_full,model_config,new_icu_day):
+    def __init__(self,x_full,y_full,model_config):
         self.model_config = model_config
-        self.new_icu_day = new_icu_day
         self.x_full = x_full
         self.y_full = y_full
         self._calc_windows(model_config)
         self.n_days = len(self.x_full)
 
     def _calc_windows(self,model_config):
-        start = self.new_icu_day + model_config.train_width
+        start =  model_config.train_width
         self.windows = np.arange(start,len(self.x_full)-model_config.kernel_width, model_config.step)
         self.window_infos = [WindowInfo(window,model_config) for window in self.windows]
         self.n_windows = len(self.windows)
+        
 
     @ functools.lru_cache
     def get_train_data(self, window_id:int):

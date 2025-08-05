@@ -61,7 +61,7 @@ class LosEstimationRun:
         os.makedirs(c.animation)
 
     def visualize_results(self):
-        xlims = (self.data.new_icu_day-30, 1300)
+        xlims = (-30, 725)
 
         vc = self.visualization_context
         vc.xlims = xlims
@@ -112,8 +112,8 @@ class LosEstimationRun:
     def fit(self):
         col = "new_icu_smooth" if self.model_config.smooth_data else "new_icu"
         series_data = self.data.df_occupancy[col].values, self.data.df_occupancy["icu"].values
-        self.series_data = SeriesData(*series_data, self.model_config, self.data.new_icu_day)
-
+        self.series_data = SeriesData(*series_data, self.model_config)
+        
         init_parameters = defaultdict(list)
         for distro, row in self.data.df_init.iterrows():
             init_parameters[distro] = row['params']
@@ -123,3 +123,8 @@ class LosEstimationRun:
 
         self.window_data, self.all_fit_results = multi_fitter.fit()
         return self.window_data, self.all_fit_results
+    def deine_mutter(self):
+        col = "new_icu_smooth" if self.model_config.smooth_data else "new_icu"
+        series_data = self.data.df_occupancy[col].values, self.data.df_occupancy["icu"].values
+        self.series_data = SeriesData(*series_data, self.model_config)
+        return self.series_data

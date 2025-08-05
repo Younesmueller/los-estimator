@@ -18,7 +18,6 @@ class InputDataVisualizer(VisualizerBase):
     def show_input_data(self):
         """Show overview of input data."""
         axs = self.data.df_occupancy.plot(subplots=True)
-        axs[-1].axvline(self.data.new_icu_date, color="black", linestyle="--", label="First ICU")
         plt.suptitle("Incidences and ICU Occupancy")
         self._show()
 

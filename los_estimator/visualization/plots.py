@@ -45,7 +45,6 @@ class Visualizer:
         return colors
     
     def plot_time_series_overview(self, df_occupancy: pd.DataFrame, 
-                                new_icu_date: Optional[pd.Timestamp] = None,
                                 sentinel_range: Optional[Tuple[pd.Timestamp, pd.Timestamp]] = None,
                                 save_path: Optional[str] = None) -> plt.Figure:
         """
@@ -53,7 +52,6 @@ class Visualizer:
         
         Args:
             df_occupancy: DataFrame with occupancy data
-            new_icu_date: Date when ICU reporting started
             sentinel_range: Tuple of (start, end) for sentinel period
             save_path: Path to save figure
             
@@ -76,12 +74,6 @@ class Visualizer:
         axes[1].set_title("Daily New ICU Admissions")
         axes[1].set_ylabel("Number of Admissions")
         axes[1].legend()
-        
-        # Add vertical lines for important dates
-        if new_icu_date:
-            for ax in axes:
-                ax.axvline(new_icu_date, color="black", linestyle="--", 
-                          label="First ICU Report", alpha=0.7)
         
         # Add sentinel period highlighting
         if sentinel_range:

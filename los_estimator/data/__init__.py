@@ -20,8 +20,6 @@ class DataPackage:
     df_mutant: pd.DataFrame
     xtick_pos: list
     xtick_label: list
-    new_icu_date: pd.Timestamp
-    new_icu_day: int
 
 class DataUtils:
     def date_to_day(date, start_day):
@@ -62,8 +60,6 @@ class DataLoader:
 
 
         xtick_pos, xtick_label = DataUtils.generate_xticks(df_occupancy)
-        new_icu_date = df_occupancy.index[df_occupancy["new_icu"]>0][0]
-        new_icu_day = DataUtils.date_to_day(new_icu_date, c.start_day)
 
         return DataPackage(
             df_occupancy=df_occupancy,
@@ -72,8 +68,6 @@ class DataLoader:
             df_mutant=df_mutant,
             xtick_pos=xtick_pos,
             xtick_label=xtick_label,
-            new_icu_date=new_icu_date,
-            new_icu_day=new_icu_day
         )
 
     def select_mutants(self, df_occupancy, df_mutant):
