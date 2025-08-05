@@ -232,7 +232,7 @@ class Visualizer:
         return fig
     
     def visualize_fit_deconvolution(self, estimation_result,
-                                  series_data, params,
+                                  series_data, model_config,
                                   real_los: Optional[np.ndarray] = None,
                                   df_mutant_selection: Optional[pd.DataFrame] = None,
                                   window_id: int = 2,
@@ -244,7 +244,7 @@ class Visualizer:
         Args:
             estimation_result: Results from estimation
             series_data: Time series data
-            params: Estimation parameters
+            model_config: Estimation parameters
             real_los: Real LOS distribution for comparison
             df_mutant_selection: Mutation/variant data
             window_id: Which window to visualize

@@ -13,8 +13,8 @@ def combine_past_kernel(past_kernels, kernel):
 
 
 def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
-    def objective_function(params, inc, icu, past_kernels=None):
-        kernel = Distributions.generate_kernel(distro, params, kernel_width)
+    def objective_function(model_config, inc, icu, past_kernels=None):
+        kernel = Distributions.generate_kernel(distro, model_config, kernel_width)
         if past_kernels is not None:
             kernel = combine_past_kernel(past_kernels, kernel)
         
@@ -92,7 +92,7 @@ def fit_convolution(
             test_error=test_err,
             kernel=fitted_kernel,
             curve=y_pred,
-            params=distro_params,
+            model_config=distro_params,
         )
 
         return fit_results
@@ -100,8 +100,8 @@ def fit_convolution(
 
 
 def objective_compartemental(error_fun):    
-    def objective_function(params,inc,icu,los_cutoff):
-        discharge_rate, transition_rate,delay  = params
+    def objective_function(model_config,inc,icu,los_cutoff):
+        discharge_rate, transition_rate,delay  = model_config
         pred = calc_its_comp(inc,discharge_rate,transition_rate,delay,init=icu[0])
         return error_fun(pred[los_cutoff:len(icu)],icu[los_cutoff:])
     return objective_function
@@ -153,7 +153,7 @@ def fit_compartmental(
         rel_test_error=relative_error[len(x_train):],
         kernel=np.zeros(1),
         curve=y_pred,
-        params=result.x
+        model_config=result.x
     )
         
     return result_obj

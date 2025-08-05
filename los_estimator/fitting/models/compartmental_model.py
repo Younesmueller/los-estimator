@@ -31,8 +31,8 @@ def mse(pred,real):
     pred = pred[:len(real)]
     return np.mean((pred - real)**2)
 
-def objective_function_compartmental(params,inc,icu,los_cutoff):
-    discharge_rate,transition_rate,delay  = params
+def objective_function_compartmental(model_config,inc,icu,los_cutoff):
+    discharge_rate,transition_rate,delay  = model_config
 
     pred = calc_its_comp(inc,discharge_rate,transition_rate,delay,init=icu[0])
 

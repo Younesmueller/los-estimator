@@ -18,7 +18,7 @@ from los_estimator.data import DataLoader
 from los_estimator.fitting.errors import ErrorType
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
-from los_estimator.config import DataConfig, ModelConfig, OutputConfig
+from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration
 
 
 from comparison_data_loader import load_comparison_data
@@ -69,130 +69,7 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         print("❌ Some distributions failed the comparison.")
 
 #%%
-from los_estimator.core import *
-from los_estimator.data import DataLoader
-from los_estimator.fitting.errors import ErrorType
-from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
-from los_estimator.fitting import MultiSeriesFitter
-from los_estimator.config import DataConfig, ModelConfig, OutputConfig
-
-
-class LOSEstimator:
-    def __init__(self,data_config,output_config,params,debug_configuration):
-        self.data = None
-        self.data_config = data_config
-        self.output_config = output_config
-        self.debug_configuration = debug_configuration
-        self.params = params
-        self.data_loader = DataLoader(data_config)
-        self.visualization_context = VisualizationContext()
-        self.input_visualizer = InputDataVisualizer(self.visualization_context)
-        self.folder_context = None
-
-    
-
-    def load_data(self):
-        self.data = self.data_loader.load_all_data()
-        vc = self.visualization_context
-        vc.xtick_pos = self.data.xtick_pos
-        vc.xtick_label = self.data.xtick_label
-        vc.real_los = self.data.real_los
-        vc.graph_colors = get_color_palette()
-        self.visualization_context = vc
-        
-        self.data_loaded = True
-
-    def visualize_input_data(self):
-        self.input_visualizer.data = self.data
-        self.input_visualizer.show_input_data()
-        self.input_visualizer.plot_icu_data( )
-        self.input_visualizer.plot_mutant_data()
-        
-    def create_result_folders(self):
-        run_name = self.run_name
-        self.folder_context = types.SimpleNamespace()
-        f = self.folder_context
-        f.base = Path(self.output_config.results_folder_base)
-        f.results = f.base / run_name
-        f.figures = f.results / "figures"
-        f.animation = f.results / "animation"
-
-        if os.path.exists(f.results):
-            shutil.rmtree(f.results)
-
-        os.makedirs(f.results)
-        os.makedirs(f.figures)
-        os.makedirs(f.animation)
-
-    def visualize_results(self):
-        xlims = (self.data.new_icu_day-30, 1300)
-
-        vc = self.visualization_context
-        vc.xlims = xlims
-        vc.results_folder = self.folder_context.results
-        vc.figures_folder = self.folder_context.figures
-        vc.animation_folder = self.folder_context.animation
-
-        self.deconv_plot_visualizer = DeconvolutionPlots(self.all_fit_results,self.series_data,self.params,self.visualization_context)
-        self.deconv_plot_visualizer.generate_plots_for_run()
-        dpv  = self.deconv_plot_visualizer
-
-        animator = DeconvolutionAnimator.from_deconvolution_plots(dpv)
-        animator.DEBUG_MODE()
-        animator.animate_fit_deconvolution(
-            self.data.df_mutant
-        )
-
-    def create_run(self):
-        params = self.params
-        timestamp = time.strftime("%y%m%d_%H%M")
-        run_name = f"{timestamp}_dev"
-
-        run_name+=f"_step{params.step}_train{params.train_width}_test{params.test_width}"
-        run_name += "_fit_admissions"
-        if params.smooth_data:
-            run_name += "_smoothed"
-        else:
-            run_name += "_unsmoothed"
-        run_name += "_" + params.error_fun
-        if params.reuse_last_parametrization:
-            run_name += "_reuse_last_parametrization"
-        if params.variable_kernels:
-            run_name += "_variable_kernels"
-        params.run_name = run_name
-        self.run_name = run_name
-
-    def run_analysis(self,vis = True):
-        self.create_run()
-        self.create_result_folders()
-
-        self.load_data()
-        if vis:
-            self.visualize_input_data()
-        self.fit()
-        if vis:
-            self.visualize_results()
-
-    def select_series(self, df, params):
-        col = "new_icu_smooth" if params.smooth_data else "new_icu"
-        return df[col].values, df["icu"].values
-
-
-
-    def fit(self):
-        series_data = self.select_series(self.data.df_occupancy,self.params)
-        self.series_data = SeriesData(*series_data, params, self.data.new_icu_day)
-
-        init_parameters = defaultdict(list)
-        for distro, row in self.data.df_init.iterrows():
-            init_parameters[distro] = row['params']
-        
-        multi_fitter = MultiSeriesFitter(self.series_data, params, self.params.distributions, init_parameters)
-        multi_fitter.DEBUG_MODE(**self.debug_configuration.__dict__)
-
-        self.window_data, self.all_fit_results = multi_fitter.fit()
-        return self.window_data, self.all_fit_results
-
+from los_estimator.estimation_run import LosEstimationRun
 
 
 data_config = DataConfig(
@@ -207,10 +84,10 @@ data_config = DataConfig(
     sentinel_start_date=pd.Timestamp("2020-10-01"),
 sentinel_end_date = pd.Timestamp("2021-06-21")
 )
-output_config = types.SimpleNamespace()
-output_config.results_folder_base = "./results"
 
-params = Params(
+
+
+model_config = ModelConfig(
     kernel_width=120,
     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
     smooth_data=False,
@@ -236,47 +113,18 @@ params = Params(
         "compartmental",
     ]
 )
-# params = Params()
-# params.kernel_width = 120
-# params.los_cutoff = 60 # Ca. 90% of all patients are discharged after 41 days
-# params.smooth_data = False
-# params.train_width = 42 + params.los_cutoff
-# params.test_width = 21 #28 *4
-# params.step = 7
-# params.fit_admissions = True
-# params.error_fun = ErrorType.MSE
-# params.reuse_last_parametrization = True
-# params.variable_kernels = True
-# params.distributions = [
-#     # "lognorm",
-#     # "weibull",
-#     "gaussian",
-#     "exponential",
-#     # "gamma",
-#     # "beta",
-#     "cauchy",
-#     "t",
-#     # "invgauss",
-#     "linear",
-#     # "block",
-#     # "sentinel",
-#     "compartmental",
-# ]
 
+output_config = OutputFolderConfig("./results")
 
-# params.ideas = types.SimpleNamespace()
-# params.ideas.los_change_penalty = ["..."]
-# params.ideas.fitting_err = ["mse","mae","rel_err","weighted_mse","inv_rel_err","capacity_err","..."]
-# params.ideas.presenting_err = ["..."]
+debug_configuration = DebugConfiguration(
+    one_window=False,
+    less_windows=less_windows,
+    less_distros=False,
+    only_linear=False
+)
 
-debug_configuration = types.SimpleNamespace()
-debug_configuration.ONE_WINDOW = False
-debug_configuration.LESS_WINDOWS = less_windows
-debug_configuration.LESS_DISTROS = False
-debug_configuration.ONLY_LINEAR = False
-
-estimator = LOSEstimator(data_config,output_config,params,debug_configuration)
-estimator.run_analysis(vis=False)
+estimator = LosEstimationRun(data_config,output_config,model_config,debug_configuration)
+estimator.run_analysis(vis=True)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
 

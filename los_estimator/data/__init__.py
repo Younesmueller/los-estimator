@@ -9,7 +9,7 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from ..config.data_config import DataConfig
+from ..config import DataConfig
 from dataclasses import dataclass
 
 @dataclass
@@ -99,7 +99,7 @@ class DataLoader:
     def load_init_parameters(self,file):
         df_init = pd.read_csv(file,index_col=0)
         df_init = df_init.set_index("distro")
-        # interpret params as array float of format [f1 f2 f3 ...]
+        # interpret model_config as array float of format [f1 f2 f3 ...]
         df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 

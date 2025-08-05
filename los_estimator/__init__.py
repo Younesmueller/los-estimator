@@ -14,6 +14,7 @@ from .data import DataLoader
 
 # Fitting algorithms
 from .fitting import MultiSeriesFitter
+from .estimation_run import LosEstimationRun
 
 # Visualization components
 from .visualization import (
@@ -29,8 +30,10 @@ from .visualization import (
 __version__ = "1.0.0"
 
 __all__ = [
+    "LosEstimationRun",
+
     # Core classes
-    "Params",
+    "ModelConfig",
     "WindowInfo", 
     "SeriesData",
     "SingleFitResult",

@@ -11,8 +11,9 @@ from typing import Optional
 
 from .deconvolution_plots import DeconvolutionPlots
 from .context import VisualizationContext
-from ..core import SeriesData, Params
+from ..core import SeriesData
 from ..fitting import MultiSeriesFitResults
+from ..config import ModelConfig
 
 
 class DeconvolutionAnimator(DeconvolutionPlots):
@@ -24,13 +25,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         return cls(
             all_fit_results=deconv_plot_visualizer.all_fit_results,
             series_data=deconv_plot_visualizer.series_data,
-            params=deconv_plot_visualizer.params,
+            model_config=deconv_plot_visualizer.model_config,
             visualization_context=deconv_plot_visualizer.vc
         )
 
     def __init__(self, all_fit_results: MultiSeriesFitResults, series_data: SeriesData, 
-                 params: Params, visualization_context: VisualizationContext):
-        super().__init__(all_fit_results, series_data, params, visualization_context)
+                 model_config: ModelConfig, visualization_context: VisualizationContext):
+        super().__init__(all_fit_results, series_data, model_config, visualization_context)
         self._generate_animation_context()
         self.DEBUG_ANIMATION = False
         self.DEBUG_HIDE_FAILED = False
@@ -103,11 +104,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         line_bedload, = ax_main.plot(y_full, color="black", label="ICU Bedload")
 
         span_los_cutoff = ax_main.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,
-                                         label=f"Train Window (Convolution Edge) = {self.params.train_width} days")
+                                         label=f"Train Window (Convolution Edge) = {self.model_config.train_width} days")
         span_train = ax_main.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,
-                                    label=f"Training = {self.params.train_width-self.params.los_cutoff} days")
+                                    label=f"Training = {self.model_config.train_width-self.model_config.los_cutoff} days")
         span_test = ax_main.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,
-                                   label=f"Test Window = {self.params.test_width} days")
+                                   label=f"Test Window = {self.model_config.test_width} days")
         ax_main.axvline(w.train_end, color="black", linestyle="-", linewidth=1)
 
         for distro, result_series in self.all_fit_results.items():
@@ -115,13 +116,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if self.DEBUG_HIDE_FAILED and not result_obj.success:
                 continue
             
-            y = result_obj.curve[self.params.los_cutoff:]
-            s = np.arange(len(y)) + self.params.los_cutoff + w.train_start
+            y = result_obj.curve[self.model_config.los_cutoff:]
+            s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
             ax_main.plot(s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
 
-        label = "COVID Incidence (Scaled)"
-        if self.params.fit_admissions:
-            label = "New ICU Admissions (Scaled)"
+        label = "New ICU Admissions (Scaled)"
 
         line_inc, = ax_inc.plot(x_full, linestyle="--", label=label)
         ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -142,9 +141,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         ax_main.set_ylim(-200, 6000)
         ax_main.set_ylabel("Occupied Beds")
 
-        ax_inc.set_ylabel("(Incidence)")
-        if self.params.fit_admissions:
-            ax_inc.set_ylabel("New ICU Admissions (scaled)")
+        ax_inc.set_ylabel("New ICU Admissions (scaled)")
 
     def save_n_show_animation_frame(self, fig: plt.Figure, window_id: int):
         """Save the current figure as an animation frame."""
@@ -196,7 +193,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if SHOW_MUTANTS:
                 self._plot_ax_mutants(ax_mutant, df_mutant)
 
-            plt.suptitle(f"Deconvolution Training Process\n{self.params.run_name.replace('_', ' ')}", fontsize=16)
+            plt.suptitle(f"Deconvolution Training Process\n{self.model_config.run_name.replace('_', ' ')}", fontsize=16)
 
             plt.tight_layout()
             if self.DEBUG_ANIMATION:

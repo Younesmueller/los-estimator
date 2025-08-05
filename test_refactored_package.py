@@ -42,13 +42,13 @@ def test_basic_functionality():
     
     # Test parameters creation
     try:
-        params = Params()
-        params.kernel_width = 120
-        params.los_cutoff = 60
-        params.train_width = 102
-        params.test_width = 21
-        params.step = 7
-        params.fit_admissions = True
+        model_config = ModelConfig()
+        model_config.kernel_width = 120
+        model_config.los_cutoff = 60
+        model_config.train_width = 102
+        model_config.test_width = 21
+        model_config.step = 7
+        model_config.fit_admissions = True
         print("✅ Params creation successful")
     except Exception as e:
         print(f"❌ Params creation failed: {e}")
@@ -56,7 +56,7 @@ def test_basic_functionality():
     
     # Test utility functions
     try:
-        run_name = generate_run_name(params)
+        run_name = generate_run_name(model_config)
         print(f"✅ Generated run name: {run_name}")
     except Exception as e:
         print(f"❌ Run name generation failed: {e}")
@@ -79,17 +79,17 @@ def test_data_structures():
     
     try:
         # Test Params first
-        params = Params()
-        params.train_width = 80
-        params.test_width = 20
-        params.los_cutoff = 60
-        params.kernel_width = 120
-        params.step = 7
-        params.fit_admissions = True
-        params.smooth_data = False  # Add this missing attribute
+        model_config = ModelConfig()
+        model_config.train_width = 80
+        model_config.test_width = 20
+        model_config.los_cutoff = 60
+        model_config.kernel_width = 120
+        model_config.step = 7
+        model_config.fit_admissions = True
+        model_config.smooth_data = False  # Add this missing attribute
         
         # Test WindowInfo with correct parameters
-        window = WindowInfo(window=100, params=params)
+        window = WindowInfo(window=100, model_config=model_config)
         print("✅ WindowInfo creation successful")
         
         # Test basic data structures without complex dependencies
@@ -107,7 +107,7 @@ def test_import_compatibility():
     
     try:
         # Test specific imports used in run_analysis.py
-        from los_estimator.core import Params, WindowInfo, SeriesData, SingleFitResult, SeriesFitResult, MultiSeriesFitResults, Utils
+        from los_estimator.core import ModelConfig, WindowInfo, SeriesData, SingleFitResult, SeriesFitResult, MultiSeriesFitResults, Utils
         from los_estimator.data import DataLoader
         from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, VisualizationContext, get_color_palette
         from los_estimator.fitting import MultiSeriesFitter

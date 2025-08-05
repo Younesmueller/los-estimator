@@ -70,10 +70,10 @@ class DistributionsClass:
     
     def generate_kernel(self, distro, fun_params, kernel_size):
         """Generate a kernel using the specified distribution."""
-        *params, scaling_fac = fun_params
+        *model_config, scaling_fac = fun_params
         pdf = self.get_pdf(distro)
         x = np.arange(kernel_size, dtype=float) * scaling_fac
-        kernel = pdf(x, *params)
+        kernel = pdf(x, *model_config)
         result = kernel / kernel.sum()
         return result    
     

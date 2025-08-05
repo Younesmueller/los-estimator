@@ -53,5 +53,5 @@ class VisualizerBase:
 
     def _set_title(self, title: str, *args, **kwargs):
         """Set the title of the current figure."""
-        run_name = getattr(getattr(self, 'params', None), 'run_name', '')
+        run_name = getattr(getattr(self, 'model_config', None), 'run_name', '')
         plt.title(title + "\n" + run_name, *args, **kwargs)

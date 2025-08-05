@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 import pandas as pd
 
-from ..core import Params
 from ..data import DataLoader
 from ..config import DataConfig, ModelConfig, OutputConfig
 from ..fitting import MultiSeriesFitter
@@ -21,16 +20,16 @@ def create_parser():
         epilog="""
 Examples:
   # Run with default parameters
-  los-estimator --los-file data/los.csv --init-params data/params.csv
+  los-estimator --los-file data/los.csv --init-model_config data/model_config.csv
   
   # Run with custom parameters
-  los-estimator --los-file data/los.csv --init-params data/params.csv --kernel-width 180 --step 14
+  los-estimator --los-file data/los.csv --init-model_config data/model_config.csv --kernel-width 180 --step 14
         """
     )
     
     # Required file arguments
     parser.add_argument('--los-file', required=True, help='Path to LOS distribution CSV file')
-    parser.add_argument('--init-params', required=True, help='Path to initial parameters CSV file')
+    parser.add_argument('--init-model_config', required=True, help='Path to initial parameters CSV file')
     
     # Optional file arguments
     parser.add_argument('--mutants-file', help='Path to variant distribution Excel file')
@@ -153,7 +152,7 @@ def main():
             print("Data loaded successfully")
         
         # Create parameters object
-        params = Params(
+        model_config = ModelConfig(
             kernel_width=args.kernel_width,
             los_cutoff=args.los_cutoff,
             train_width=args.train_width,
@@ -164,7 +163,7 @@ def main():
         )
         
         # Run fitting
-        fitter = MultiSeriesFitter(params)
+        fitter = MultiSeriesFitter(model_config)
         results = fitter.fit_all_series(data)
         
         if args.verbose:

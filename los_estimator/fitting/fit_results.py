@@ -19,8 +19,8 @@ class SingleFitResult:
     rel_test_error: object=None
     kernel: object=None
     curve: object=None
-    params: object=None
-    #TODO: Split in Curve params and distro params
+    model_config: object=None
+    #TODO: Split in Curve model_config and distro model_config
 
     def __repr__(self):
         # return a string with all variables
@@ -34,7 +34,7 @@ class SingleFitResult:
                 f"rel_test_error={self.rel_test_error}, "
                 f"kernel={self.kernel.shape}, "
                 f"curve={self.curve.shape}, "
-                f"params={self.params})")
+                f"model_config={self.model_config})")
 
 
 class SeriesFitResult:
@@ -67,8 +67,8 @@ class SeriesFitResult:
         self._collect_errors()
         self.successes = [fr.success  for fr in self.fit_results]
         self.n_success = sum(self.successes)
-        self.transition_rates = np.array([fr.params[0] if (fr is not None) else np.nan for fr in self.fit_results  ])
-        self.transition_delays = np.array([fr.params[1] if (fr is not None) else np.nan for fr in self.fit_results ])
+        self.transition_rates = np.array([fr.model_config[0] if (fr is not None) else np.nan for fr in self.fit_results  ])
+        self.transition_delays = np.array([fr.model_config[1] if (fr is not None) else np.nan for fr in self.fit_results ])
         return self
 
     def _collect_errors(self):

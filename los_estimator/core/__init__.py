@@ -11,93 +11,46 @@ import matplotlib.pyplot as plt
 
 
 __all__ = [
-    "Params",
     "VisualizationContext", 
     "WindowInfo",
     "SeriesData",    
 ]
 
-
-@dataclass
-class Params:
-    kernel_width: int
-    los_cutoff: int
-    smooth_data: bool
-    train_width: int
-    test_width: int
-    step: int    
-    error_fun: str
-    reuse_last_parametrization: bool
-    variable_kernels: bool
-    distributions: list[str]
-    ideas = types.SimpleNamespace(
-        los_change_penalty=["..."],
-        fitting_err=["mse", "mae", "rel_err", "weighted_mse", "inv_rel_err", "capacity_err", "..."],
-        presenting_err=["..."]
-    )
-
-default_params = Params(
-    kernel_width=120,
-    los_cutoff=60,
-    smooth_data=False,
-    train_width=42 + 60,
-    test_width=21, 
-    step=7,
-    error_fun="mse",
-    reuse_last_parametrization=True,
-    variable_kernels=True,
-    distributions=[
-         "lognorm",
-        # "weibull",
-        "gaussian",
-        "exponential",
-        # "gamma",
-        # "beta",
-        "cauchy",
-        "t",
-        # "invgauss",
-        "linear",
-        # "block",
-        # "sentinel",
-        "compartmental",
-    ]
-)
-
 class VisualizationContext(types.SimpleNamespace):
     pass
 
 class WindowInfo:
-    def __init__(self,window,params):
+    def __init__(self,window,model_config):
         self.window = window        
         self.train_end = self.window
-        self.train_start = self.window - params.train_width
-        self.train_los_cutoff = self.train_start + params.los_cutoff
+        self.train_start = self.window - model_config.train_width
+        self.train_los_cutoff = self.train_start + model_config.los_cutoff
         self.test_start = self.train_end
-        self.test_end = self.test_start + params.test_width
+        self.test_end = self.test_start + model_config.test_width
         
         self.train_window = slice(self.train_start,self.train_end)
         self.train_test_window = slice(self.train_start,self.test_end)
         self.test_window = slice(self.test_start,self.test_end)
 
-        self.params = params
+        self.model_config = model_config
         
     def __repr__(self):
         return f"WindowInfo(window={self.window}, train_start={self.train_start}, train_end={self.train_end}, test_start={self.test_start}, test_end={self.test_end})"
 
 
 class SeriesData:
-    def __init__(self,x_full,y_full,params,new_icu_day):
-        self.params = params
+    def __init__(self,x_full,y_full,model_config,new_icu_day):
+        self.model_config = model_config
         self.new_icu_day = new_icu_day
         self.x_full = x_full
         self.y_full = y_full
-        self._calc_windows(params)
+        self._calc_windows(model_config)
         self.n_days = len(self.x_full)
 
-    def _calc_windows(self,params):
-        start = self.new_icu_day + params.train_width
-        self.windows = np.arange(start,len(self.x_full)-params.kernel_width, params.step)
-        self.window_infos = [WindowInfo(window,params) for window in self.windows]
+    def _calc_windows(self,model_config):
+        start = self.new_icu_day + model_config.train_width
+        self.windows = np.arange(start,len(self.x_full)-model_config.kernel_width, model_config.step)
+        self.window_infos = [WindowInfo(window,model_config) for window in self.windows]
         self.n_windows = len(self.windows)
 
     @ functools.lru_cache
@@ -131,7 +84,7 @@ class SeriesData:
         return self.n_windows
     
     def __repr__(self):
-        return f"SeriesData(n_windows={self.n_windows}, kernel_width={self.params.kernel_width}, los_cutoff={self.params.los_cutoff})"
+        return f"SeriesData(n_windows={self.n_windows}, kernel_width={self.model_config.kernel_width}, los_cutoff={self.model_config.los_cutoff})"
         
 
 

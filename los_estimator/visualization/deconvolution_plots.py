@@ -9,20 +9,21 @@ from typing import Optional, Union, List
 from .base import VisualizerBase
 from .context import VisualizationContext
 from ..fitting import MultiSeriesFitResults
-from ..core import SeriesData, Params
+from ..core import SeriesData
+from ..config import ModelConfig
 
 
 class DeconvolutionPlots(VisualizerBase):
     """Plotting functionality for deconvolution analysis."""
 
     def __init__(self, all_fit_results: MultiSeriesFitResults, series_data: SeriesData, 
-                 params: Params, visualization_context: VisualizationContext):
+                 model_config: ModelConfig, visualization_context: VisualizationContext):
         super().__init__()
 
         self.vc: VisualizationContext = visualization_context
         self.all_fit_results: MultiSeriesFitResults = all_fit_results
         self.series_data: SeriesData = series_data
-        self.params: Params = params
+        self.model_config: ModelConfig = model_config
 
         self.figures_folder = self.vc.figures_folder
         self.save_figs = True
@@ -115,11 +116,11 @@ class DeconvolutionPlots(VisualizerBase):
                 continue
 
             x = np.arange(w.train_los_cutoff, w.train_end)
-            y = fit_result.curve[self.params.los_cutoff:self.params.train_width]
+            y = fit_result.curve[self.model_config.los_cutoff:self.model_config.train_width]
             ax.plot(x, y, color=self.colors[0])
 
             x = np.arange(w.train_end, w.test_end)
-            y = fit_result.curve[self.params.train_width:self.params.train_width + self.params.test_width]
+            y = fit_result.curve[self.model_config.train_width:self.model_config.train_width + self.model_config.test_width]
             ax.plot(x, y, color=self.colors[1])
 
         legend_handles = [
@@ -170,7 +171,7 @@ class DeconvolutionPlots(VisualizerBase):
             self._ax_plot_prediction_error_window(ax, fr_series, distro)
             self._ax_plot_error_error_points(ax2, fr_series, distro)
 
-            plt.suptitle(f"{distro.capitalize()} Distribution\n{self.params.run_name}")
+            plt.suptitle(f"{distro.capitalize()} Distribution\n{self.model_config.run_name}")
             plt.tight_layout()
 
             self._show(f"prediction_error_{distro}_fit.png")
