@@ -1,7 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
 from scipy.stats import lognorm, weibull_min, norm, expon, gamma, beta, cauchy, t, invgauss
-from enum import Enum
 
 class DistributionTypes:
     """Enum for available distribution types."""

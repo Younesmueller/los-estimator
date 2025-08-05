@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
 from dataclasses import dataclass
 
 
@@ -19,8 +18,7 @@ class SingleFitResult:
     rel_test_error: object=None
     kernel: object=None
     curve: object=None
-    model_config: object=None
-    #TODO: Split in Curve model_config and distro model_config
+    model_config: object=None    
 
     def __repr__(self):
         # return a string with all variables

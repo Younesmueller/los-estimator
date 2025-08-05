@@ -4,12 +4,9 @@ Visualization utilities for LOS estimation results.
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import seaborn as sns
 import numpy as np
 import pandas as pd
-import os
-import shutil
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
 

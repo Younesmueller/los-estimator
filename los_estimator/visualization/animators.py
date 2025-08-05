@@ -1,7 +1,6 @@
 """Animation functionality for deconvolution analysis."""
 
 import os
-import types
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt

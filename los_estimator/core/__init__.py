@@ -1,9 +1,5 @@
 """Core data classes and structures for LOS estimation."""
-from typing import OrderedDict
-from attr import dataclass
 import numpy as np
-import pandas as pd
-import types
 
 import functools
 import matplotlib.pyplot as plt
@@ -11,13 +7,10 @@ import matplotlib.pyplot as plt
 
 
 __all__ = [
-    "VisualizationContext", 
     "WindowInfo",
     "SeriesData",    
 ]
 
-class VisualizationContext(types.SimpleNamespace):
-    pass
 
 class WindowInfo:
     def __init__(self,window,model_config):

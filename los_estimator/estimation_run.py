@@ -1,18 +1,15 @@
 import os
-
 import shutil
 import time
 from collections import defaultdict
+from dataclasses import asdict, fields
+import toml
 
 from los_estimator.core import *
 from los_estimator.config import *
 from los_estimator.data import DataLoader
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
-import toml
-from dataclasses import asdict
-from dataclasses import fields
-
 
 class ConfigSaver:
     def dict_to_config(config_dict, config_class):

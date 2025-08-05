@@ -4,25 +4,11 @@
 %autoreload 2
 import os
 
-from attr import dataclass
 import numpy as np
-import pandas as pd
-import types
-from pathlib import Path
-import shutil
-import time
-from collections import defaultdict
-
-from los_estimator.core import *
-from los_estimator.data import DataLoader
-from los_estimator.fitting.errors import ErrorType
-from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationContext
 
 
 from comparison_data_loader import load_comparison_data
 
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 
 
 print("Let's Go!")
@@ -76,10 +62,7 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
 
 #%%
 from los_estimator.estimation_run import LosEstimationRun, ConfigSaver
-from los_estimator.config import VisualizationConfig
 
-from los_estimator.fitting.errors import ErrorType
-from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationContext
 
 cfg = ConfigSaver.load_configurations("./default_config.toml")
 
@@ -104,7 +87,7 @@ model_config =update(model_config,
     train_width=42 + 60,
     test_width=21,  # 28 * 4
     step=7,    
-    error_fun=ErrorType.MSE,
+    error_fun="mse",
     reuse_last_parametrization=True,
     variable_kernels=True,
     distributions=[

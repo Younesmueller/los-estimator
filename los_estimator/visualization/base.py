@@ -1,6 +1,5 @@
 """Base visualizer class with common functionality."""
 
-from pathlib import Path
 import matplotlib.pyplot as plt
 from typing import Tuple, Optional, List
 from ..config import VisualizationConfig

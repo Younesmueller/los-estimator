@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from numba import njit
 from scipy.optimize import minimize
 from los_estimator.fitting.models.convolutional_model import calc_its_convolution
 from los_estimator.fitting.models.compartmental_model import calc_its_comp
