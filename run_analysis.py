@@ -141,3 +141,6 @@ estimator.run_analysis(vis=False)
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
 
 
+
+# %%
+estimator.window_data

@@ -4,6 +4,8 @@ import numpy as np
 import functools
 import matplotlib.pyplot as plt
 
+from los_estimator.config import ModelConfig
+
 
 
 __all__ = [
@@ -13,31 +15,35 @@ __all__ = [
 
 
 class WindowInfo:
-    def __init__(self,window,model_config):
-        self.window = window        
-        self.train_end = self.window
-        self.train_start = self.window - model_config.train_width
-        self.train_los_cutoff = self.train_start + model_config.los_cutoff
-        self.test_start = self.train_end
-        self.test_end = self.test_start + model_config.test_width
-        
-        self.train_window = slice(self.train_start,self.train_end)
-        self.train_test_window = slice(self.train_start,self.test_end)
-        self.test_window = slice(self.test_start,self.test_end)
+    def __init__(self,window:int,model_config:ModelConfig):
+        self.window:int = window        
+        self.train_end:int = self.window
+        self.train_start:int = self.window - model_config.train_width
+        self.train_los_cutoff:int = self.train_start + model_config.los_cutoff
+        self.test_start:int = self.train_end
+        self.test_end:int = self.test_start + model_config.test_width
 
-        self.model_config = model_config
-        
+        self.train_window: slice = slice(self.train_start,self.train_end)
+        self.train_test_window: slice = slice(self.train_start,self.test_end)
+        self.test_window: slice = slice(self.test_start,self.test_end)
+
+        self.model_config: ModelConfig = model_config
+
     def __repr__(self):
         return f"WindowInfo(window={self.window}, train_start={self.train_start}, train_end={self.train_end}, test_start={self.test_start}, test_end={self.test_end})"
 
 
 class SeriesData:
     def __init__(self,x_full,y_full,model_config):
-        self.model_config = model_config
-        self.x_full = x_full
-        self.y_full = y_full
+        self.model_config: ModelConfig = model_config
+        self.x_full: np.ndarray = x_full
+        self.y_full: np.ndarray = y_full
+        self.windows: np.ndarray = None
+        self.window_infos: list[WindowInfo] = []
+        self.n_windows: int = 0        
         self._calc_windows(model_config)
-        self.n_days = len(self.x_full)
+        
+        self.n_days:int = len(self.x_full)
 
     def _calc_windows(self,model_config):
         start =  model_config.train_width

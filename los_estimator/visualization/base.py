@@ -19,15 +19,15 @@ class VisualizerBase:
     """Base class for all visualizers."""
 
     def __init__(self, visualization_config: VisualizationConfig):
-        self.visualization_config = visualization_config
+        self.visualization_config: VisualizationConfig = visualization_config
         try:
             plt.style.use(visualization_config.style)
         except OSError:
             plt.style.use("default")
-        
-        self.figsize = visualization_config.figsize        
-        self.colors = visualization_config.colors
-        
+
+        self.figsize: Tuple[float, float] = visualization_config.figsize
+        self.colors: List[str] = visualization_config.colors
+
         # Set high-quality defaults
         plt.rcParams['savefig.facecolor'] = visualization_config.savefig_facecolor
         plt.rcParams['savefig.dpi'] = visualization_config.savefig_dpi

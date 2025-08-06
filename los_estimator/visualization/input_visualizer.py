@@ -1,5 +1,6 @@
 """Input data visualization components."""
 
+from los_estimator.data import DataPackage
 from .base import VisualizerBase
 from ..config import VisualizationContext
 import matplotlib.pyplot as plt
@@ -11,13 +12,13 @@ class InputDataVisualizer(VisualizerBase):
     def __init__(self, visualization_config, visualization_context: VisualizationContext, data=None):
         super().__init__(visualization_config)        
         self.vc: VisualizationContext = visualization_context
-        self.data = data
+        self.data: DataPackage = data
         self.save_figures = False
         self.show_figures = True
         
     def show_input_data(self):
         """Show overview of input data."""
-        axs = self.data.df_occupancy.plot(subplots=True)
+        self.data.df_occupancy.plot(subplots=True)
         plt.suptitle("Incidences and ICU Occupancy")
         self._show()
 

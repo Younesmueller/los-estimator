@@ -46,13 +46,16 @@ class DataLoader:
     def load_all_data(self):
         c = self.data_config
 
-        df_occupancy = self.load_inc_beds(c.start_day, c.end_day)
-        real_los, _ = self._load_los(file=c.get_los_file())
-        df_init = self.load_init_parameters(c.get_init_params_file())
-        df_mutant = self.load_mutant_distribution(c.get_mutants_file())
-        df_mutant = self.select_mutants(df_occupancy, df_mutant)
+        real_los:np.array = self._load_los(file=c.get_los_file())[0]
+        df_occupancy:pd.DataFrame = self.load_inc_beds(c.start_day, c.end_day)
+        df_init:pd.DataFrame = self.load_init_parameters(c.get_init_params_file())
+        df_mutant:pd.DataFrame = self.load_mutant_distribution(c.get_mutants_file())
+        df_mutant:pd.DataFrame = self.select_mutants(df_occupancy, df_mutant)
 
 
+
+        xtick_pos: list = None
+        xtick_label: list = None
         xtick_pos, xtick_label = DataUtils.generate_xticks(df_occupancy)
 
         return DataPackage(

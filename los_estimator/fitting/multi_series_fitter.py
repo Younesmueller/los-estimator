@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
+from los_estimator.config import ModelConfig
+from los_estimator.core import SeriesData
 from los_estimator.fitting.los_fitter import fit_compartmental, calc_its_comp, fit_convolution, calc_its_convolution, SingleFitResult
 from .fit_results import SingleFitResult, SeriesFitResult, MultiSeriesFitResults
 
@@ -11,14 +13,14 @@ class MultiSeriesFitter:
     all_fit_results: MultiSeriesFitResults
     
     def __init__(self, series_data, model_config, distributions: list[str], init_parameters):
-        self.series_data = series_data
-        self.model_config = model_config        
+        self.series_data: SeriesData = series_data
+        self.model_config: ModelConfig = model_config
         self._distributions: list[str] = distributions
         self.distributions: list[str] = None
         self.exclude_distros: set[str] = set()
         self.all_fit_results: MultiSeriesFitResults = MultiSeriesFitResults()
-        self.init_parameters = defaultdict(list, init_parameters)
-        self.debug_config=None
+        self.init_parameters: defaultdict[list[str]] = defaultdict(list, init_parameters)
+        self.debug_config = None
 
     def DEBUG_MODE(self,debug_config):
         dc = debug_config
@@ -41,10 +43,14 @@ class MultiSeriesFitter:
     
     def _get_debug_window_data(self, series_data):
         window_data = list(series_data)
+        self.chosen_windows = [-1]
         if self.DEBUG["LESS_WINDOWS"]:
             window_data = window_data[:3]
+            self.chosen_windows = [0,1,2]
         elif self.DEBUG["ONE_WINDOW"]:
             window_data = window_data[10:11]
+            self.chosen_windows = [10]
+
         return window_data
     
     

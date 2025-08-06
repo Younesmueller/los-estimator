@@ -4,10 +4,12 @@ import time
 from collections import defaultdict
 from dataclasses import asdict, fields
 import toml
+import pickle
 
 from los_estimator.core import *
 from los_estimator.config import *
 from los_estimator.data import DataLoader, DataPackage
+from los_estimator.fitting.fit_results import MultiSeriesFitResults
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
 
@@ -31,19 +33,20 @@ class ConfigSaver:
         return configs
 
     def save_configurations(path, configurations):
-        config_dicts = {key: asdict(value) for key, value in configurations.items()}
+        config_dicts = {config.config_name: asdict(config) for config in configurations}
         with open(path, 'w') as f:
             toml.dump(config_dicts, f)
             
 
 class LosEstimationRun:
     def __init__(self,
-                 data_config: DataConfig,
-                 output_config: OutputFolderConfig,
-                 model_config: ModelConfig,
-                 debug_config: DebugConfig,
-                 visualization_config: VisualizationConfig,
-                 animation_config: AnimationConfig):
+                data_config: DataConfig,
+                output_config: OutputFolderConfig,
+                model_config: ModelConfig,
+                debug_config: DebugConfig,
+                visualization_config: VisualizationConfig,
+                animation_config: AnimationConfig
+                ):
         self.configurations = [data_config, output_config, model_config, debug_config, visualization_config, animation_config]
         self.model_config: ModelConfig = model_config
         self.output_config: OutputFolderConfig = output_config
@@ -51,22 +54,25 @@ class LosEstimationRun:
         self.debug_config: DebugConfig = debug_config
         self.visualization_config: VisualizationConfig = visualization_config
         self.animation_config: AnimationConfig = animation_config
+
         self.visualization_context: VisualizationContext = VisualizationContext()
+        self.data: DataPackage = None
 
         self.create_run()
         output_config.run_name = self.run_name
         output_config.build()
 
-        self.data: DataPackage = None
+        
         if self.visualization_config.colors is None:
             self.visualization_config.colors = get_color_palette()
 
         self.data_loader: DataLoader = DataLoader(data_config)
 
         self.input_visualizer: InputDataVisualizer = InputDataVisualizer(self.visualization_config, self.visualization_context)
+        
         self.fitter: MultiSeriesFitter = None
         self.window_data: list = None
-        self.all_fit_results: list = None
+        self.all_fit_results: MultiSeriesFitResults = None
         self.series_data: SeriesData = None
 
         self.data_loaded = False
@@ -93,7 +99,7 @@ class LosEstimationRun:
         self.input_visualizer.plot_icu_data( )
         self.input_visualizer.plot_mutant_data()
         
-    def create_result_folders(self):
+    def set_up(self):
         c = self.output_config
         
         c.run_name = self.run_name
@@ -154,13 +160,16 @@ class LosEstimationRun:
         self.run_name = run_name
 
     def run_analysis(self,vis = True):
-        self.create_result_folders()
-
+        
+        self.set_up()
         self.load_data()
+        
         if vis:
             self.visualize_input_data()
         self.fit()
+        
         self.save_results()
+        
         if vis:
             self.visualize_results()
     
@@ -181,13 +190,13 @@ class LosEstimationRun:
     
 
     def save_results(self):
-        self.model_config
-        self.output_config
-        self.data_config
-        self.debug_config
-        self.visualization_config
-        self.visualization_context
-        self.animation_config
-        self.window_data
-        self.all_fit_results
-   
+        with open(os.path.join(self.output_config.results, "series_data.pkl"), "wb") as f:
+            pickle.dump(self.fitter.series_data, f)
+        with open(os.path.join(self.output_config.results, "chosen_windows.pkl"), "wb") as f:
+            pickle.dump(self.fitter.chosen_windows, f)
+        with open(os.path.join(self.output_config.results, "all_fit_results.pkl"), "wb") as f:
+            pickle.dump(self.all_fit_results, f)
+    
+        path = os.path.join(self.output_config.results, "configurations.toml")
+        ConfigSaver.save_configurations(path, self.configurations)
+                                        
