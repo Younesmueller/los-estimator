@@ -91,7 +91,7 @@ class DataConfig:
         pass
 
 @config("debug_config")
-class DebugConfiguration:
+class DebugConfig:
     one_window: bool = False
     less_windows: bool = False
     less_distros: bool = False

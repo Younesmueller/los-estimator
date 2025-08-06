@@ -5,7 +5,7 @@
 from los_estimator.core import *
 from los_estimator.data import DataLoader
 from los_estimator.fitting.errors import ErrorType
-from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfiguration, AnimationConfig,VisualizationConfig
+from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfig, AnimationConfig,VisualizationConfig
 
 
 from tqdm import tqdm
@@ -57,7 +57,7 @@ model_config = ModelConfig(
 
 output_config = OutputFolderConfig("./results")
 
-debug_configuration = DebugConfiguration(
+debug_configuration = DebugConfig(
     one_window=False,
     less_windows=True,
     less_distros=False,

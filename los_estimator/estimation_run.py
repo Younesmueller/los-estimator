@@ -7,7 +7,7 @@ import toml
 
 from los_estimator.core import *
 from los_estimator.config import *
-from los_estimator.data import DataLoader
+from los_estimator.data import DataLoader, DataPackage
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
 
@@ -37,28 +37,39 @@ class ConfigSaver:
             
 
 class LosEstimationRun:
-    def __init__(self,data_config,output_config,model_config,debug_config,visualization_config,animation_config):
-        self.configurations = [data_config,output_config,model_config,debug_config,visualization_config,animation_config]
-        self.model_config = model_config
+    def __init__(self,
+                 data_config: DataConfig,
+                 output_config: OutputFolderConfig,
+                 model_config: ModelConfig,
+                 debug_config: DebugConfig,
+                 visualization_config: VisualizationConfig,
+                 animation_config: AnimationConfig):
+        self.configurations = [data_config, output_config, model_config, debug_config, visualization_config, animation_config]
+        self.model_config: ModelConfig = model_config
+        self.output_config: OutputFolderConfig = output_config
+        self.data_config: DataConfig = data_config
+        self.debug_config: DebugConfig = debug_config
+        self.visualization_config: VisualizationConfig = visualization_config
+        self.animation_config: AnimationConfig = animation_config
+        self.visualization_context: VisualizationContext = VisualizationContext()
+
         self.create_run()
-        self.output_config = output_config        
         output_config.run_name = self.run_name
         output_config.build()
 
-        self.data = None
-        self.data_config = data_config
-        self.debug_config = debug_config
-        self.visualization_config = visualization_config
+        self.data: DataPackage = None
         if self.visualization_config.colors is None:
             self.visualization_config.colors = get_color_palette()
 
-        self.data_loader = DataLoader(data_config)
-        self.visualization_context = VisualizationContext()
-        self.input_visualizer = InputDataVisualizer(self.visualization_config,self.visualization_context)
-        self.animation_config = animation_config
+        self.data_loader: DataLoader = DataLoader(data_config)
 
+        self.input_visualizer: InputDataVisualizer = InputDataVisualizer(self.visualization_config, self.visualization_context)
+        self.fitter: MultiSeriesFitter = None
+        self.window_data: list = None
+        self.all_fit_results: list = None
+        self.series_data: SeriesData = None
 
-    
+        self.data_loaded = False
 
     def load_data(self):
         self.data = self.data_loader.load_all_data()
@@ -162,10 +173,10 @@ class LosEstimationRun:
         for distro, row in self.data.df_init.iterrows():
             init_parameters[distro] = row['params']
         
-        multi_fitter = MultiSeriesFitter(self.series_data, self.model_config, self.model_config.distributions, init_parameters)
-        multi_fitter.DEBUG_MODE(self.debug_config)
+        self.fitter = MultiSeriesFitter(self.series_data, self.model_config, self.model_config.distributions, init_parameters)
+        self.fitter.DEBUG_MODE(self.debug_config)
 
-        self.window_data, self.all_fit_results = multi_fitter.fit()
+        self.window_data, self.all_fit_results = self.fitter.fit()
         return self.window_data, self.all_fit_results
     
 

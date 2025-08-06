@@ -6,7 +6,8 @@
     - [x] Fitting
     - [x] Visualization
     - [x] new_icu_day nicht mehr berechnen, sondern einfach in die Config tun
-    - [ ] Config
+    - [x] Config
+    - [ ] Type Annotations
     
 - [ ] Documentation
     - [ ] Config
@@ -19,5 +20,3 @@
 
 
 
-# Weitere Ideen
-- [ ] Alle Konfigurationen aus Dateien laden
