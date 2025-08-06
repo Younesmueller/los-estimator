@@ -14,7 +14,7 @@ from comparison_data_loader import load_comparison_data
 print("Let's Go!")
 #%%
 less_windows = True
-compare_all_fit_results = load_comparison_data(less_windows,new=True)
+compare_all_fit_results = load_comparison_data(less_windows)
 print("Comparison data loaded successfully.")
 #%%
 def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
@@ -141,6 +141,4 @@ estimator.run_analysis(vis=False)
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
 
 
-
-# %%
-estimator.window_data
+#%%

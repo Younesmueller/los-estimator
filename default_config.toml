@@ -1,11 +1,12 @@
 [data_config]
+base_path = "./data"
 cases_file = "./cases.csv"
 icu_occupancy_file = "./Intensivregister_Bundeslaender_Kapazitaeten.csv"
-los_file = "../01_create_los_profiles/berlin/output_los/los_berlin_all.csv"
-init_params_file = "../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv"
+los_file = "./dynamic/los_berlin_all.csv"
+init_params_file = "./dynamic/los_berlin_fit_result.csv"
 start_day = "2021-07-29"
 end_day = "2025-01-01"
-base_path = "C:/data/src/los-estimator/los-estimator/data"
+
 mutants_file = "./VOC_VOI_Tabelle.xlsx"
 
 [output_config]
