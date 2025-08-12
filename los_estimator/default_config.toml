@@ -43,7 +43,7 @@ figure_dpi = 100
 
 [animation_config]
 show_figures = true
-save_figures = false
+save_figures = true
 debug_animation = false
 debug_hide_failed = true
 alternative_names = [ [ "block", "Constant Discharge",], [ "sentinel", "Baseline: Sentinel",],]

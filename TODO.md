@@ -8,6 +8,7 @@
     - [x] new_icu_day nicht mehr berechnen, sondern einfach in die Config tun
     - [x] Config
     - [x] Type Annotations
+    - [ ] Export methods
     
 - [ ] Documentation
     - [ ] Config

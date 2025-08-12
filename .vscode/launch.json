@@ -12,10 +12,14 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "run_analysis.py",
+            "name": "cli",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/run_analysis.py",
+            "program": "${workspaceFolder}/los_estimator/cli/__init__.py",
+            "args": [
+                "--silent-plots"
+            ],
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         },
 

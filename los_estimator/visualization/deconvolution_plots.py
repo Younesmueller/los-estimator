@@ -5,12 +5,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.patches import Patch
 from typing import Optional, Union, List
+import logging
 
 from .base import VisualizerBase
 from ..fitting import MultiSeriesFitResults
 from ..core import SeriesData
 from ..config import ModelConfig, VisualizationConfig, VisualizationContext
 
+
+logger = logging.getLogger("los_estimator")
 
 class DeconvolutionPlots(VisualizerBase):
     """Plotting functionality for deconvolution analysis."""
@@ -20,9 +23,10 @@ class DeconvolutionPlots(VisualizerBase):
                 series_data: SeriesData,
                 model_config: ModelConfig,
                 visualization_config: VisualizationConfig,
-                visualization_context: VisualizationContext
+                visualization_context: VisualizationContext,
+                output_config: VisualizationConfig
                 ):
-        super().__init__(visualization_config)
+        super().__init__(visualization_config, output_config)
 
         self.vc: VisualizationContext = visualization_context
         self.all_fit_results: MultiSeriesFitResults = all_fit_results
@@ -139,7 +143,7 @@ class DeconvolutionPlots(VisualizerBase):
 
     def _ax_plot_error_error_points(self, ax2, fr_series, distro):
         """Plot error points on given axis."""
-        print("Warning: _ax_plot_error_error_points has an error and is skipped")
+        logger.warning("This function is deprecated and will be removed in future versions. _ax_plot_error_error_points")
         return
         x = self.series_data.windows   
         ax2.plot(x, fr_series.train_relative_errors, label="Train Error")
@@ -236,12 +240,8 @@ class DeconvolutionPlots(VisualizerBase):
             plt.grid()
             self._show(f"all_kernels_{distro}.png")
 
-    def generate_plots_for_run(self, show_plots: Optional[bool] = None, save_figures: Optional[bool] = None):
+    def generate_plots_for_run(self):
         """Generate all plots for a run."""
-        if save_figures is not None:
-            self.save_figures = save_figures
-        if show_plots is not None:
-            self.show_figures = show_plots
             
         self.plot_successful_fits()
         self.plot_err_failure_rates()

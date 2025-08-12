@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
 from typing import Optional
+import logging
 
 from .deconvolution_plots import DeconvolutionPlots
 from ..core import SeriesData
 from ..fitting import MultiSeriesFitResults
 from ..config import ModelConfig, AnimationConfig, VisualizationConfig, VisualizationContext, OutputFolderConfig
 
-from attr import dataclass
+logger = logging.getLogger("los_estimator")
 
 class DeconvolutionAnimator(DeconvolutionPlots):
     """Animation functionality for deconvolution analysis."""
@@ -26,9 +27,8 @@ class DeconvolutionAnimator(DeconvolutionPlots):
                 visualization_context: VisualizationContext,
                 output_folder_config: OutputFolderConfig,
                 animation_config: AnimationConfig):
-        super().__init__(all_fit_results, series_data, model_config, visualization_config, visualization_context)
-        self.ac = animation_config
-        self.output_folder_config = output_folder_config
+        super().__init__(all_fit_results, series_data, model_config, visualization_config, visualization_context, output_config=output_folder_config)
+        self.ac = animation_config        
         self._generate_animation_context()
     
 
@@ -65,11 +65,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             ax_err_test = fig.add_subplot(gs[1, 3])
             ax_mutant = None
             
-        return ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant
+        return fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant
     
     def _create_animation_folder(self):
         """Create folder for animation frames."""
-        path = self.output_folder_config.animation
+        path = self.output_config.animation
         if os.path.exists(path):
             import shutil
             shutil.rmtree(path)
@@ -103,9 +103,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
             ax_main.plot(s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
 
-        label = "New ICU Admissions (Scaled)"
-
-        line_inc, = ax_inc.plot(x_full, linestyle="--", label=label)
+        line_inc, = ax_inc.plot(x_full, linestyle="--", label="New ICU Admissions (Scaled)")
         ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
         ma = np.nanmax(x_full)
         ax_inc.set_ylim(-ma/7.5, ma*4)
@@ -125,30 +123,25 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         ax_main.set_ylabel("Occupied Beds")
 
         ax_inc.set_ylabel("New ICU Admissions (scaled)")
+        ax_inc.grid(False)
 
-    def save_n_show_animation_frame(self, fig: plt.Figure, window_id: int):
+    def save_n_show_animation_frame(self, fig: plt.Figure, num: int):
         """Save the current figure as an animation frame."""
-        if self.debug_animation:
-            plt.show()
-        else:
-            fig.savefig(self.vc.animation_folder + f"fit_{window_id:04d}.png")
-            plt.close(fig)
-        plt.clf()
 
-    def _show(self, filename: str = None, fig: Optional[plt.Figure] = None):
-        """Save the figure and show it."""
         if fig is None:
             fig = plt.gcf()
 
         if self.ac.save_figures:
-            if filename and not filename.endswith('.png'):
-                filename = filename + '.png'
-            fig.savefig(self.figures_folder + filename, bbox_inches='tight')
+            filename = os.path.join(self.vc.animation_folder, f"fit_{num:04d}.png")
+            fig.savefig(filename, bbox_inches='tight')
 
-        if self.ac.show_figures:
-            plt.show()
+        if self.ac.debug_animation:
+            plt.show(fig)
         else:
-            plt.clf()
+            if self.ac.show_figures:
+                plt.show(fig)
+            else:
+                plt.close(fig)
 
     def animate_fit_deconvolution(self, df_mutant: Optional[pd.DataFrame] = None):        
         """Create animation of fit deconvolution process."""
@@ -164,11 +157,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             to_enumerate = [to_enumerate[min(2, len(to_enumerate)-1)]]
 
         for window_id, window_info in to_enumerate:
-            print(f"Animation Window {window_counter}/{self.series_data.n_windows}")
+            logger.info(f"Animating window {window_counter}/{self.series_data.n_windows}")
             window_counter += 1
 
             w = window_info
-            ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = self._get_subplots(SHOW_MUTANTS)
+            fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = self._get_subplots(SHOW_MUTANTS)
       
             self._plot_ax_main(ax_main, ax_inc, window_id)
             self._plot_ax_kernel(ax_kernel, window_id)
@@ -179,12 +172,9 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             plt.suptitle(f"Deconvolution Training Process\n{self.model_config.run_name.replace('_', ' ')}", fontsize=16)
 
             plt.tight_layout()
-            if self.ac.debug_animation:
-                plt.show()
-            else:
-                plt.savefig(self.vc.animation_folder / f"fit_{w.train_start:04d}.png")
-                plt.close()
-            plt.clf()
+            
+
+            self.save_n_show_animation_frame(fig, num=window_info.train_end)
 
     def _plot_ax_mutants(self, ax_mutant, df_mutant):
         """Plot mutant data on axis."""
@@ -245,7 +235,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if window_id >= len(result_series.fit_results):
                 continue
             result_obj = result_series.fit_results[window_id]
-            name = ac.alternative_names.get(distro, distro.capitalize())
+            name = dict(ac.alternative_names).get(distro, distro.capitalize())
             if self.ac.debug_hide_failed and not result_obj.success:
                 continue
                 

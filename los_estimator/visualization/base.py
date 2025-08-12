@@ -18,8 +18,10 @@ def get_color_palette() -> List[str]:
 class VisualizerBase:
     """Base class for all visualizers."""
 
-    def __init__(self, visualization_config: VisualizationConfig):
+    def __init__(self, visualization_config: VisualizationConfig, output_config: Optional[VisualizationConfig] = None):
         self.visualization_config: VisualizationConfig = visualization_config
+        self.output_config: Optional[VisualizationConfig] = output_config
+
         try:
             plt.style.use(visualization_config.style)
         except OSError:
@@ -36,6 +38,7 @@ class VisualizerBase:
     def _figure(self, *args, **kwargs) -> plt.Figure:
         """Create a new figure with specified size and DPI."""
         figsize = kwargs.pop('figsize', self.figsize)
+        plt.ioff()
         return plt.figure(*args, figsize=figsize, **kwargs)
 
     def _get_subplots(self, *args, **kwargs) -> Tuple[plt.Figure, List[plt.Axes]]:
@@ -49,10 +52,10 @@ class VisualizerBase:
             fig = plt.gcf()
 
         if self.visualization_config.save_figures:
-            if filename:
+            if filename and self.output_config:
                 if not filename.endswith('.png'):
                     filename = filename + '.png'
-                full_path = self.visualization_config.figures_folder / filename
+                full_path = self.output_config.figures + filename
                 fig.savefig(full_path, bbox_inches='tight')
 
         if self.visualization_config.show_figures:
@@ -60,7 +63,7 @@ class VisualizerBase:
             plt.pause(0.001)
             plt.show()
         else:
-            plt.clf()
+            plt.close(fig)
 
     def _set_title(self, title: str, *args, **kwargs):
         """Set the title of the current figure."""

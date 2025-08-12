@@ -5,6 +5,8 @@ from collections import defaultdict
 from dataclasses import asdict, fields
 import toml
 import pickle
+import logging
+from pathlib import Path
 
 from los_estimator.core import *
 from los_estimator.config import *
@@ -14,6 +16,7 @@ from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimato
 from los_estimator.fitting import MultiSeriesFitter
 from los_estimator.evaluation import FitResultEvaluator
 
+logger = logging.getLogger("los_estimator")
 
 class LosEstimationRun:
     def __init__(self,
@@ -22,7 +25,7 @@ class LosEstimationRun:
                 model_config: ModelConfig,
                 debug_config: DebugConfig,
                 visualization_config: VisualizationConfig,
-                animation_config: AnimationConfig
+                animation_config: AnimationConfig,                
                 ):
         self.configurations = [data_config, output_config, model_config, debug_config, visualization_config, animation_config]
         self.model_config: ModelConfig = model_config
@@ -42,6 +45,7 @@ class LosEstimationRun:
         
         if self.visualization_config.colors is None:
             self.visualization_config.colors = get_color_palette()
+
 
         self.data_loader: DataLoader = DataLoader(data_config)
 
@@ -83,26 +87,40 @@ class LosEstimationRun:
         c.run_name = self.run_name
         c.build()
 
-        if os.path.exists(c.results):
+        if Path(c.results).exists():
             shutil.rmtree(c.results)
 
-        os.makedirs(c.results)
-        os.makedirs(c.figures)
-        os.makedirs(c.animation)
-        os.makedirs(c.metrics)
+        Path(c.results).mkdir(parents=True, exist_ok=True)
+        Path(c.figures).mkdir(parents=True, exist_ok=True)
+        Path(c.animation).mkdir(parents=True, exist_ok=True)
+        Path(c.metrics).mkdir(parents=True, exist_ok=True)
+
+        self.set_up_logger()
+
+    def set_up_logger(self):
+        path = Path(self.output_config.results) / "run.log"
+        file_handler = logging.FileHandler(path)
+        file_handler.setLevel(logging.INFO)
+        logger.addHandler(file_handler)
+
 
     def visualize_results(self):
-        
+        if not self.visualization_config.show_figures and not self.visualization_config.save_figures:
+            logger.info("Visualization is disabled. Skipping visualization.")
+            return
         self.deconv_plot_visualizer = DeconvolutionPlots(
             self.all_fit_results,
             self.series_data,
             self.model_config,
             self.visualization_config,
-            self.visualization_context)
+            self.visualization_context,
+            self.output_config)
         self.deconv_plot_visualizer.generate_plots_for_run()
         
     def animate_results(self):
-                
+        if not self.animation_config.show_figures and not self.animation_config.save_figures:
+            logger.info("Animation is disabled. Skipping animation creation.")
+            return
         animator = DeconvolutionAnimator(
             all_fit_results=self.all_fit_results,
             series_data=self.series_data,
@@ -138,7 +156,7 @@ class LosEstimationRun:
         model_config.run_name = run_name
         self.run_name = run_name
 
-    def run_analysis(self,vis = True):
+    def run_analysis(self,vis=False):
         
         self.set_up()
         self.load_data()
@@ -150,8 +168,10 @@ class LosEstimationRun:
         self.evaluate()
         self.save_results()
         
-        if vis:
-            self.visualize_results()
+        self.visualize_results()
+
+        self.animate_results()
+        
     
     def fit(self):
         col = "new_icu_smooth" if self.model_config.smooth_data else "new_icu"
@@ -177,7 +197,7 @@ class LosEstimationRun:
             evaluator.evaluate()
             self.evaluators[distro] = evaluator
         for distro, evaluator in self.evaluators.items():
-            print(f"{distro[:7]}: {evaluator.metrics}")
+            logger.info(f"Evaluating {distro} distribution")
         
     def save_results(self):
         to_save = {

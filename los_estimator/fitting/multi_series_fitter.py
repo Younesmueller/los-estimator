@@ -6,7 +6,8 @@ from los_estimator.config import ModelConfig
 from los_estimator.core import SeriesData
 from los_estimator.fitting.los_fitter import fit_compartmental, calc_its_comp, fit_convolution, calc_its_convolution, SingleFitResult
 from .fit_results import SingleFitResult, SeriesFitResult, MultiSeriesFitResults
-
+import logging
+logger = logging.getLogger("los_estimator")
 
 
 class MultiSeriesFitter:
@@ -72,7 +73,7 @@ class MultiSeriesFitter:
         
         # --- Main loop ---
         for distro in self.distributions:
-            print(f"Distro: {distro}")
+            logger.info(f"Fitting distribution: {distro}")
             all_fit_results[distro] = self.fit_distro(distro)
 
         all_fit_results.bake()
@@ -80,7 +81,7 @@ class MultiSeriesFitter:
         for distro, fit_result in all_fit_results.items():
             train_mean = fit_result.train_relative_errors.mean()
             test_mean = fit_result.test_relative_errors.mean()
-            print(f"{distro[:7]}\t Mean Train Error: {float(train_mean):.2f}, Mean Test Error: {float(test_mean):.2f}")
+            logger.info(f"{distro[:7]}: Mean Train Error: {float(train_mean):.2f}, Mean Test Error: {float(test_mean):.2f}")
         return self.window_data, all_fit_results
 
     def fit_distro(self,distro):
@@ -130,7 +131,7 @@ class MultiSeriesFitter:
                 result_obj.rel_test_error = np.mean(rel_err[w.test_window])
 
             except Exception as e:
-                print(f"\tError fitting {distro}: {e}")
+                logger.error(f"Error fitting {distro} on window {window_id}: {e}")
                 result_obj = SingleFitResult()
                 raise e
                 
@@ -140,7 +141,7 @@ class MultiSeriesFitter:
 
             is_first_window = False
         if failed_windows:
-            print(f"Failed windows for {distro}: {failed_windows}")
+            logger.warning(f"Failed to fit {distro} on windows: {failed_windows}")
         fit_result.prediction = calc_its_convolution(series_data.x_full, fit_result.all_kernels, self.model_config.los_cutoff)
 
         return fit_result
