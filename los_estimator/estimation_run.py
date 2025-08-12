@@ -12,7 +12,7 @@ from los_estimator.core import *
 from los_estimator.config import *
 from los_estimator.data import DataLoader, DataPackage
 from los_estimator.fitting.fit_results import MultiSeriesFitResults
-from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
+from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer, get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
 from los_estimator.evaluation import FitResultEvaluator
 

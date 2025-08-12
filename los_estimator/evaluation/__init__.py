@@ -4,6 +4,11 @@ from typing import Dict, List, Tuple, Optional, Callable, Union
 from ..fitting.errors import ErrorFunctions
 
 
+__all__ = [
+    "FitResultEvaluator",
+]
+
+
 metrics_over_time: Dict[str, Callable[[np.ndarray, np.ndarray], np.ndarray]] = {
             "absolute_error":lambda t, p: np.abs(t - p),
             "squared_error":lambda t, p: np.square(t - p),

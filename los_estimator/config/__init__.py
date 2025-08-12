@@ -6,6 +6,24 @@ import types
 import toml
 from dataclasses import asdict, fields
 from typing import Optional
+from pathlib import Path
+
+
+
+__all__ = [
+    "ModelConfig",
+    "DataConfig",
+    "DebugConfig",
+    "OutputFolderConfig",
+    "AnimationConfig",
+    "VisualizationConfig",
+    "VisualizationContext",
+    "load_configurations",
+    "save_configurations",
+    "default_config_path"
+]
+
+default_config_path = Path(__file__).parent.parent / "default_config.toml"
 
 configuration_type = {}
 
@@ -160,6 +178,7 @@ def dict_to_config(config_dict, config_class):
     field_names = {field.name for field in fields(config_class)}
     filtered_dict = {k: v for k, v in config_dict.items() if k in field_names}
     return config_class(**filtered_dict)
+
 
 def load_configurations(path):
     with open(path, 'r') as f:

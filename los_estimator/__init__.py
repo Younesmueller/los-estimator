@@ -38,11 +38,9 @@ from .estimation_run import LosEstimationRun
 
 # Visualization components
 from .visualization import (    
-    get_color_palette,
     InputDataVisualizer,
     DeconvolutionPlots,
     DeconvolutionAnimator,
-    Visualizer
 )
 
 
@@ -61,9 +59,13 @@ __all__ = [
     "Utils",
     
     # Configuration
+    "ModelConfig",
     "DataConfig",
-    "ModelConfig", 
-    
+    "DebugConfig",
+    "OutputFolderConfig",
+    "AnimationConfig",
+    "VisualizationConfig",
+    "VisualizationContext",
     # Data
     "DataLoader",
     
@@ -71,15 +73,8 @@ __all__ = [
     "MultiSeriesFitter",
     
     # Visualization
-    "VisualizationContext",
-    "get_color_palette",
     "InputDataVisualizer",
     "DeconvolutionPlots", 
-    "DeconvolutionAnimator",
-    "Visualizer",
-    
-    # Utils
-    "compare_fit_results",
-    "create_result_folders",
-    "generate_run_name"
+    "DeconvolutionAnimator",   
+  
 ]

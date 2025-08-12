@@ -59,9 +59,10 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
 
 #%%
 from los_estimator.estimation_run import LosEstimationRun, load_configurations
+from los_estimator.config import default_config_path
 
 
-cfg = load_configurations("./default_config.toml")
+cfg = load_configurations(default_config_path)
 
 model_config = cfg["model_config"]
 data_config = cfg["data_config"]
@@ -136,3 +137,5 @@ estimator = LosEstimationRun(
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+
+#%%

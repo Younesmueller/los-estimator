@@ -1,6 +1,11 @@
 import numpy as np
 from numba import njit
 
+__all__ = [
+    "ErrorType",
+    "ErrorFunctions",
+]
+
 class ErrorType:
     """Enum for available error function types."""
     MSE = "mse"
