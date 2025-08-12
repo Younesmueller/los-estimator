@@ -7,7 +7,7 @@
     - [x] Visualization
     - [x] new_icu_day nicht mehr berechnen, sondern einfach in die Config tun
     - [x] Config
-    - [ ] Type Annotations
+    - [x] Type Annotations
     
 - [ ] Documentation
     - [ ] Config
@@ -17,6 +17,7 @@
     - [ ] Visualization
 - [ ] Write CLI
 - [ ] Cleanup of the repo
+- [ ] Save results
 
-
-
+- Evaluation
+  - [ ] Was soll denn jetzt genau evaluiert werden?

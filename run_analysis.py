@@ -5,11 +5,8 @@
 import os
 
 import numpy as np
-
-
+import matplotlib.pyplot as plt
 from comparison_data_loader import load_comparison_data
-
-
 
 print("Let's Go!")
 #%%
@@ -61,10 +58,10 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         return  fit_result.train_relative_errors, comp_fit_result.train_relative_errors
 
 #%%
-from los_estimator.estimation_run import LosEstimationRun, ConfigSaver
+from los_estimator.estimation_run import LosEstimationRun, load_configurations
 
 
-cfg = ConfigSaver.load_configurations("./default_config.toml")
+cfg = load_configurations("./default_config.toml")
 
 model_config = cfg["model_config"]
 data_config = cfg["data_config"]
@@ -80,7 +77,7 @@ def update(obj,**kwargs):
     return obj
 
 
-model_config =update(model_config,
+model_config = update(model_config,
     kernel_width=120,
     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
     smooth_data=False,
@@ -104,7 +101,7 @@ model_config =update(model_config,
         # "block",
         # "sentinel",
         "compartmental",
-    ]
+    ],
 )
 
 
@@ -139,6 +136,3 @@ estimator = LosEstimationRun(
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
-
-
-#%%

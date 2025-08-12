@@ -3,8 +3,8 @@ import os
 from dataclasses import dataclass
 from typing import List
 import types
-
-
+import toml
+from dataclasses import asdict, fields
 from typing import Optional
 
 configuration_type = {}
@@ -110,6 +110,7 @@ class OutputFolderConfig:
         self.results = os.path.join(self.base, self.run_name)
         self.figures = os.path.join(self.results, "figures")
         self.animation = os.path.join(self.results, "animation")
+        self.metrics = os.path.join(self.results, "metrics")
 
     def __post_init__(self):
         self.build()
@@ -154,5 +155,27 @@ class VisualizationContext:
     results_folder: str = ""
     figures_folder: str = ""
     animation_folder: str = ""
+
+def dict_to_config(config_dict, config_class):
+    field_names = {field.name for field in fields(config_class)}
+    filtered_dict = {k: v for k, v in config_dict.items() if k in field_names}
+    return config_class(**filtered_dict)
+
+def load_configurations(path):
+    with open(path, 'r') as f:
+        loaded_config = toml.load(f)
     
-    
+    configs = {}
+    for name in loaded_config.keys():
+
+        if name not in configuration_type:
+            continue
+
+        configs[name] = dict_to_config(loaded_config[name], configuration_type[name])
+    return configs
+
+def save_configurations(path, configurations):
+    config_dicts = {config.config_name: asdict(config) for config in configurations}
+    with open(path, 'w') as f:
+        toml.dump(config_dicts, f)
+        

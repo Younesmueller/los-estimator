@@ -141,6 +141,8 @@ class MultiSeriesFitter:
             is_first_window = False
         if failed_windows:
             print(f"Failed windows for {distro}: {failed_windows}")
+        fit_result.prediction = calc_its_convolution(series_data.x_full, fit_result.all_kernels, self.model_config.los_cutoff)
+
         return fit_result
 
     def _find_last_valid_parametrization(self, fit_result, window_id, init_vals):

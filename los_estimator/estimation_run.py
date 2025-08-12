@@ -12,31 +12,8 @@ from los_estimator.data import DataLoader, DataPackage
 from los_estimator.fitting.fit_results import MultiSeriesFitResults
 from los_estimator.visualization import DeconvolutionPlots, DeconvolutionAnimator, InputDataVisualizer,  get_color_palette
 from los_estimator.fitting import MultiSeriesFitter
+from los_estimator.evaluation import FitResultEvaluator
 
-class ConfigSaver:
-    def dict_to_config(config_dict, config_class):
-        field_names = {field.name for field in fields(config_class)}
-        filtered_dict = {k: v for k, v in config_dict.items() if k in field_names}
-        return config_class(**filtered_dict)
-
-    def load_configurations(path):
-        with open(path, 'r') as f:
-            loaded_config = toml.load(f)
-        
-        configs = {}
-        for name in loaded_config.keys():
-
-            if name not in configuration_type:
-                continue
-
-            configs[name] = ConfigSaver.dict_to_config(loaded_config[name], configuration_type[name])
-        return configs
-
-    def save_configurations(path, configurations):
-        config_dicts = {config.config_name: asdict(config) for config in configurations}
-        with open(path, 'w') as f:
-            toml.dump(config_dicts, f)
-            
 
 class LosEstimationRun:
     def __init__(self,
@@ -75,6 +52,7 @@ class LosEstimationRun:
         self.all_fit_results: MultiSeriesFitResults = None
         self.series_data: SeriesData = None
 
+        self.evaluators: dict[str, FitResultEvaluator] = None
         self.data_loaded = False
 
     def load_data(self):
@@ -111,6 +89,7 @@ class LosEstimationRun:
         os.makedirs(c.results)
         os.makedirs(c.figures)
         os.makedirs(c.animation)
+        os.makedirs(c.metrics)
 
     def visualize_results(self):
         
@@ -167,7 +146,8 @@ class LosEstimationRun:
         if vis:
             self.visualize_input_data()
         self.fit()
-        
+
+        self.evaluate()
         self.save_results()
         
         if vis:
@@ -188,15 +168,36 @@ class LosEstimationRun:
         self.window_data, self.all_fit_results = self.fitter.fit()
         return self.window_data, self.all_fit_results
     
-
+    def evaluate(self):
+        if self.all_fit_results is None:
+            raise ValueError("No fit results available. Please run the fit method first.")
+        self.evaluators = {}
+        for distro, fit_result in self.all_fit_results.items():
+            evaluator = FitResultEvaluator(distro, self.series_data.y_full, fit_result.prediction)
+            evaluator.evaluate()
+            self.evaluators[distro] = evaluator
+        for distro, evaluator in self.evaluators.items():
+            print(f"{distro[:7]}: {evaluator.metrics}")
+        
     def save_results(self):
-        with open(os.path.join(self.output_config.results, "series_data.pkl"), "wb") as f:
-            pickle.dump(self.fitter.series_data, f)
-        with open(os.path.join(self.output_config.results, "chosen_windows.pkl"), "wb") as f:
-            pickle.dump(self.fitter.chosen_windows, f)
-        with open(os.path.join(self.output_config.results, "all_fit_results.pkl"), "wb") as f:
-            pickle.dump(self.all_fit_results, f)
+        to_save = {
+            "series_data": self.fitter.series_data,
+            "chosen_windows":self.fitter.chosen_windows,
+            "all_fit_results": self.all_fit_results,
+            "window_data": self.window_data,            
+        }
+
+        for name, evaluator in self.evaluators.items():
+            evaluator.save(self.output_config.metrics)
+
+
+        for name, data in to_save.items():
+            path = os.path.join(self.output_config.results, f"{name}.pkl")
+            with open(path, "wb") as f:
+                pickle.dump(data, f)        
     
         path = os.path.join(self.output_config.results, "configurations.toml")
-        ConfigSaver.save_configurations(path, self.configurations)
+        save_configurations(path, self.configurations)
+
+            
                                         
