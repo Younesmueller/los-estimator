@@ -4,7 +4,7 @@ import time
 from collections import defaultdict
 from dataclasses import asdict, fields
 import toml
-import pickle
+import dill
 import logging
 from pathlib import Path
 
@@ -204,7 +204,6 @@ class LosEstimationRun:
             "series_data": self.fitter.series_data,
             "chosen_windows":self.fitter.chosen_windows,
             "all_fit_results": self.all_fit_results,
-            "window_data": self.window_data,            
         }
 
         for name, evaluator in self.evaluators.items():
@@ -214,7 +213,7 @@ class LosEstimationRun:
         for name, data in to_save.items():
             path = os.path.join(self.output_config.results, f"{name}.pkl")
             with open(path, "wb") as f:
-                pickle.dump(data, f)        
+                dill.dump(data, f)        
     
         path = os.path.join(self.output_config.results, "configurations.toml")
         save_configurations(path, self.configurations)

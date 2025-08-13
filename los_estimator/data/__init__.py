@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from importlib import resources
 from ..config import DataConfig
 from dataclasses import dataclass
 
@@ -42,20 +42,37 @@ class DataUtils:
                 xtick_label.append(label)
         return xtick_pos,xtick_label
 
-
+from pathlib import Path
 class DataLoader:
     """Data loader for LOS estimation datasets."""
 
-    def __init__(self, data_config:DataConfig):
-        self.data_config:DataConfig = data_config
+    def __init__(self, data_config: DataConfig):
+        self.data_config: DataConfig = data_config
+        self.resource_path = str(resources.files('los_estimator').joinpath('data'))
+
+    def _get_packaged_file_path(self, path):
+        """Get path to packaged data file using importlib.resources."""
+        if "${data}" in path:
+            path = path.replace("${data}", self.resource_path)
+        return path
+
+    def read_csv(self, path, *args, **kwargs):
+        """Read CSV file from packaged data."""
+        file_path = self._get_packaged_file_path(path)
+        return pd.read_csv(file_path, *args, **kwargs)
+
+    def read_excel(self, path, *args, **kwargs):
+        """Read Excel file from packaged data."""
+        file_path = self._get_packaged_file_path(path)
+        return pd.read_excel(file_path, *args, **kwargs)
 
     def load_all_data(self):
         c = self.data_config
 
-        real_los:np.array = self._load_los(file=c.get_los_file())[0]
+        real_los:np.array = self._load_los(file=c.los_file)[0]
         df_occupancy:pd.DataFrame = self.load_inc_beds(c.start_day, c.end_day)
-        df_init:pd.DataFrame = self.load_init_parameters(c.get_init_params_file())
-        df_mutant:pd.DataFrame = self.load_mutant_distribution(c.get_mutants_file())
+        df_init:pd.DataFrame = self.load_init_parameters(c.init_params_file)
+        df_mutant:pd.DataFrame = self.load_mutant_distribution(c.mutants_file)
         df_mutant:pd.DataFrame = self.select_mutants(df_occupancy, df_mutant)
 
 
@@ -94,14 +111,14 @@ class DataLoader:
 
 
     def load_init_parameters(self,file):
-        df_init = pd.read_csv(file,index_col=0)
+        df_init = self.read_csv(file,index_col=0)
         df_init = df_init.set_index("distro")
         # interpret model_config as array float of format [f1 f2 f3 ...]
         df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 
     def _load_los(self,cutoff_percentage=.9,file=""):
-        df_los = pd.read_csv(file,index_col=0)
+        df_los = self.read_csv(file,index_col=0)
 
         los = df_los.iloc[:,0].to_numpy(dtype=float)
         los /= los.sum()
@@ -112,7 +129,7 @@ class DataLoader:
     def _load_incidences(self, start_day, end_day):
         """cases_*.csv contains the germany wide covid data provided from RKI. It is derived from https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv"""
         c = self.data_config
-        df_inc = pd.read_csv(c.get_cases_file(),index_col=0,parse_dates=["Refdatum"])
+        df_inc = self.read_csv(c.cases_file,index_col=0,parse_dates=["Refdatum"])
         raw = df_inc.copy()
         df_inc = df_inc[["AnzahlFall","daily"]]
 
@@ -131,7 +148,7 @@ class DataLoader:
 
         c = self.data_config
         
-        df_icu = pd.read_csv(c.get_icu_occupancy_file(),parse_dates=["datum"])
+        df_icu = self.read_csv(c.icu_occupancy_file,parse_dates=["datum"])
         df_icu = df_icu[["datum", "faelle_covid_aktuell","faelle_covid_erstaufnahmen"]]
         df_icu.columns = ["datum","icu","new_icu"]
         df_icu = df_icu.groupby("datum").sum()
@@ -146,7 +163,7 @@ class DataLoader:
         return df_icu
 
     def load_mutant_distribution(self,path):
-        raw_df = pd.read_excel(path, sheet_name=1)
+        raw_df = self.read_excel(path, sheet_name=1)
         c = [col for col in raw_df.columns if "Anteil" in col]
         df = raw_df[c]
         c = [col.split("+")[0] for col in df.columns]

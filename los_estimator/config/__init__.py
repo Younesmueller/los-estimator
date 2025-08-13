@@ -80,31 +80,7 @@ class DataConfig:
     start_day: str 
     end_day: str 
     
-    base_path: str  ="."
     mutants_file: Optional[str] = None
-    
-    def get_cases_file(self):
-        """Return the path to the cases file."""
-        return os.path.join(self.base_path, self.cases_file)
-
-    def get_icu_occupancy_file(self):
-        """Return the path to the ICU occupancy file."""
-        return os.path.join(self.base_path, self.icu_occupancy_file)
-
-    def get_los_file(self):
-        """Return the path to the LOS file."""
-        return os.path.join(self.base_path, self.los_file)
-
-    def get_init_params_file(self):
-        """Return the path to the initial parameters file."""
-        return os.path.join(self.base_path, self.init_params_file)
-
-    def get_mutants_file(self):
-        """Return the path to the mutants file."""
-        if self.mutants_file is None:
-            return None
-        return os.path.join(self.base_path, self.mutants_file)
-    
     def __post_init__(self):
         pass
 

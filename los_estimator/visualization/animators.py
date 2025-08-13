@@ -136,7 +136,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             fig.savefig(filename, bbox_inches='tight')
 
         if self.ac.debug_animation:
-            plt.show(fig)
+            plt.show()
         else:
             if self.ac.show_figures:
                 plt.show(fig)

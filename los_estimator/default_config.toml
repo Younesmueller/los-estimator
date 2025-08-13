@@ -1,13 +1,12 @@
 [data_config]
-base_path = "./data"
-cases_file = "./cases.csv"
-icu_occupancy_file = "./Intensivregister_Bundeslaender_Kapazitaeten.csv"
-los_file = "./dynamic/los_berlin_all.csv"
-init_params_file = "./dynamic/los_berlin_fit_result.csv"
+cases_file = "${data}/cases.csv"
+icu_occupancy_file = "${data}/Intensivregister_Bundeslaender_Kapazitaeten.csv"
+los_file = "${data}/dynamic/los_berlin_all.csv"
+init_params_file = "${data}/dynamic/los_berlin_fit_result.csv"
 start_day = "2021-07-29"
 end_day = "2025-01-01"
 
-mutants_file = "./VOC_VOI_Tabelle.xlsx"
+mutants_file = "${data}/VOC_VOI_Tabelle.xlsx"
 
 [output_config]
 base = "./results"

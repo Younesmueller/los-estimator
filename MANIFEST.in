@@ -1,0 +1,26 @@
+# Include data files
+include data/*.csv
+include data/*.xlsx
+recursive-include data/dynamic *.csv
+recursive-include data/prepare_hospitalizations *.csv *.py
+
+# Include configuration files
+include los_estimator/default_config.toml
+recursive-include los_estimator/config *.toml
+
+# Include documentation
+include README.md
+include LICENSE
+include requirements.txt
+
+# Include package metadata
+include pyproject.toml
+include setup.py
+
+# Exclude unwanted files
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .DS_Store
+prune results/
+prune comparison_data/

@@ -19,7 +19,15 @@
             "args": [
                 "--silent-plots"
             ],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}",            
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "run_analysis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/run_analysis.py",
+            "cwd": "${workspaceFolder}",            
             "console": "integratedTerminal"
         },
 

@@ -1,7 +1,7 @@
 #%% 
 
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 import os
 
 import numpy as np
@@ -104,6 +104,11 @@ model_config = update(model_config,
         "compartmental",
     ],
 )
+
+visualization_config.show_figures = False        
+animation_config.show_figures = False
+animation_config.debug_animation = True
+
 
 
 # debug_config = update(debug_config,

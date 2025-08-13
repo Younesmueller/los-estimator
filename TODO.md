@@ -8,7 +8,12 @@
     - [x] new_icu_day nicht mehr berechnen, sondern einfach in die Config tun
     - [x] Config
     - [x] Type Annotations
-    - [ ] Export methods
+    - [x] Export methods
+    - [x] Logging
+    - [x] Package Setup
+    - [x] Remove Pickle -- Replaced with dill
+    - ABGELEHNT  
+      - [ ] Make the animator faster by reusing the graph
     
 - [ ] Documentation
     - [ ] Config
@@ -16,9 +21,7 @@
     - [ ] Data
     - [ ] Fitting
     - [ ] Visualization
-- [ ] Write CLI
-- [ ] Cleanup of the repo
-- [ ] Save results
+- [x] Write CLI
+- [x] Cleanup of the repo
+- [x] Save results
 
-- Evaluation
-  - [ ] Was soll denn jetzt genau evaluiert werden?
