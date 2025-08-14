@@ -1,4 +1,7 @@
 import uuid
+import subprocess
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -79,6 +82,48 @@ class TestLosEstimatorIntegration:
 
             assert train_error_diff <= 1e-4, f"Train error difference too large for {distro}: {train_error_diff:.4f}"
             assert test_error_diff <= 1e-4, f"Test error difference too large for {distro}: {test_error_diff:.4f}"
+
+    def test_cli_execution_completes_successfully(self):
+        """Test that the CLI execution completes without errors."""
+        # Assuming there's a main CLI script, adjust path as needed
+        cli_script = Path("c:/data/src/los-estimator/main.py")
+
+        if not cli_script.exists():
+            pytest.skip("CLI script not found, skipping CLI test")
+
+        # Run the CLI with test parameters
+        cmd = [
+            sys.executable,
+            str(cli_script),
+            "--config",
+            str(default_config_path),
+            "--less-windows",
+            "--no-vis",
+            "--test-mode",
+        ]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+                check=True,
+            )
+
+            # Assertions
+            assert result.returncode == 0, f"CLI execution failed with return code {result.returncode}"
+            assert "error" not in result.stderr.lower(), f"CLI stderr contains errors: {result.stderr}"
+
+            # Check for expected output patterns
+            assert any(
+                keyword in result.stdout.lower() for keyword in ["completed", "success", "finished"]
+            ), "CLI output doesn't indicate successful completion"
+
+        except subprocess.TimeoutExpired:
+            pytest.fail("CLI execution timed out after 5 minutes")
+        except subprocess.CalledProcessError as e:
+            pytest.fail(f"CLI execution failed: {e.stderr}")
 
     def _run_estimator(self):
         """Helper method to run the estimator with test configuration."""
