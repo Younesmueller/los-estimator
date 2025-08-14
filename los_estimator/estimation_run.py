@@ -1,25 +1,26 @@
+import logging
 import os
 import shutil
 import time
 from collections import defaultdict
 from dataclasses import asdict, fields
-import toml
-import dill
-import logging
 from pathlib import Path
 
-from los_estimator.core import *
+import dill
+import toml
+
 from los_estimator.config import *
+from los_estimator.core import *
 from los_estimator.data import DataLoader, DataPackage
+from los_estimator.evaluation import FitResultEvaluator
+from los_estimator.fitting import MultiSeriesFitter
 from los_estimator.fitting.fit_results import MultiSeriesFitResults
 from los_estimator.visualization import (
-    DeconvolutionPlots,
     DeconvolutionAnimator,
+    DeconvolutionPlots,
     InputDataVisualizer,
     get_color_palette,
 )
-from los_estimator.fitting import MultiSeriesFitter
-from los_estimator.evaluation import FitResultEvaluator
 
 logger = logging.getLogger("los_estimator")
 

@@ -1,14 +1,12 @@
 """Model configuration for LOS Estimator."""
 
 import os
-from dataclasses import dataclass
-from typing import List
 import types
-import toml
-from dataclasses import asdict, fields
-from typing import Optional
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
+from typing import List, Optional
 
+import toml
 
 __all__ = [
     "ModelConfig",

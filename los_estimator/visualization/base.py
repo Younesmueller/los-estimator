@@ -1,7 +1,9 @@
 """Base visualizer class with common functionality."""
 
+from typing import List, Optional, Tuple
+
 import matplotlib.pyplot as plt
-from typing import Tuple, Optional, List
+
 from ..config import VisualizationConfig
 
 

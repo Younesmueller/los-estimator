@@ -2,12 +2,12 @@
 """Command-line interface for LOS Estimator."""
 
 import argparse
-import sys
 import logging
+import sys
 from pathlib import Path
 
-from los_estimator.estimation_run import LosEstimationRun
 from los_estimator.config import load_configurations
+from los_estimator.estimation_run import LosEstimationRun
 
 logger = logging.getLogger("los_estimator")
 
@@ -83,8 +83,8 @@ def main():
 
     except Exception as e:
         logger.error(f"Error during execution: {e}")
-        import sys
         import logging
+        import sys
 
         logging.error("Error during execution", exc_info=True)
         sys.exit(1)

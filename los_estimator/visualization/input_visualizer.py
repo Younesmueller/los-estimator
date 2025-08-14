@@ -1,9 +1,11 @@
 """Input data visualization components."""
 
-from los_estimator.data import DataPackage
-from .base import VisualizerBase
-from ..config import VisualizationContext
 import matplotlib.pyplot as plt
+
+from los_estimator.data import DataPackage
+
+from ..config import VisualizationContext
+from .base import VisualizerBase
 
 
 class InputDataVisualizer(VisualizerBase):

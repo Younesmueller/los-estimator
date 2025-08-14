@@ -1,6 +1,6 @@
-from numba import njit
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from numba import njit
 
 
 def los_distro_converter(los):

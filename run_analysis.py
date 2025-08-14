@@ -4,8 +4,9 @@
 # %autoreload 2
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from util.comparison_data_loader import load_comparison_data
 
 print("Let's Go!")
@@ -69,10 +70,10 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         return fit_result.train_relative_errors, comp_fit_result.train_relative_errors
 
 
-# %%
-from los_estimator.estimation_run import LosEstimationRun, load_configurations
 from los_estimator.config import default_config_path
 
+# %%
+from los_estimator.estimation_run import LosEstimationRun, load_configurations
 
 cfg = load_configurations(default_config_path)
 

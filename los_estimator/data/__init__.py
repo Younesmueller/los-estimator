@@ -1,10 +1,12 @@
 """Data loading and preparation utilities for LOS estimation."""
 
+from dataclasses import dataclass
+from importlib import resources
+
 import numpy as np
 import pandas as pd
-from importlib import resources
+
 from ..config import DataConfig
-from dataclasses import dataclass
 
 __all__ = [
     "DataPackage",

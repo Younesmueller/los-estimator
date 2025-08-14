@@ -1,17 +1,17 @@
 """Deconvolution plotting functionality."""
 
-import numpy as np
+import logging
+from typing import List, Optional, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 from matplotlib.patches import Patch
-from typing import Optional, Union, List
-import logging
 
-from .base import VisualizerBase
-from ..fitting import MultiSeriesFitResults
-from ..core import SeriesData
 from ..config import ModelConfig, VisualizationConfig, VisualizationContext
-
+from ..core import SeriesData
+from ..fitting import MultiSeriesFitResults
+from .base import VisualizerBase
 
 logger = logging.getLogger("los_estimator")
 

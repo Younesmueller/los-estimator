@@ -1,15 +1,16 @@
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 from scipy.stats import (
-    lognorm,
-    weibull_min,
-    norm,
-    expon,
-    gamma,
     beta,
     cauchy,
-    t,
+    expon,
+    gamma,
     invgauss,
+    lognorm,
+    norm,
+    t,
+    weibull_min,
 )
 
 __all__ = ["DistributionTypes", "Distribution"]

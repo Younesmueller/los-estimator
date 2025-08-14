@@ -1,5 +1,5 @@
-import sys
 import pickle
+import sys
 
 
 def load_comparison_data(less_windows=True):

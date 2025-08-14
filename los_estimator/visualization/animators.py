@@ -1,24 +1,25 @@
 """Animation functionality for deconvolution analysis."""
 
+import logging
 import os
+from typing import Optional
+
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from matplotlib.patches import Patch
-from typing import Optional
-import logging
 
-from .deconvolution_plots import DeconvolutionPlots
-from ..core import SeriesData
-from ..fitting import MultiSeriesFitResults
 from ..config import (
-    ModelConfig,
     AnimationConfig,
+    ModelConfig,
+    OutputFolderConfig,
     VisualizationConfig,
     VisualizationContext,
-    OutputFolderConfig,
 )
+from ..core import SeriesData
+from ..fitting import MultiSeriesFitResults
+from .deconvolution_plots import DeconvolutionPlots
 
 logger = logging.getLogger("los_estimator")
 

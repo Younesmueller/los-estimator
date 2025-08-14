@@ -32,26 +32,25 @@ def setup_logging(log_file_path=None):
 
 setup_logging("current.log")
 
-# Core classes
-from .core import *
-
 # Configuration classes
 from .config import DataConfig, ModelConfig, VisualizationContext
 
+# Core classes
+from .core import *
+
 # Data loading
 from .data import DataLoader
+from .estimation_run import LosEstimationRun
 
 # Fitting algorithms
 from .fitting import MultiSeriesFitter
-from .estimation_run import LosEstimationRun
 
 # Visualization components
 from .visualization import (
-    InputDataVisualizer,
-    DeconvolutionPlots,
     DeconvolutionAnimator,
+    DeconvolutionPlots,
+    InputDataVisualizer,
 )
-
 
 __version__ = "1.0.0"
 

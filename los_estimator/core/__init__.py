@@ -1,12 +1,11 @@
 """Core data classes and structures for LOS estimation."""
 
+import functools
+
+import matplotlib.pyplot as plt
 import numpy as np
 
-import functools
-import matplotlib.pyplot as plt
-
 from los_estimator.config import ModelConfig
-
 
 __all__ = [
     "WindowInfo",

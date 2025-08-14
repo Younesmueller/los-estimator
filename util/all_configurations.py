@@ -2,13 +2,18 @@
 
 %load_ext autoreload
 %autoreload 2
-from los_estimator.core import *
-from los_estimator.fitting.errors import ErrorType
-from los_estimator.config import DataConfig, ModelConfig, OutputFolderConfig, DebugConfig, AnimationConfig,VisualizationConfig
-
-
 import matplotlib.pyplot as plt
 
+from los_estimator.config import (
+    AnimationConfig,
+    DataConfig,
+    DebugConfig,
+    ModelConfig,
+    OutputFolderConfig,
+    VisualizationConfig,
+)
+from los_estimator.core import *
+from los_estimator.fitting.errors import ErrorType
 
 #%%
 

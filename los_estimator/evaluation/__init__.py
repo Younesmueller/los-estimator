@@ -1,8 +1,9 @@
+from typing import Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional, Callable, Union
-from ..fitting.errors import ErrorFunctions
 
+from ..fitting.errors import ErrorFunctions
 
 __all__ = [
     "FitResultEvaluator",

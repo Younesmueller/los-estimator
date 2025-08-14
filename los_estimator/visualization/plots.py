@@ -2,12 +2,13 @@
 Visualization utilities for LOS estimation results.
 """
 
-import matplotlib.pyplot as plt
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
 import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
 
 
 class Visualizer:

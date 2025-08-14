@@ -1,11 +1,13 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.optimize import minimize
-from los_estimator.fitting.models.convolutional_model import calc_its_convolution
+
 from los_estimator.fitting.models.compartmental_model import calc_its_comp
+from los_estimator.fitting.models.convolutional_model import calc_its_convolution
+
 from .distributions import Distributions
-from .fit_results import SingleFitResult
 from .errors import ErrorFunctions
+from .fit_results import SingleFitResult
 
 
 def combine_past_kernel(past_kernels, kernel):

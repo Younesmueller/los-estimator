@@ -1,18 +1,21 @@
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
+import logging
 from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
 from los_estimator.config import ModelConfig
 from los_estimator.core import SeriesData
 from los_estimator.fitting.los_fitter import (
-    fit_compartmental,
-    calc_its_comp,
-    fit_convolution,
-    calc_its_convolution,
     SingleFitResult,
+    calc_its_comp,
+    calc_its_convolution,
+    fit_compartmental,
+    fit_convolution,
 )
-from .fit_results import SingleFitResult, SeriesFitResult, MultiSeriesFitResults
-import logging
+
+from .fit_results import MultiSeriesFitResults, SeriesFitResult, SingleFitResult
 
 logger = logging.getLogger("los_estimator")
 
