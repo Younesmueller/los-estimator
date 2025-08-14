@@ -34,25 +34,17 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
             continue
 
         comp_fit_result = compare_all_fit_results[distro]
-        if not np.allclose(
-            fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4
-        ):
+        if not np.allclose(fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4):
             print(f"❌ Kernel comparison failed for distribution: {distro}")
-            print(
-                f"Kernel Difference: {np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max():.4f}"
-            )
+            print(f"Kernel Difference: {np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max():.4f}")
             print("-" * 50)
             all_successful = False
             continue
 
         train_error_diff = np.abs(
-            fit_result.train_relative_errors.mean()
-            - comp_fit_result.train_relative_errors.mean()
+            fit_result.train_relative_errors.mean() - comp_fit_result.train_relative_errors.mean()
         )
-        test_error_diff = np.abs(
-            fit_result.test_relative_errors.mean()
-            - comp_fit_result.test_relative_errors.mean()
-        )
+        test_error_diff = np.abs(fit_result.test_relative_errors.mean() - comp_fit_result.test_relative_errors.mean())
 
         if train_error_diff > 1e-4 or test_error_diff > 1e-4:
             print(f"❌ Comparison failed for distribution: {distro}")
@@ -155,5 +147,9 @@ estimator = LosEstimationRun(
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+
+# %%
+
+estimator.animate_results()
 
 # %%

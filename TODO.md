@@ -14,6 +14,7 @@
     - [x] Remove Pickle -- Replaced with dill
     - ABGELEHNT  
       - [ ] Make the animator faster by reusing the graph
+      - [ ] Speichere Zwischenergebnisse 
     
 - [ ] Documentation
     - [ ] Config

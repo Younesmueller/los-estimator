@@ -32,6 +32,7 @@ class LosEstimationRun:
         debug_config: DebugConfig,
         visualization_config: VisualizationConfig,
         animation_config: AnimationConfig,
+        run_nickname: str = None,
     ):
         self.configurations = [
             data_config,
@@ -41,6 +42,7 @@ class LosEstimationRun:
             visualization_config,
             animation_config,
         ]
+        self.run_nickname = run_nickname
         self.model_config: ModelConfig = model_config
         self.output_config: OutputFolderConfig = output_config
         self.data_config: DataConfig = data_config
@@ -162,6 +164,7 @@ class LosEstimationRun:
         if model_config.variable_kernels:
             run_name += "_variable_kernels"
 
+        run_name += f"_{self.run_nickname}" if self.run_nickname else ""
         model_config.run_name = run_name
         self.run_name = run_name
 
