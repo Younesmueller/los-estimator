@@ -47,9 +47,6 @@ class DataUtils:
         return xtick_pos, xtick_label
 
 
-from pathlib import Path
-
-
 class DataLoader:
     """Data loader for LOS estimation datasets."""
 
@@ -97,12 +94,8 @@ class DataLoader:
 
     def select_mutants(self, df_occupancy, df_mutant):
         df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
-        df_mutant["Omikron_BA.1/2"] = (
-            df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
-        )
-        df_mutant["Omikron_BA.4/5"] = (
-            df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
-        )
+        df_mutant["Omikron_BA.1/2"] = df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
+        df_mutant["Omikron_BA.4/5"] = df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
         df_mutant = df_mutant[["Delta_AY.1", "Omikron_BA.1/2", "Omikron_BA.4/5"]]
         return df_mutant
 
@@ -119,9 +112,7 @@ class DataLoader:
         df_init = self.read_csv(file, index_col=0)
         df_init = df_init.set_index("distro")
         # interpret model_config as array float of format [f1 f2 f3 ...]
-        df_init["params"] = df_init["params"].apply(
-            lambda x: [float(i) for i in x[1:-1].split()]
-        )
+        df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 
     def _load_los(self, cutoff_percentage=0.9, file=""):
@@ -140,9 +131,7 @@ class DataLoader:
         raw = df_inc.copy()
         df_inc = df_inc[["AnzahlFall", "daily"]]
 
-        date_range = pd.date_range(
-            start="2020-01-02", end=df_inc.index.min(), inclusive="left"
-        )
+        date_range = pd.date_range(start="2020-01-02", end=df_inc.index.min(), inclusive="left")
         new_data = pd.DataFrame(0, index=date_range, columns=df_inc.columns)
         df_inc = pd.concat([new_data, df_inc])
 
@@ -164,9 +153,7 @@ class DataLoader:
         df_icu = df_icu.groupby("datum").sum()
 
         # Fill up the time from beginning of 2020 to data begin
-        date_range = pd.date_range(
-            start="2020-01-01", end=df_icu.index.min(), inclusive="left"
-        )
+        date_range = pd.date_range(start="2020-01-01", end=df_icu.index.min(), inclusive="left")
         new_data = pd.DataFrame(0, index=date_range, columns=df_icu.columns)
         df_icu = pd.concat([new_data, df_icu])
 

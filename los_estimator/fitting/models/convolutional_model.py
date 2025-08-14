@@ -1,6 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numba import njit
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # No JIT during type checking
+    def njit(func):
+        return func
+
+else:
+    from numba import njit
 
 
 def los_distro_converter(los):

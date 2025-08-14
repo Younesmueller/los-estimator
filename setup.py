@@ -9,23 +9,21 @@ this_directory = Path(__file__).parent
 try:
     long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 except FileNotFoundError:
-    long_description = (
-        "Length of Stay Estimator for ICU data using deconvolution methods"
-    )
+    long_description = "Length of Stay Estimator for ICU data using deconvolution methods"
 
 setup(
-    name="los-estimator",
+    name="los_estimator",
     version="1.1.0",
     author="LOS Estimator Team",
-    author_email="los-estimator@example.com",
+    author_email="los_estimator@example.com",
     description="Length of Stay Estimator for ICU data using deconvolution methods",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/los-estimator/los-estimator",
+    url="https://github.com/los_estimator/los_estimator",
     project_urls={
-        "Bug Reports": "https://github.com/los-estimator/los-estimator/issues",
-        "Source": "https://github.com/los-estimator/los-estimator",
-        "Documentation": "https://los-estimator.readthedocs.io/",
+        "Bug Reports": "https://github.com/los_estimator/los_estimator/issues",
+        "Source": "https://github.com/los_estimator/los_estimator",
+        "Documentation": "https://los_estimator.readthedocs.io/",
     },
     packages=find_packages(exclude=["tests*", "docs*"]),
     classifiers=[
@@ -97,7 +95,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "los-estimator=los_estimator.cli:main",
+            "los_estimator=los_estimator.cli:main",
         ],
     },
     package_data={

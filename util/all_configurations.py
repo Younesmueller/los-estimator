@@ -1,7 +1,7 @@
-#%% 
+# %%
 
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 import matplotlib.pyplot as plt
 
 from los_estimator.config import (
@@ -15,7 +15,7 @@ from los_estimator.config import (
 from los_estimator.core import *
 from los_estimator.fitting.errors import ErrorType
 
-#%%
+# %%
 
 data_config = DataConfig(
     base_path="C:/data/src/los-estimator/los-estimator/data",
@@ -29,14 +29,13 @@ data_config = DataConfig(
 )
 
 
-
 model_config = ModelConfig(
     kernel_width=120,
     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
     smooth_data=False,
     train_width=42 + 60,
     test_width=21,  # 28 * 4
-    step=7,    
+    step=7,
     error_fun=ErrorType.MSE,
     reuse_last_parametrization=True,
     variable_kernels=True,
@@ -54,35 +53,19 @@ model_config = ModelConfig(
         # "block",
         # "sentinel",
         "compartmental",
-    ]
+    ],
 )
 
 output_config = OutputFolderConfig("./results")
 
-debug_configuration = DebugConfig(
-    one_window=False,
-    less_windows=True,
-    less_distros=False,
-    only_linear=False
-)
+debug_configuration = DebugConfig(one_window=False, less_windows=True, less_distros=False, only_linear=False)
 
-visualization_config = VisualizationConfig(    
+visualization_config = VisualizationConfig(
     save_figures=True,
     show_figures=True,
 )
-animation_config = AnimationConfig(
-    debug_animation=False,
-    debug_hide_failed=True,
-    show_figures=True,
-    save_figures=False
-)
+animation_config = AnimationConfig(debug_animation=False, debug_hide_failed=True, show_figures=True, save_figures=False)
 
 estimator = LosEstimationRun(
-    data_config,
-    output_config,
-    model_config,
-    debug_configuration,
-    visualization_config,
-    animation_config
+    data_config, output_config, model_config, debug_configuration, visualization_config, animation_config
 )
-

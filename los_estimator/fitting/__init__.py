@@ -1,7 +1,7 @@
 from .distributions import Distribution, DistributionTypes
 from .errors import ErrorFunctions, ErrorType
 from .fit_results import MultiSeriesFitResults, SeriesFitResult, SingleFitResult
-from .multi_series_fitter import MultiSeriesFitter, SeriesFitResult
+from .multi_series_fitter import MultiSeriesFitter
 
 __all__ = [
     "MultiSeriesFitter",
