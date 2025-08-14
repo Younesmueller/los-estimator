@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
-from comparison_data_loader import load_comparison_data
+from util.comparison_data_loader import load_comparison_data
 
 print("Let's Go!")
 #%%
