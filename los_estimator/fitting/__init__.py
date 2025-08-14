@@ -11,5 +11,5 @@ __all__ = [
     "ErrorFunctions",
     "ErrorType",
     "DistributionTypes",
-    "Distribution"
+    "Distribution",
 ]

@@ -12,38 +12,59 @@ import logging
 from .deconvolution_plots import DeconvolutionPlots
 from ..core import SeriesData
 from ..fitting import MultiSeriesFitResults
-from ..config import ModelConfig, AnimationConfig, VisualizationConfig, VisualizationContext, OutputFolderConfig
+from ..config import (
+    ModelConfig,
+    AnimationConfig,
+    VisualizationConfig,
+    VisualizationContext,
+    OutputFolderConfig,
+)
 
 logger = logging.getLogger("los_estimator")
+
 
 class DeconvolutionAnimator(DeconvolutionPlots):
     """Animation functionality for deconvolution analysis."""
 
-    def __init__(self,
-                all_fit_results: MultiSeriesFitResults,
-                series_data: SeriesData, 
-                model_config: ModelConfig,
-                visualization_config: VisualizationConfig,
-                visualization_context: VisualizationContext,
-                output_folder_config: OutputFolderConfig,
-                animation_config: AnimationConfig):
-        super().__init__(all_fit_results, series_data, model_config, visualization_config, visualization_context, output_config=output_folder_config)
-        self.ac = animation_config        
+    def __init__(
+        self,
+        all_fit_results: MultiSeriesFitResults,
+        series_data: SeriesData,
+        model_config: ModelConfig,
+        visualization_config: VisualizationConfig,
+        visualization_context: VisualizationContext,
+        output_folder_config: OutputFolderConfig,
+        animation_config: AnimationConfig,
+    ):
+        super().__init__(
+            all_fit_results,
+            series_data,
+            model_config,
+            visualization_config,
+            visualization_context,
+            output_config=output_folder_config,
+        )
+        self.ac = animation_config
         self._generate_animation_context()
-    
 
-    def _generate_animation_context(self):    
+    def _generate_animation_context(self):
         """Generate context for animation frames."""
         ac = self.ac
-        ac.distro_colors = {distro: self.visualization_config.colors[i] for i, distro in enumerate(self.all_fit_results)}
+        ac.distro_colors = {
+            distro: self.visualization_config.colors[i]
+            for i, distro in enumerate(self.all_fit_results)
+        }
         d = dict(ac.alternative_names)
         ac.distro_patches = [
-            Patch(color=ac.distro_colors[distro], label=d.get(distro, distro.capitalize()))
+            Patch(
+                color=ac.distro_colors[distro], label=d.get(distro, distro.capitalize())
+            )
             for distro in self.all_fit_results
         ]
         d = dict(ac.replace_short_names)
-        self.ac.short_distro_names = [d.get(distro,distro) for distro in self.all_fit_results]
-
+        self.ac.short_distro_names = [
+            d.get(distro, distro) for distro in self.all_fit_results
+        ]
 
     def _get_subplots(self, SHOW_MUTANTS):
         """Get subplot configuration for animation."""
@@ -64,32 +85,50 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             ax_err_train = fig.add_subplot(gs[1, 2])
             ax_err_test = fig.add_subplot(gs[1, 3])
             ax_mutant = None
-            
+
         return fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant
-    
+
     def _create_animation_folder(self):
         """Create folder for animation frames."""
         path = self.output_config.animation
         if os.path.exists(path):
             import shutil
+
             shutil.rmtree(path)
         os.makedirs(path)
 
     def _plot_ax_main(self, ax_main, ax_inc, window_id):
         """Plot main axis for animation frame."""
-        w, ac, y_full, x_full = (self.series_data.get_window_info(window_id), 
-                                self.ac, 
-                                self.series_data.y_full, 
-                                self.series_data.x_full)
+        w, ac, y_full, x_full = (
+            self.series_data.get_window_info(window_id),
+            self.ac,
+            self.series_data.y_full,
+            self.series_data.x_full,
+        )
 
-        line_bedload, = ax_main.plot(y_full, color="black", label="ICU Bedload")
+        (line_bedload,) = ax_main.plot(y_full, color="black", label="ICU Bedload")
 
-        span_los_cutoff = ax_main.axvspan(w.train_start, w.train_los_cutoff, color="magenta", alpha=0.1,
-                                         label=f"Train Window (Convolution Edge) = {self.model_config.train_width} days")
-        span_train = ax_main.axvspan(w.train_los_cutoff, w.train_end, color="red", alpha=0.2,
-                                    label=f"Training = {self.model_config.train_width-self.model_config.los_cutoff} days")
-        span_test = ax_main.axvspan(w.test_start, w.test_end, color="blue", alpha=0.05,
-                                   label=f"Test Window = {self.model_config.test_width} days")
+        span_los_cutoff = ax_main.axvspan(
+            w.train_start,
+            w.train_los_cutoff,
+            color="magenta",
+            alpha=0.1,
+            label=f"Train Window (Convolution Edge) = {self.model_config.train_width} days",
+        )
+        span_train = ax_main.axvspan(
+            w.train_los_cutoff,
+            w.train_end,
+            color="red",
+            alpha=0.2,
+            label=f"Training = {self.model_config.train_width-self.model_config.los_cutoff} days",
+        )
+        span_test = ax_main.axvspan(
+            w.test_start,
+            w.test_end,
+            color="blue",
+            alpha=0.05,
+            label=f"Test Window = {self.model_config.test_width} days",
+        )
         ax_main.axvline(w.train_end, color="black", linestyle="-", linewidth=1)
 
         for distro, result_series in self.all_fit_results.items():
@@ -98,19 +137,27 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             result_obj = result_series.fit_results[window_id]
             if self.ac.debug_hide_failed and not result_obj.success:
                 continue
-            
-            y = result_obj.curve[self.model_config.los_cutoff:]
-            s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
-            ax_main.plot(s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
 
-        line_inc, = ax_inc.plot(x_full, linestyle="--", label="New ICU Admissions (Scaled)")
+            y = result_obj.curve[self.model_config.los_cutoff :]
+            s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
+            ax_main.plot(
+                s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro]
+            )
+
+        (line_inc,) = ax_inc.plot(
+            x_full, linestyle="--", label="New ICU Admissions (Scaled)"
+        )
         ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
         ma = np.nanmax(x_full)
-        ax_inc.set_ylim(-ma/7.5, ma*4)
+        ax_inc.set_ylim(-ma / 7.5, ma * 4)
 
-        legend1 = ax_main.legend(handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2)
-        legend2 = ax_main.legend(handles=[line_bedload, line_inc, span_los_cutoff, span_train, span_test], 
-                                loc="upper right")
+        legend1 = ax_main.legend(
+            handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2
+        )
+        legend2 = ax_main.legend(
+            handles=[line_bedload, line_inc, span_los_cutoff, span_train, span_test],
+            loc="upper right",
+        )
 
         ax_main.add_artist(legend1)
         ax_main.add_artist(legend2)
@@ -133,7 +180,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
         if self.ac.save_figures:
             filename = os.path.join(self.vc.animation_folder, f"fit_{num:04d}.png")
-            fig.savefig(filename, bbox_inches='tight')
+            fig.savefig(filename, bbox_inches="tight")
 
         if self.ac.debug_animation:
             plt.show()
@@ -143,7 +190,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             else:
                 plt.close(fig)
 
-    def animate_fit_deconvolution(self, df_mutant: Optional[pd.DataFrame] = None):        
+    def animate_fit_deconvolution(self, df_mutant: Optional[pd.DataFrame] = None):
         """Create animation of fit deconvolution process."""
         SHOW_MUTANTS = df_mutant is not None
 
@@ -154,25 +201,31 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         to_enumerate = list(enumerate(self.series_data.window_infos))
 
         if self.ac.debug_animation:
-            to_enumerate = [to_enumerate[min(2, len(to_enumerate)-1)]]
+            to_enumerate = [to_enumerate[min(2, len(to_enumerate) - 1)]]
 
         for window_id, window_info in to_enumerate:
-            logger.info(f"Animating window {window_counter}/{self.series_data.n_windows}")
+            logger.info(
+                f"Animating window {window_counter}/{self.series_data.n_windows}"
+            )
             window_counter += 1
 
             w = window_info
-            fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = self._get_subplots(SHOW_MUTANTS)
-      
+            fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = (
+                self._get_subplots(SHOW_MUTANTS)
+            )
+
             self._plot_ax_main(ax_main, ax_inc, window_id)
             self._plot_ax_kernel(ax_kernel, window_id)
             self._plot_ax_errors(ax_err_train, ax_err_test, window_id)
             if SHOW_MUTANTS:
                 self._plot_ax_mutants(ax_mutant, df_mutant)
 
-            plt.suptitle(f"Deconvolution Training Process\n{self.model_config.run_name.replace('_', ' ')}", fontsize=16)
+            plt.suptitle(
+                f"Deconvolution Training Process\n{self.model_config.run_name.replace('_', ' ')}",
+                fontsize=16,
+            )
 
             plt.tight_layout()
-            
 
             self.save_n_show_animation_frame(fig, num=window_info.train_end)
 
@@ -181,9 +234,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         y_full = self.series_data.y_full
         mutant_lines = []
         for col in df_mutant.columns:
-            line, = ax_mutant.plot(df_mutant[col].values)
+            (line,) = ax_mutant.plot(df_mutant[col].values)
             mutant_lines.append(line)
-            ax_mutant.fill_between(range(len(y_full)), df_mutant[col].values, 0, alpha=0.3)
+            ax_mutant.fill_between(
+                range(len(y_full)), df_mutant[col].values, 0, alpha=0.3
+            )
 
         ax_mutant.legend(mutant_lines, df_mutant.columns, loc="upper right")
         ax_mutant.set_xticks([])
@@ -215,7 +270,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             ax_err_train.bar(i, train_err, label="Train", color=c)
             ax_err_test.bar(i, test_err, label="Test", color=c)
 
-        lim = .4
+        lim = 0.4
         ax_err_train.set_ylim(0, lim)
         ax_err_train.set_title("Relative Train Error")
         ax_err_train.set_xticks(range(len(self.all_fit_results)))
@@ -238,12 +293,16 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             name = dict(ac.alternative_names).get(distro, distro.capitalize())
             if self.ac.debug_hide_failed and not result_obj.success:
                 continue
-                
-            ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
+
+            ax_kernel.plot(
+                result_obj.kernel, label=name, color=ac.distro_colors[distro]
+            )
 
         ax_kernel.plot(self.vc.real_los, color="black", label="Sentinel LoS Charité")
-            
-        ax_kernel.legend(handles=ac.distro_patches, loc="upper right", fancybox=True, ncol=2)
+
+        ax_kernel.legend(
+            handles=ac.distro_patches, loc="upper right", fancybox=True, ncol=2
+        )
         ax_kernel.set_ylim(0, 0.1)
         ax_kernel.set_xlim(-2, 80)
         ax_kernel.set_ylabel("Discharge Probability")

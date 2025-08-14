@@ -6,9 +6,11 @@ from pathlib import Path
 # Read the contents of README file
 this_directory = Path(__file__).parent
 try:
-    long_description = (this_directory / "README.md").read_text(encoding='utf-8')
+    long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 except FileNotFoundError:
-    long_description = "Length of Stay Estimator for ICU data using deconvolution methods"
+    long_description = (
+        "Length of Stay Estimator for ICU data using deconvolution methods"
+    )
 
 setup(
     name="los-estimator",
@@ -55,7 +57,7 @@ setup(
         "openpyxl>=3.1.0",  # For Excel file reading
         "toml>=0.10.2",  # For configuration files
         "click>=8.1.0",  # For CLI interface
-        "dill", # TODO version
+        "dill",  # TODO version
     ],
     extras_require={
         "dev": [
@@ -110,20 +112,29 @@ setup(
         ],
     },
     data_files=[
-        ("los_estimator/data", [
-            "data/cases.csv",
-            "data/hosp_ag.csv", 
-            "data/Intensivregister_Bundeslaender_Kapazitaeten.csv",
-            "data/Intensivregister_Deutschland_Altersgruppen.csv",
-            "data/VOC_VOI_Tabelle.xlsx",
-        ]),
-        ("los_estimator/data/dynamic", [
-            "data/dynamic/los_berlin_all.csv",
-            "data/dynamic/los_berlin_fit_result.csv",
-        ]),
-        ("los_estimator/data/prepare_hospitalizations", [
-            "data/prepare_hospitalizations/Aktuell_Deutschland_COVID-19-Hospitalisierungen.csv",
-        ]),
+        (
+            "los_estimator/data",
+            [
+                "data/cases.csv",
+                "data/hosp_ag.csv",
+                "data/Intensivregister_Bundeslaender_Kapazitaeten.csv",
+                "data/Intensivregister_Deutschland_Altersgruppen.csv",
+                "data/VOC_VOI_Tabelle.xlsx",
+            ],
+        ),
+        (
+            "los_estimator/data/dynamic",
+            [
+                "data/dynamic/los_berlin_all.csv",
+                "data/dynamic/los_berlin_fit_result.csv",
+            ],
+        ),
+        (
+            "los_estimator/data/prepare_hospitalizations",
+            [
+                "data/prepare_hospitalizations/Aktuell_Deutschland_COVID-19-Hospitalisierungen.csv",
+            ],
+        ),
     ],
     include_package_data=True,
     zip_safe=False,
