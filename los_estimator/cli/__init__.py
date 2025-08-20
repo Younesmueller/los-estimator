@@ -1,9 +1,15 @@
 # %%
 """Command-line interface for LOS Estimator."""
 
+import sys
 import argparse
 import logging
 from pathlib import Path
+
+# Add project root to Python path if needed
+project_root = Path(__file__).parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from los_estimator.config import load_configurations
 from los_estimator.estimation_run import LosEstimationRun
@@ -58,12 +64,9 @@ def main():
             overwrite_cfg = load_configurations(args.overwrite_config_file)
             update_dict(cfg, overwrite_cfg)
 
-        if args.show_plots:
-            cfg["visualization_config"].show_figures = True
-            cfg["animation_config"].show_figures = True
-        else:
-            cfg["visualization_config"].show_figures = False
-            cfg["animation_config"].show_figures = False
+        if args.show_plots is not None:
+            cfg["visualization_config"].show_figures = args.show_plots
+            cfg["animation_config"].show_figures = args.show_plots
 
         estimator = LosEstimationRun(
             data_config=cfg["data_config"],

@@ -135,8 +135,7 @@ class DataLoader:
         new_data = pd.DataFrame(0, index=date_range, columns=df_inc.columns)
         df_inc = pd.concat([new_data, df_inc])
 
-        df_inc = df_inc[df_inc.index >= start_day]
-        df_inc = df_inc[df_inc.index <= end_day]
+        df_inc = df_inc[start_day:end_day]
         return df_inc, raw
 
     def _load_icu_occupancy(self, start_day, end_day):

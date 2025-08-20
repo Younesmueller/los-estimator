@@ -143,6 +143,7 @@ class LosEstimationRun:
             visualization_context=self.visualization_context,
             animation_config=self.animation_config,
             output_folder_config=self.output_config,
+            window_ids=self.fitter.chosen_windows,
         )
 
         animator.animate_fit_deconvolution(self.data.df_mutant)

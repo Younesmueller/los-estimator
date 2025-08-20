@@ -36,6 +36,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         visualization_context: VisualizationContext,
         output_folder_config: OutputFolderConfig,
         animation_config: AnimationConfig,
+        window_ids: Optional[list[int]] = None,
     ):
         super().__init__(
             all_fit_results,
@@ -45,6 +46,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             visualization_context,
             output_config=output_folder_config,
         )
+        self.window_ids = window_ids
         self.ac = animation_config
         self._generate_animation_context()
 
@@ -183,14 +185,16 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
         self._create_animation_folder()
 
-        window_counter = 1
         to_enumerate = list(enumerate(self.series_data.window_infos))
+        if self.window_ids is not None:
+            to_enumerate = [to_enumerate[i] for i in self.window_ids]
+        window_counter = 1
 
         if self.ac.debug_animation:
-            to_enumerate = to_enumerate[1 : min(3, len(to_enumerate))]
-
+            to_enumerate = to_enumerate[: min(3, len(to_enumerate))]
+        n_windows = len(to_enumerate)
         for window_id, window_info in to_enumerate:
-            logger.info(f"Animating window {window_counter}/{self.series_data.n_windows}")
+            logger.info(f"Animating window {window_counter}/{n_windows}")
             window_counter += 1
 
             w = window_info

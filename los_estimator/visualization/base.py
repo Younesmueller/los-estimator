@@ -1,5 +1,7 @@
 """Base visualizer class with common functionality."""
 
+import os
+
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -71,7 +73,7 @@ class VisualizerBase:
             if filename and self.output_config:
                 if not filename.endswith(".png"):
                     filename = filename + ".png"
-                full_path = self.output_config.figures + filename
+                full_path = os.path.join(self.output_config.figures, filename)
                 fig.savefig(full_path, bbox_inches="tight")
 
         if self.visualization_config.show_figures:
