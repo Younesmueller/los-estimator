@@ -58,14 +58,23 @@ model_config = ModelConfig(
 
 output_config = OutputFolderConfig("./results")
 
-debug_configuration = DebugConfig(one_window=False, less_windows=True, less_distros=False, only_linear=False)
+debug_configuration = DebugConfig(
+    one_window=False, less_windows=True, less_distros=False, only_linear=False
+)
 
 visualization_config = VisualizationConfig(
     save_figures=True,
     show_figures=True,
 )
-animation_config = AnimationConfig(debug_animation=False, debug_hide_failed=True, show_figures=True, save_figures=False)
+animation_config = AnimationConfig(
+    debug_animation=False, debug_hide_failed=True, show_figures=True, save_figures=False
+)
 
 estimator = LosEstimationRun(
-    data_config, output_config, model_config, debug_configuration, visualization_config, animation_config
+    data_config,
+    output_config,
+    model_config,
+    debug_configuration,
+    visualization_config,
+    animation_config,
 )

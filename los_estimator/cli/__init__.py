@@ -1,9 +1,9 @@
 # %%
 """Command-line interface for LOS Estimator."""
 
-import sys
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 # Add project root to Python path if needed
@@ -40,7 +40,9 @@ def setup_parser():
         "--overwrite_config_file",
         help="Path to a configuration file. Just overwrite the parameters that you want to change.",
     )
-    parser.add_argument("--show-plots", action="store_true", help="No showing of plots.")
+    parser.add_argument(
+        "--show-plots", action="store_true", help="No showing of plots."
+    )
     return parser
 
 

@@ -9,7 +9,9 @@ this_directory = Path(__file__).parent
 try:
     long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 except FileNotFoundError:
-    long_description = "Length of Stay Estimator for ICU data using deconvolution methods"
+    long_description = (
+        "Length of Stay Estimator for ICU data using deconvolution methods"
+    )
 
 setup(
     name="los_estimator",

@@ -38,7 +38,9 @@ class FitResultEvaluator:
         self.metrics: np.ndarray
         self.metrics_over_time: np.ndarray
 
-    def _get_data(self, y_true: Optional[np.ndarray], y_pred: Optional[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    def _get_data(
+        self, y_true: Optional[np.ndarray], y_pred: Optional[np.ndarray]
+    ) -> Tuple[np.ndarray, np.ndarray]:
         y_true_out = y_true if y_true is not None else self.y_true
         y_pred_out = y_pred if y_pred is not None else self.y_pred
 
@@ -57,7 +59,9 @@ class FitResultEvaluator:
         y_true, y_pred = self._get_data(y_true, y_pred)
 
         self.metrics = np.empty((len(self._metrics),), dtype=float)
-        self.metrics_over_time = np.empty((len(self._metrics_over_time), len(y_true)), dtype=float)
+        self.metrics_over_time = np.empty(
+            (len(self._metrics_over_time), len(y_true)), dtype=float
+        )
 
         for i, name in enumerate(self._metrics):
             func = ErrorFunctions[name]
@@ -69,7 +73,9 @@ class FitResultEvaluator:
         return self.metrics, self.metrics_over_time
 
     def save(self, path: str):
-        df = pd.DataFrame(self.metrics[np.newaxis], columns=self._metrics, index=[self.distro])
+        df = pd.DataFrame(
+            self.metrics[np.newaxis], columns=self._metrics, index=[self.distro]
+        )
         df.to_csv(path + f"/{self.distro}_metrics.csv")
         df = pd.DataFrame(self.metrics_over_time.T, columns=self._metrics_over_time)
         df.to_csv(path + f"/{self.distro}_metrics_over_time.csv")

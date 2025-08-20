@@ -1,7 +1,8 @@
+import sys
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import TYPE_CHECKING
-import sys
 
 if TYPE_CHECKING:
     # No JIT during type checking or when running coverage

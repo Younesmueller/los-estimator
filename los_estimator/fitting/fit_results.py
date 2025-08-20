@@ -71,10 +71,16 @@ class SeriesFitResult:
         self.successes = [fr.success for fr in self.fit_results]
         self.n_success = sum(self.successes)
         self.transition_rates = np.array(
-            [fr.model_config[0] if (fr is not None) else np.nan for fr in self.fit_results]
+            [
+                fr.model_config[0] if (fr is not None) else np.nan
+                for fr in self.fit_results
+            ]
         )
         self.transition_delays = np.array(
-            [fr.model_config[1] if (fr is not None) else np.nan for fr in self.fit_results]
+            [
+                fr.model_config[1] if (fr is not None) else np.nan
+                for fr in self.fit_results
+            ]
         )
 
     def _collect_errors(self):
@@ -95,12 +101,16 @@ class SeriesFitResult:
         if isinstance(window_id, slice):
             return self.fit_results[window_id]
         if window_id >= len(self.fit_results):
-            raise IndexError(f"Window ID {window_id} out of range for {len(self.fit_results)} windows.")
+            raise IndexError(
+                f"Window ID {window_id} out of range for {len(self.fit_results)} windows."
+            )
         return self.fit_results[window_id]
 
     def __setitem__(self, window_id, value):
         if window_id >= len(self.fit_results):
-            raise IndexError(f"Window ID {window_id} out of range for {len(self.fit_results)} windows.")
+            raise IndexError(
+                f"Window ID {window_id} out of range for {len(self.fit_results)} windows."
+            )
         self.fit_results[window_id] = value
 
     def __repr__(self):
@@ -135,13 +145,21 @@ class MultiSeriesFitResults(OrderedDict):
         for distro, fit_result in self.items():
             fit_result.bake()
         self.n_windows = len(self.results[0].fit_results) if self.results else 0
-        self.train_errors_by_distro = np.array([fr.train_relative_errors for fr in self.results]).T
-        self.test_errors_by_distro = np.array([fr.test_relative_errors for fr in self.results]).T
+        self.train_errors_by_distro = np.array(
+            [fr.train_relative_errors for fr in self.results]
+        ).T
+        self.test_errors_by_distro = np.array(
+            [fr.test_relative_errors for fr in self.results]
+        ).T
         self.successes_by_distro = np.array([fr.successes for fr in self.results]).T
         self.failures_by_distro = 1 - self.successes_by_distro.astype(int)
         self.n_success_by_distro = np.array([fr.n_success for fr in self.results]).T
-        self.transition_rates_by_distro = np.array([fr.transition_rates for fr in self.results]).T
-        self.transition_delays_by_distro = np.array([fr.transition_delays for fr in self.results]).T
+        self.transition_rates_by_distro = np.array(
+            [fr.transition_rates for fr in self.results]
+        ).T
+        self.transition_delays_by_distro = np.array(
+            [fr.transition_delays for fr in self.results]
+        ).T
         self.n_windows = len(self.results[0].fit_results) if self.results else 0
 
         self._make_summary()
@@ -178,4 +196,6 @@ class MultiSeriesFitResults(OrderedDict):
         self.summary = summary
 
     def __repr__(self):
-        return f"MultiSeriesFitResults(distros={self.distros}, n_windows={self.n_windows})"
+        return (
+            f"MultiSeriesFitResults(distros={self.distros}, n_windows={self.n_windows})"
+        )

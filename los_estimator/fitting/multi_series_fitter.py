@@ -34,7 +34,9 @@ class MultiSeriesFitter:
         self.distributions: list[str] = distributions
         self.exclude_distros: set[str] = set()
         self.all_fit_results: MultiSeriesFitResults = MultiSeriesFitResults()
-        self.init_parameters: defaultdict[str, list[float]] = defaultdict(list, init_parameters)
+        self.init_parameters: defaultdict[str, list[float]] = defaultdict(
+            list, init_parameters
+        )
         self.debug_config = None
 
     def DEBUG_MODE(self, debug_config):
@@ -76,7 +78,9 @@ class MultiSeriesFitter:
     def _find_past_kernels(self, fit_result, first_window, w):
         past_kernels = None
         if not first_window and self.model_config.variable_kernels:
-            past_kernels = fit_result.all_kernels[w.train_start : w.train_start + self.model_config.los_cutoff]
+            past_kernels = fit_result.all_kernels[
+                w.train_start : w.train_start + self.model_config.los_cutoff
+            ]
         return past_kernels
 
     def fit(self):
@@ -102,7 +106,9 @@ class MultiSeriesFitter:
         series_data = self.series_data
 
         fit_result = SeriesFitResult(distro)
-        fit_result.all_kernels = np.zeros((self.series_data.n_days, self.model_config.kernel_width))
+        fit_result.all_kernels = np.zeros(
+            (self.series_data.n_days, self.model_config.kernel_width)
+        )
 
         failed_windows = []
         is_first_window = True
@@ -127,8 +133,12 @@ class MultiSeriesFitter:
                 else:
                     init_vals = self.init_parameters.get(distro)
                     if self.model_config.reuse_last_parametrization:
-                        init_vals = self._find_last_valid_parametrization(fit_result, window_id, init_vals)
-                    past_kernels = self._find_past_kernels(fit_result, is_first_window, w)
+                        init_vals = self._find_last_valid_parametrization(
+                            fit_result, window_id, init_vals
+                        )
+                    past_kernels = self._find_past_kernels(
+                        fit_result, is_first_window, w
+                    )
 
                     result_obj = fit_convolution(
                         distro,
@@ -141,7 +151,9 @@ class MultiSeriesFitter:
                         error_fun=model_config.error_fun,
                     )
 
-                    self._update_past_kernels(fit_result, is_first_window, w, result_obj.kernel)
+                    self._update_past_kernels(
+                        fit_result, is_first_window, w, result_obj.kernel
+                    )
                     y_pred = calc_its_convolution(
                         series_data.x_full,
                         fit_result.all_kernels,

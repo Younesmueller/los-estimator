@@ -4,9 +4,9 @@ import shutil
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Callable, Dict, List, Optional, Tuple
 
 import dill
-from typing import Optional, Dict, Callable, List, Tuple
 
 from los_estimator.config import *
 from los_estimator.core import *
@@ -119,7 +119,10 @@ class LosEstimationRun:
         logger.addHandler(file_handler)
 
     def visualize_results(self):
-        if not self.visualization_config.show_figures and not self.visualization_config.save_figures:
+        if (
+            not self.visualization_config.show_figures
+            and not self.visualization_config.save_figures
+        ):
             logger.info("Visualization is disabled. Skipping visualization.")
             return
         self.deconv_plot_visualizer = DeconvolutionPlots(
@@ -133,7 +136,10 @@ class LosEstimationRun:
         self.deconv_plot_visualizer.generate_plots_for_run()
 
     def animate_results(self):
-        if not self.animation_config.show_figures and not self.animation_config.save_figures:
+        if (
+            not self.animation_config.show_figures
+            and not self.animation_config.save_figures
+        ):
             logger.info("Animation is disabled. Skipping animation creation.")
             return
         self.animator = DeconvolutionAnimator(
@@ -211,10 +217,14 @@ class LosEstimationRun:
 
     def evaluate(self):
         if self.all_fit_results is None:
-            raise ValueError("No fit results available. Please run the fit method first.")
+            raise ValueError(
+                "No fit results available. Please run the fit method first."
+            )
         self.evaluators = {}
         for distro, fit_result in self.all_fit_results.items():
-            evaluator = FitResultEvaluator(distro, self.series_data.y_full, fit_result.prediction)
+            evaluator = FitResultEvaluator(
+                distro, self.series_data.y_full, fit_result.prediction
+            )
             evaluator.evaluate()
             self.evaluators[distro] = evaluator
         for distro, evaluator in self.evaluators.items():

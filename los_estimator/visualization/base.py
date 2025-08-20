@@ -1,12 +1,11 @@
 """Base visualizer class with common functionality."""
 
 import os
-
 from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 
-from ..config import VisualizationConfig, OutputFolderConfig
+from ..config import OutputFolderConfig, VisualizationConfig
 
 
 def get_color_palette() -> List[str]:
