@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 from scipy.stats import (
@@ -40,7 +41,7 @@ class Distribution:
     name: str
     init_values: list
     boundaries: list
-    pdf: callable
+    pdf: Callable
 
 
 # Sentinel data

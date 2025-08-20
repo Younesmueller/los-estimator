@@ -152,4 +152,5 @@ _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
 
 estimator.animate_results()
 
+
 # %%

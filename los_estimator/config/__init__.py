@@ -2,9 +2,9 @@
 
 import os
 import types
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, field
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Tuple, Optional
 
 import toml
 
@@ -50,21 +50,24 @@ class ModelConfig:
     error_fun: str = "mse"
     reuse_last_parametrization: bool = True
     variable_kernels: bool = True
-    distributions: list[str] = (
-        "lognorm",
-        # "weibull",
-        "gaussian",
-        "exponential",
-        # "gamma",
-        # "beta",
-        "cauchy",
-        "t",
-        # "invgauss",
-        "linear",
-        # "block",
-        # "sentinel",
-        "compartmental",
+    distributions: List[str] = field(
+        default_factory=lambda: [
+            "lognorm",
+            # "weibull",
+            "gaussian",
+            "exponential",
+            # "gamma",
+            # "beta",
+            "cauchy",
+            "t",
+            # "invgauss",
+            "linear",
+            # "block",
+            # "sentinel",
+            "compartmental",
+        ]
     )
+    run_name: str = ""
     ideas = types.SimpleNamespace(
         los_change_penalty=["..."],
         fitting_err=[
@@ -108,10 +111,10 @@ class DebugConfig:
 @config("output_config")
 class OutputFolderConfig:
     base: str
-    run_name: str = None
+    run_name: str
 
     def build(self):
-        if self.run_name is None:
+        if not self.run_name:
             return
         self.results = os.path.join(self.base, self.run_name)
         self.figures = os.path.join(self.results, "figures")
@@ -128,17 +131,21 @@ class AnimationConfig:
     save_figures: bool = True
     debug_animation: bool = False
     debug_hide_failed: bool = False
-    alternative_names: list[tuple[str, str]] = (
-        ("block", "Constant Discharge"),
-        ("sentinel", "Baseline: Sentinel"),
+    alternative_names: List[Tuple[str, str]] = field(
+        default_factory=lambda: [
+            ("block", "Constant Discharge"),
+            ("sentinel", "Baseline: Sentinel"),
+        ]
     )
-    replace_short_names: list[tuple[str, str]] = (
-        ("exponential", "exp"),
-        ("gaussian", "gauss"),
-        ("compartmental", "comp"),
+    replace_short_names: List[Tuple[str, str]] = field(
+        default_factory=lambda: [
+            ("exponential", "exp"),
+            ("gaussian", "gauss"),
+            ("compartmental", "comp"),
+        ]
     )
-    distro_colors: dict[str, str] = None
-    distro_patches: dict[str, str] = None
+    distro_colors: dict[str, str] = field(default_factory=lambda: {})
+    distro_patches: dict[str, str] = field(default_factory=lambda: {})
 
 
 @config("visualization_config")
@@ -148,10 +155,10 @@ class VisualizationConfig:
     save_figures: bool = True
     show_figures: bool = True
 
-    xlims: tuple[int, int] = (-30, 725)
-    figsize: tuple[int, int] = (12, 8)
+    xlims: Tuple[int, int] = (-30, 725)
+    figsize: Tuple[int, int] = (12, 8)
     style: str = "seaborn-v0_8"
-    colors: List[str] = None
+    colors: List[str] = field(default_factory=lambda: [])
     savefig_facecolor = "white"
     savefig_dpi: int = 300
     figure_dpi: int = 100
@@ -159,10 +166,10 @@ class VisualizationConfig:
 
 @dataclass
 class VisualizationContext:
-    xtick_pos: list = None
-    xtick_label: list = None
-    real_los: list = None
-    xlims: tuple = (-30, 725)
+    xtick_pos: Tuple = ()
+    xtick_label: Tuple = ()
+    real_los: Tuple = ()
+    xlims: Tuple = (-30, 725)
     results_folder: str = ""
     figures_folder: str = ""
     animation_folder: str = ""

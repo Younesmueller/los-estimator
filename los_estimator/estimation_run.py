@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import dill
+from typing import Optional, Dict, Callable, List, Tuple
 
 from los_estimator.config import *
 from los_estimator.core import *
@@ -32,7 +33,7 @@ class LosEstimationRun:
         debug_config: DebugConfig,
         visualization_config: VisualizationConfig,
         animation_config: AnimationConfig,
-        run_nickname: str = None,
+        run_nickname: Optional[str] = None,
     ):
         self.configurations = [
             data_config,
@@ -51,7 +52,7 @@ class LosEstimationRun:
         self.animation_config: AnimationConfig = animation_config
 
         self.visualization_context: VisualizationContext = VisualizationContext()
-        self.data: DataPackage = None
+        self.data: DataPackage
 
         self.create_run()
         output_config.run_name = self.run_name
@@ -66,12 +67,12 @@ class LosEstimationRun:
             self.visualization_config, self.visualization_context
         )
 
-        self.fitter: MultiSeriesFitter = None
-        self.window_data: list = None
-        self.all_fit_results: MultiSeriesFitResults = None
-        self.series_data: SeriesData = None
+        self.fitter: MultiSeriesFitter
+        self.window_data: list
+        self.all_fit_results: MultiSeriesFitResults
+        self.series_data: SeriesData
 
-        self.evaluators: dict[str, FitResultEvaluator] = None
+        self.evaluators: dict[str, FitResultEvaluator]
         self.data_loaded = False
 
     def load_data(self):
@@ -135,7 +136,7 @@ class LosEstimationRun:
         if not self.animation_config.show_figures and not self.animation_config.save_figures:
             logger.info("Animation is disabled. Skipping animation creation.")
             return
-        animator = DeconvolutionAnimator(
+        self.animator = DeconvolutionAnimator(
             all_fit_results=self.all_fit_results,
             series_data=self.series_data,
             model_config=self.model_config,
@@ -146,7 +147,7 @@ class LosEstimationRun:
             window_ids=self.fitter.chosen_windows,
         )
 
-        animator.animate_fit_deconvolution(self.data.df_mutant)
+        self.animator.animate_fit_deconvolution(self.data.df_mutant)
 
     def create_run(self):
         model_config = self.model_config

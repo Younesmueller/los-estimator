@@ -8,7 +8,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib.patches import Patch
 
-from ..config import ModelConfig, VisualizationConfig, VisualizationContext
+from ..config import ModelConfig, OutputFolderConfig, VisualizationConfig, VisualizationContext
 from ..core import SeriesData
 from ..fitting import MultiSeriesFitResults
 from .base import VisualizerBase
@@ -26,7 +26,7 @@ class DeconvolutionPlots(VisualizerBase):
         model_config: ModelConfig,
         visualization_config: VisualizationConfig,
         visualization_context: VisualizationContext,
-        output_config: VisualizationConfig,
+        output_config: OutputFolderConfig,
     ):
         super().__init__(visualization_config, output_config)
 
@@ -51,9 +51,7 @@ class DeconvolutionPlots(VisualizerBase):
 
         plt.xticks(np.arange(len(fit_results)), fit_results.keys(), rotation=45)
         self._set_title("Number of successful fits\n")
-        plt.axhline(
-            self.series_data.n_windows, color="red", linestyle="--", label="Total"
-        )
+        plt.axhline(self.series_data.n_windows, color="red", linestyle="--", label="Total")
         plt.xticks(rotation=45)
 
         self._show("successful_fits.png", fig)
@@ -117,10 +115,7 @@ class DeconvolutionPlots(VisualizerBase):
         """Create boxplot of errors."""
         self._figure()
         plt.boxplot(errors)
-        distro_and_n = [
-            f"{distro.capitalize()} n={fr.n_success}"
-            for distro, fr in self.all_fit_results.items()
-        ]
+        distro_and_n = [f"{distro.capitalize()} n={fr.n_success}" for distro, fr in self.all_fit_results.items()]
         plt.xticks(np.arange(len(distro_and_n)) + 1, distro_and_n, rotation=45)
         plt.title(title)
         plt.ylabel(ylabel)
@@ -139,37 +134,28 @@ class DeconvolutionPlots(VisualizerBase):
         self._set_title(title)
         self._show(file)
 
-    def _ax_plot_prediction_error_window(
-        self, ax, fr_series, distro, error_window_alpha=0.1
-    ):
+    def _ax_plot_prediction_error_window(self, ax, fr_series, distro, error_window_alpha=0.1):
         """Plot prediction error window on given axis."""
         ax.plot(self.series_data.y_full, color="black", alpha=0.8, linestyle="--")
         for w, fit_result in zip(fr_series.window_infos, fr_series.fit_results):
 
             if not fit_result.success and error_window_alpha > 0:
-                ax.axvspan(
-                    w.train_start, w.train_end, color="red", alpha=error_window_alpha
-                )
+                ax.axvspan(w.train_start, w.train_end, color="red", alpha=error_window_alpha)
                 continue
 
             x = np.arange(w.train_los_cutoff, w.train_end)
-            y = fit_result.curve[
-                self.model_config.los_cutoff : self.model_config.train_width
-            ]
+            y = fit_result.curve[self.model_config.los_cutoff : self.model_config.train_width]
             ax.plot(x, y, color=self.colors[0])
 
             x = np.arange(w.train_end, w.test_end)
             y = fit_result.curve[
-                self.model_config.train_width : self.model_config.train_width
-                + self.model_config.test_width
+                self.model_config.train_width : self.model_config.train_width + self.model_config.test_width
             ]
             ax.plot(x, y, color=self.colors[1])
 
         legend_handles = [
             plt.Line2D([0], [0], color="black", linestyle="--", label="Real"),
-            plt.Line2D(
-                [0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"
-            ),
+            plt.Line2D([0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"),
             plt.Line2D(
                 [0],
                 [0],
@@ -178,9 +164,7 @@ class DeconvolutionPlots(VisualizerBase):
             ),
         ]
         if error_window_alpha > 0:
-            legend_handles += [
-                Patch(color="red", alpha=0.1, label="Failed Training Windows")
-            ]
+            legend_handles += [Patch(color="red", alpha=0.1, label="Failed Training Windows")]
         ax.legend(handles=legend_handles, loc="upper right")
 
         ax.set_ylim(-100, 6000)
@@ -204,18 +188,14 @@ class DeconvolutionPlots(VisualizerBase):
                 ax2.axvline(x[i], color="red", alpha=0.5)
 
         legend_handles = [
-            plt.Line2D(
-                [0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"
-            ),
+            plt.Line2D([0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"),
             plt.Line2D(
                 [0],
                 [0],
                 color=self.colors[1],
                 label=f"{distro.capitalize()} Prediction",
             ),
-            plt.Line2D(
-                [0], [0], color="red", label="Failed Training Windows", alpha=0.5
-            ),
+            plt.Line2D([0], [0], color="red", label="Failed Training Windows", alpha=0.5),
         ]
         ax2.legend(handles=legend_handles, loc="upper right")
 
@@ -233,9 +213,7 @@ class DeconvolutionPlots(VisualizerBase):
             self._ax_plot_prediction_error_window(ax, fr_series, distro)
             self._ax_plot_error_error_points(ax2, fr_series, distro)
 
-            plt.suptitle(
-                f"{distro.capitalize()} Distribution\n{self.model_config.run_name}"
-            )
+            plt.suptitle(f"{distro.capitalize()} Distribution\n{self.model_config.run_name}")
             plt.tight_layout()
 
             self._show(f"prediction_error_{distro}_fit.png")
@@ -246,9 +224,7 @@ class DeconvolutionPlots(VisualizerBase):
         for distro in self.all_fit_results.distros:
             fr_series = self.all_fit_results[distro]
 
-            self._ax_plot_prediction_error_window(
-                ax, fr_series, distro, error_window_alpha=0.05
-            )
+            self._ax_plot_prediction_error_window(ax, fr_series, distro, error_window_alpha=0.05)
             self._ax_plot_error_error_points(ax2, fr_series, distro)
 
         for line in ax2.get_children():
@@ -260,9 +236,7 @@ class DeconvolutionPlots(VisualizerBase):
         plt.tight_layout()
         self._show("prediction_error_all_distros.png")
 
-    def _get_distro_as_array(
-        self, distro: Optional[Union[str, List[str]]] = None
-    ) -> List[str]:
+    def _get_distro_as_array(self, distro: Optional[Union[str, List[str]]] = None) -> List[str]:
         """Convert distro parameter to array format."""
         if distro is None:
             distros = self.all_fit_results.distros
@@ -278,9 +252,7 @@ class DeconvolutionPlots(VisualizerBase):
         for distro in self.all_fit_results.distros:
             fr_series = self.all_fit_results[distro]
 
-            self._ax_plot_prediction_error_window(
-                ax, fr_series, distro, error_window_alpha=0
-            )
+            self._ax_plot_prediction_error_window(ax, fr_series, distro, error_window_alpha=0)
 
         self._set_title("All Predictions")
         plt.tight_layout()
@@ -335,3 +307,8 @@ class DeconvolutionPlots(VisualizerBase):
         self.show_all_error_windows_superimposed()
         self.show_all_predictions()
         self.superimpose_kernels()
+
+    def _set_title(self, title: str, *args, **kwargs):
+        """Set the title of the current figure."""
+        run_name = self.model_config.run_name
+        plt.title(title + "\n" + run_name, *args, **kwargs)

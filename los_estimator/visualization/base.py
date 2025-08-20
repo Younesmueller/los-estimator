@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 
-from ..config import VisualizationConfig
+from ..config import VisualizationConfig, OutputFolderConfig
 
 
 def get_color_palette() -> List[str]:
@@ -35,10 +35,10 @@ class VisualizerBase:
     def __init__(
         self,
         visualization_config: VisualizationConfig,
-        output_config: Optional[VisualizationConfig] = None,
+        output_config: Optional[OutputFolderConfig] = None,
     ):
         self.visualization_config: VisualizationConfig = visualization_config
-        self.output_config: Optional[VisualizationConfig] = output_config
+        self.output_config: Optional[OutputFolderConfig] = output_config
 
         try:
             plt.style.use(visualization_config.style)
@@ -64,7 +64,7 @@ class VisualizerBase:
         figsize = kwargs.pop("figsize", self.figsize)
         return plt.subplots(*args, figsize=figsize, **kwargs)
 
-    def _show(self, filename: str = None, fig: Optional[plt.Figure] = None):
+    def _show(self, filename: Optional[str] = None, fig: Optional[plt.Figure] = None):
         """Save the figure and show it."""
         if fig is None:
             fig = plt.gcf()
@@ -82,8 +82,3 @@ class VisualizerBase:
             plt.show()
         else:
             plt.close(fig)
-
-    def _set_title(self, title: str, *args, **kwargs):
-        """Set the title of the current figure."""
-        run_name = self.model_config.run_name
-        plt.title(title + "\n" + run_name, *args, **kwargs)

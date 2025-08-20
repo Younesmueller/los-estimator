@@ -146,5 +146,5 @@ class TestLosEstimatorIntegration:
 
 
 if __name__ == "__main__":
-    # pytest.main([__file__, "-v", "--tb=short"])
-    TestLosEstimatorIntegration().test_cli_execution_completes_successfully()
+    pytest.main([__file__, "-v", "--tb=short"])
+    # TestLosEstimatorIntegration().test_cli_execution_completes_successfully()

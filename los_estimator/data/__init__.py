@@ -65,7 +65,7 @@ class DataLoader:
         file_path = self._get_packaged_file_path(path)
         return pd.read_csv(file_path, *args, **kwargs)
 
-    def read_excel(self, path, *args, **kwargs):
+    def read_excel(self, path, *args, **kwargs) -> pd.DataFrame:
         """Read Excel file from packaged data."""
         file_path = self._get_packaged_file_path(path)
         return pd.read_excel(file_path, *args, **kwargs)
@@ -73,14 +73,14 @@ class DataLoader:
     def load_all_data(self):
         c = self.data_config
 
-        real_los: np.array = self._load_los(file=c.los_file)[0]
-        df_occupancy: pd.DataFrame = self.load_inc_beds(c.start_day, c.end_day)
-        df_init: pd.DataFrame = self.load_init_parameters(c.init_params_file)
-        df_mutant: pd.DataFrame = self.load_mutant_distribution(c.mutants_file)
-        df_mutant: pd.DataFrame = self.select_mutants(df_occupancy, df_mutant)
+        real_los = self._load_los(file=c.los_file)[0]
+        df_occupancy = self.load_inc_beds(c.start_day, c.end_day)
+        df_init = self.load_init_parameters(c.init_params_file)
+        df_mutant = self.load_mutant_distribution(c.mutants_file)
+        df_mutant = self.select_mutants(df_occupancy, df_mutant)
 
-        xtick_pos: list = None
-        xtick_label: list = None
+        xtick_pos = None
+        xtick_label = None
         xtick_pos, xtick_label = DataUtils.generate_xticks(df_occupancy)
 
         return DataPackage(
@@ -92,14 +92,16 @@ class DataLoader:
             xtick_label=xtick_label,
         )
 
-    def select_mutants(self, df_occupancy, df_mutant):
+    def select_mutants(self, df_occupancy, df_mutant) -> pd.DataFrame:
+        """Select relevant mutants from the mutant distribution data."""
         df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
         df_mutant["Omikron_BA.1/2"] = df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
         df_mutant["Omikron_BA.4/5"] = df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
         df_mutant = df_mutant[["Delta_AY.1", "Omikron_BA.1/2", "Omikron_BA.4/5"]]
         return df_mutant
 
-    def load_inc_beds(self, start_day, end_day):
+    def load_inc_beds(self, start_day, end_day) -> pd.DataFrame:
+        """Load incidence and ICU occupancy data."""
         df_inc, _ = self._load_incidences(start_day, end_day)
         df_icu = self._load_icu_occupancy(start_day, end_day)
 
@@ -108,20 +110,21 @@ class DataLoader:
         df["new_icu_smooth"] = df["new_icu"].rolling(7).mean()
         return df
 
-    def load_init_parameters(self, file):
+    def load_init_parameters(self, file) -> pd.DataFrame:
+        """Load initial parameters for the model."""
         df_init = self.read_csv(file, index_col=0)
         df_init = df_init.set_index("distro")
         # interpret model_config as array float of format [f1 f2 f3 ...]
         df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 
-    def _load_los(self, cutoff_percentage=0.9, file=""):
+    def _load_los(self, cutoff_percentage=0.9, file="") -> tuple[np.ndarray, int]:
         df_los = self.read_csv(file, index_col=0)
 
         los = df_los.iloc[:, 0].to_numpy(dtype=float)
         los /= los.sum()
 
-        los_cutoff = np.argmax(los.cumsum() > cutoff_percentage)
+        los_cutoff = int(np.argmax(los.cumsum() > cutoff_percentage))
         return los, los_cutoff
 
     def _load_incidences(self, start_day, end_day):
@@ -160,7 +163,8 @@ class DataLoader:
         df_icu = df_icu[df_icu.index <= end_day]
         return df_icu
 
-    def load_mutant_distribution(self, path):
+    def load_mutant_distribution(self, path) -> pd.DataFrame:
+        """Load the mutant distribution data."""
         raw_df = self.read_excel(path, sheet_name=1)
         c = [col for col in raw_df.columns if "Anteil" in col]
         df = raw_df[c]

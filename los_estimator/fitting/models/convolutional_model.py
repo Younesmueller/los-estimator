@@ -3,7 +3,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 import sys
 
-if TYPE_CHECKING or ("coverage" in sys.modules):
+if TYPE_CHECKING:
     # No JIT during type checking or when running coverage
     def njit(func):
         return func

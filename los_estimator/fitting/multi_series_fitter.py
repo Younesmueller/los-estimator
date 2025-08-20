@@ -21,14 +21,20 @@ logger = logging.getLogger("los_estimator")
 class MultiSeriesFitter:
     all_fit_results: MultiSeriesFitResults
 
-    def __init__(self, series_data, model_config, distributions: list[str], init_parameters):
+    def __init__(
+        self,
+        series_data: SeriesData,
+        model_config: ModelConfig,
+        distributions: list[str],
+        init_parameters: dict[str, list[float]],
+    ):
         self.series_data: SeriesData = series_data
         self.model_config: ModelConfig = model_config
         self._distributions: list[str] = distributions
-        self.distributions: list[str] = None
+        self.distributions: list[str] = distributions
         self.exclude_distros: set[str] = set()
         self.all_fit_results: MultiSeriesFitResults = MultiSeriesFitResults()
-        self.init_parameters: defaultdict[list[str]] = defaultdict(list, init_parameters)
+        self.init_parameters: defaultdict[str, list[float]] = defaultdict(list, init_parameters)
         self.debug_config = None
 
     def DEBUG_MODE(self, debug_config):
