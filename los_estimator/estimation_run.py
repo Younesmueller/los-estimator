@@ -25,6 +25,21 @@ logger = logging.getLogger("los_estimator")
 
 
 class LosEstimationRun:
+    """Main class for running Length of Stay estimation analysis.
+
+    This class orchestrates the entire LOS estimation process including data loading,
+    model fitting, evaluation, and visualization. It manages configurations and
+    coordinates between different components of the analysis pipeline.
+
+    Attributes:
+        configurations (List): List of all configuration objects.
+        run_nickname (Optional[str]): Optional nickname for this analysis run.
+        model_config (ModelConfig): Configuration for model parameters.
+        output_config (OutputFolderConfig): Configuration for output handling.
+        data_config (DataConfig): Configuration for data loading and processing.
+        debug_config (DebugConfig): Configuration for debugging options.
+    """
+
     def __init__(
         self,
         data_config: DataConfig,
@@ -35,6 +50,17 @@ class LosEstimationRun:
         animation_config: AnimationConfig,
         run_nickname: Optional[str] = None,
     ):
+        """Initialize LOS estimation run with configurations.
+
+        Args:
+            data_config (DataConfig): Configuration for data loading and processing.
+            output_config (OutputFolderConfig): Configuration for output folder structure.
+            model_config (ModelConfig): Configuration for model parameters and fitting.
+            debug_config (DebugConfig): Configuration for debugging and development options.
+            visualization_config (VisualizationConfig): Configuration for plot generation.
+            animation_config (AnimationConfig): Configuration for animation generation.
+            run_nickname (Optional[str], optional): Nickname for this run. Defaults to None.
+        """
         self.configurations = [
             data_config,
             output_config,
@@ -76,6 +102,11 @@ class LosEstimationRun:
         self.data_loaded = False
 
     def load_data(self):
+        """Load all required data for the analysis.
+
+        Loads data using the configured DataLoader and sets up visualization context
+        with the loaded data properties like x-axis labels and real LOS values.
+        """
         self.data = self.data_loader.load_all_data()
 
         vc = self.visualization_context
@@ -91,12 +122,22 @@ class LosEstimationRun:
         self.data_loaded = True
 
     def visualize_input_data(self):
+        """Generate visualizations of the input data.
+
+        Creates plots showing ICU occupancy data, mutant data, and other input
+        data visualizations using the configured InputDataVisualizer.
+        """
         self.input_visualizer.data = self.data
         self.input_visualizer.show_input_data()
         self.input_visualizer.plot_icu_data()
         self.input_visualizer.plot_mutant_data()
 
     def set_up(self):
+        """Set up the output directory structure and logging.
+
+        Creates necessary output directories, removes existing results if present,
+        and configures logging for the analysis run.
+        """
         c = self.output_config
 
         c.run_name = self.run_name
@@ -113,16 +154,24 @@ class LosEstimationRun:
         self.set_up_logger()
 
     def set_up_logger(self):
+        """Configure file logging for this analysis run.
+
+        Adds a file handler to the logger to capture all log messages
+        in a run-specific log file within the results directory.
+        """
         path = Path(self.output_config.results) / "run.log"
         file_handler = logging.FileHandler(path)
         file_handler.setLevel(logging.INFO)
         logger.addHandler(file_handler)
 
     def visualize_results(self):
-        if (
-            not self.visualization_config.show_figures
-            and not self.visualization_config.save_figures
-        ):
+        """Generate visualizations of the fitting results.
+
+        Creates deconvolution plots and other result visualizations if visualization
+        is enabled in the configuration. Skips visualization if both show_figures
+        and save_figures are disabled.
+        """
+        if not self.visualization_config.show_figures and not self.visualization_config.save_figures:
             logger.info("Visualization is disabled. Skipping visualization.")
             return
         self.deconv_plot_visualizer = DeconvolutionPlots(
@@ -136,10 +185,7 @@ class LosEstimationRun:
         self.deconv_plot_visualizer.generate_plots_for_run()
 
     def animate_results(self):
-        if (
-            not self.animation_config.show_figures
-            and not self.animation_config.save_figures
-        ):
+        if not self.animation_config.show_figures and not self.animation_config.save_figures:
             logger.info("Animation is disabled. Skipping animation creation.")
             return
         self.animator = DeconvolutionAnimator(
@@ -217,14 +263,10 @@ class LosEstimationRun:
 
     def evaluate(self):
         if self.all_fit_results is None:
-            raise ValueError(
-                "No fit results available. Please run the fit method first."
-            )
+            raise ValueError("No fit results available. Please run the fit method first.")
         self.evaluators = {}
         for distro, fit_result in self.all_fit_results.items():
-            evaluator = FitResultEvaluator(
-                distro, self.series_data.y_full, fit_result.prediction
-            )
+            evaluator = FitResultEvaluator(distro, self.series_data.y_full, fit_result.prediction)
             evaluator.evaluate()
             self.evaluators[distro] = evaluator
         for distro, evaluator in self.evaluators.items():

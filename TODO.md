@@ -15,7 +15,6 @@
     - ABGELEHNT  
       - [ ] Make the animator faster by reusing the graph
       - [ ] Speichere Zwischenergebnisse 
-    - [ ] order imports
 - [ ] Documentation
     - [ ] Config
     - [ ] Core

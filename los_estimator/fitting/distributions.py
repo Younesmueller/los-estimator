@@ -1,3 +1,10 @@
+"""Distribution types and probability density functions for LOS modeling.
+
+This module provides various probability distributions that can be used as
+kernels for length of stay estimation, including standard statistical
+distributions and custom distributions specific to hospital data.
+"""
+
 from dataclasses import dataclass
 from typing import Callable
 
@@ -18,7 +25,11 @@ __all__ = ["DistributionTypes", "Distribution"]
 
 
 class DistributionTypes:
-    """Enum for available distribution types."""
+    """Enum for available distribution types.
+
+    Defines constants for all supported distribution types that can be
+    used as length of stay kernels in the modeling process.
+    """
 
     LOGNORM = "lognorm"
     WEIBULL = "weibull"
@@ -36,7 +47,17 @@ class DistributionTypes:
 
 @dataclass
 class Distribution:
-    """Data class for distribution information."""
+    """Data class for distribution information.
+
+    Contains all necessary information to define and use a probability
+    distribution for length of stay modeling.
+
+    Attributes:
+        name (str): Name identifier for the distribution.
+        init_values (list): Initial parameter values for optimization.
+        boundaries (list): Parameter bounds for constrained optimization.
+        pdf (Callable): Probability density function.
+    """
 
     name: str
     init_values: list

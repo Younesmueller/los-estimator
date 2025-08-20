@@ -1,3 +1,9 @@
+"""Length of Stay fitting algorithms and utilities.
+
+This module provides functions for fitting convolution-based models to hospital
+length of stay data using various distribution types and optimization methods.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
@@ -11,10 +17,31 @@ from .fit_results import SingleFitResult
 
 
 def combine_past_kernel(past_kernels, kernel):
+    """Combine past kernels with a new kernel.
+
+    Args:
+        past_kernels (np.ndarray): Previously fitted kernels.
+        kernel (np.ndarray): New kernel to add.
+
+    Returns:
+        np.ndarray: Combined kernels stacked vertically.
+    """
     return np.vstack([*past_kernels, kernel])
 
 
 def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
+    """Create an objective function for convolution-based fitting.
+
+    Args:
+        distro (str): Distribution type for the kernel.
+        kernel_width (int): Width of the kernel in days.
+        los_cutoff (int): Number of days to skip at the beginning for comparison.
+        error_fun (callable): Error function to minimize.
+
+    Returns:
+        callable: Objective function that takes model parameters and data.
+    """
+
     def objective_function(model_config, inc, icu, past_kernels=None):
         kernel = Distributions.generate_kernel(distro, model_config, kernel_width)
         if past_kernels is not None:
@@ -28,6 +55,19 @@ def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
 
 
 def initialize_distro_parameters(distro, distro_boundaries, distro_init_params):
+    """Initialize distribution parameters and boundaries for optimization.
+
+    Sets up default boundaries and initial parameters for a given distribution
+    if not provided by the user.
+
+    Args:
+        distro (str): Distribution type name.
+        distro_boundaries (list, optional): Parameter boundaries for optimization.
+        distro_init_params (list, optional): Initial parameter values.
+
+    Returns:
+        tuple: (distro_boundaries, distro_init_params) with defaults applied.
+    """
 
     if distro_boundaries is None:
         stretch_factor_bounds = [(None, None)]
@@ -52,14 +92,32 @@ def fit_convolution(
     method="L-BFGS-B",
     error_fun="mse",
 ):
+    """Fit a convolution-based model to length of stay data.
+
+    Performs optimization to find the best parameters for a specified distribution
+    that minimizes the error between predicted and observed ICU occupancy.
+
+    Args:
+        distro (str): Distribution type for the kernel (e.g., 'gamma', 'lognormal').
+        train_data (tuple): (x_train, y_train) training data arrays.
+        test_data (tuple): (x_test, y_test) test data arrays.
+        kernel_width (int): Width of the distribution kernel in days.
+        los_cutoff (int): Number of initial days to exclude from error calculation.
+        distro_boundaries (list, optional): Parameter bounds for optimization.
+        distro_init_params (list, optional): Initial parameter values.
+        past_kernels (np.ndarray, optional): Previously fitted kernels to combine.
+        method (str, optional): Optimization method. Defaults to "L-BFGS-B".
+        error_fun (str, optional): Error function name. Defaults to "mse".
+
+    Returns:
+        SingleFitResult: Object containing fit results, parameters, and predictions.
+    """
 
     x_train, y_train = train_data
     x_test, y_test = test_data
     error_fun = ErrorFunctions[error_fun]
 
-    distro_boundaries, distro_init_params = initialize_distro_parameters(
-        distro, distro_boundaries, distro_init_params
-    )
+    distro_boundaries, distro_init_params = initialize_distro_parameters(distro, distro_boundaries, distro_init_params)
 
     obj_fun = get_objective_convolution(distro, kernel_width, los_cutoff, error_fun)
 
@@ -89,12 +147,7 @@ def fit_convolution(
 
     train_len = len(x_train)
     train_err = obj_fun(result.x, x_train, y_train, *args[2:])
-    test_err = obj_fun(
-        result.x,
-        x_test[train_len - los_cutoff :],
-        y_test[train_len - los_cutoff :],
-        *args[2:]
-    )
+    test_err = obj_fun(result.x, x_test[train_len - los_cutoff :], y_test[train_len - los_cutoff :], *args[2:])
 
     fit_results = SingleFitResult(
         distro=distro,

@@ -6,7 +6,7 @@
    2. Code Style & Formatting
       ✓ Apply black formatting consistently across all files
       ✓ Fix line length violations (some lines exceed 88 characters)
-      ☐ Add proper docstrings to all public functions and classes
+      ✓ Add proper docstrings to all public functions and classes
       ☐ Use type hints consistently throughout the codebase
    3. Error Handling
       ☐ Improve exception handling in CLI - avoid bare except Exception
@@ -38,7 +38,7 @@
             Contributing guidelines
       ☐ Add CHANGELOG.md for version history
       ☐ Create CONTRIBUTING.md with development guidelines
-      ☐ Add docstrings to all public APIs
+      ✓ Add docstrings to all public APIs
    8. Examples & Tutorials
       ☐ Add example notebooks in examples directory
       ☐ Create quick start guide

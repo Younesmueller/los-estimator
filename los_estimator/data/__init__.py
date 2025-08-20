@@ -17,6 +17,17 @@ __all__ = [
 
 @dataclass
 class DataPackage:
+    """Container for all loaded data required for LOS estimation.
+
+    Attributes:
+        df_occupancy (pd.DataFrame): ICU occupancy data over time.
+        real_los (pd.Series): Real length of stay values for validation.
+        df_init (pd.DataFrame): Initial condition data.
+        df_mutant (pd.DataFrame): Mutant/variant data for analysis.
+        xtick_pos (list): Positions for x-axis tick marks in plots.
+        xtick_label (list): Labels for x-axis tick marks in plots.
+    """
+
     df_occupancy: pd.DataFrame
     real_los: pd.Series
     df_init: pd.DataFrame
@@ -26,15 +37,48 @@ class DataPackage:
 
 
 class DataUtils:
+    """Utility functions for data processing and manipulation.
+
+    Provides static methods for common data operations like date conversions
+    and generating axis labels for time series plots.
+    """
+
     def date_to_day(date, start_day):
-        """Convert date to day number relative to start_day."""
+        """Convert date to day number relative to start_day.
+
+        Args:
+            date (pd.Timestamp): Date to convert.
+            start_day (str or pd.Timestamp): Reference start date.
+
+        Returns:
+            int: Number of days since start_day.
+        """
         return (date - pd.Timestamp(start_day)).days
 
     def day_to_date(day, start_day):
-        """Convert day number to date relative to start_day."""
+        """Convert day number to date relative to start_day.
+
+        Args:
+            day (int): Day number to convert.
+            start_day (str or pd.Timestamp): Reference start date.
+
+        Returns:
+            pd.Timestamp: Date corresponding to the day number.
+        """
         return pd.Timestamp(start_day) + pd.Timedelta(days=day)
 
     def generate_xticks(df):
+        """Generate x-axis tick positions and labels for time series plots.
+
+        Creates tick marks at the first day of each month, with year labels
+        added for January or the first data point.
+
+        Args:
+            df (pd.DataFrame): DataFrame with datetime index.
+
+        Returns:
+            tuple: (xtick_pos, xtick_label) lists for plot formatting.
+        """
         xtick_pos = []
         xtick_label = []
         for i in range(0, len(df)):
@@ -95,12 +139,8 @@ class DataLoader:
     def select_mutants(self, df_occupancy, df_mutant) -> pd.DataFrame:
         """Select relevant mutants from the mutant distribution data."""
         df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
-        df_mutant["Omikron_BA.1/2"] = (
-            df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
-        )
-        df_mutant["Omikron_BA.4/5"] = (
-            df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
-        )
+        df_mutant["Omikron_BA.1/2"] = df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
+        df_mutant["Omikron_BA.4/5"] = df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
         df_mutant = df_mutant[["Delta_AY.1", "Omikron_BA.1/2", "Omikron_BA.4/5"]]
         return df_mutant
 
@@ -119,9 +159,7 @@ class DataLoader:
         df_init = self.read_csv(file, index_col=0)
         df_init = df_init.set_index("distro")
         # interpret model_config as array float of format [f1 f2 f3 ...]
-        df_init["params"] = df_init["params"].apply(
-            lambda x: [float(i) for i in x[1:-1].split()]
-        )
+        df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 
     def _load_los(self, cutoff_percentage=0.9, file="") -> tuple[np.ndarray, int]:
@@ -140,9 +178,7 @@ class DataLoader:
         raw = df_inc.copy()
         df_inc = df_inc[["AnzahlFall", "daily"]]
 
-        date_range = pd.date_range(
-            start="2020-01-02", end=df_inc.index.min(), inclusive="left"
-        )
+        date_range = pd.date_range(start="2020-01-02", end=df_inc.index.min(), inclusive="left")
         new_data = pd.DataFrame(0, index=date_range, columns=df_inc.columns)
         df_inc = pd.concat([new_data, df_inc])
 
@@ -163,9 +199,7 @@ class DataLoader:
         df_icu = df_icu.groupby("datum").sum()
 
         # Fill up the time from beginning of 2020 to data begin
-        date_range = pd.date_range(
-            start="2020-01-01", end=df_icu.index.min(), inclusive="left"
-        )
+        date_range = pd.date_range(start="2020-01-01", end=df_icu.index.min(), inclusive="left")
         new_data = pd.DataFrame(0, index=date_range, columns=df_icu.columns)
         df_icu = pd.concat([new_data, df_icu])
 

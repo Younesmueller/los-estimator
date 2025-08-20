@@ -8,7 +8,18 @@ from pathlib import Path
 
 
 def setup_logging(log_file_path=None):
-    """Configure logging for the whole package."""
+    """Configure logging for the whole package.
+
+    Sets up a logger with both console and optional file output.
+
+    Args:
+        log_file_path (str, optional): Path to log file. If provided, logs will
+            also be written to this file. Parent directories will be created
+            if they don't exist.
+
+    Returns:
+        logging.Logger: Configured logger instance for the los_estimator package.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

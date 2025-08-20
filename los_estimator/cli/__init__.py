@@ -18,6 +18,15 @@ logger = logging.getLogger("los_estimator")
 
 
 def update_dict(d1, d2):
+    """Recursively update dictionary d1 with values from d2.
+
+    Performs a deep merge of dictionaries, recursively updating nested
+    dictionaries rather than replacing them entirely.
+
+    Args:
+        d1 (dict): Dictionary to update (modified in place).
+        d2 (dict): Dictionary with new values to merge in.
+    """
     for key, value in d2.items():
         if isinstance(value, dict):
             update_dict(d1.setdefault(key, {}), value)
@@ -26,6 +35,14 @@ def update_dict(d1, d2):
 
 
 def setup_parser():
+    """Set up command-line argument parser for LOS Estimator.
+
+    Creates an argument parser with options for configuration files,
+    visualization settings, and other runtime parameters.
+
+    Returns:
+        argparse.ArgumentParser: Configured argument parser.
+    """
     parser = argparse.ArgumentParser(
         description="Length of Stay Estimator for ICU data using deconvolution",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -40,13 +57,18 @@ def setup_parser():
         "--overwrite_config_file",
         help="Path to a configuration file. Just overwrite the parameters that you want to change.",
     )
-    parser.add_argument(
-        "--show-plots", action="store_true", help="No showing of plots."
-    )
+    parser.add_argument("--show-plots", action="store_true", help="No showing of plots.")
     return parser
 
 
 def main():
+    """Main entry point for the LOS Estimator command-line interface.
+
+    Parses command-line arguments, loads configurations, and runs the
+    complete LOS estimation analysis pipeline.
+
+    Exits with status code 1 if any errors occur during execution.
+    """
     parser = setup_parser()
     args, unknown_args = parser.parse_known_args()
     if unknown_args:

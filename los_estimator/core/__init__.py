@@ -15,7 +15,31 @@ __all__ = [
 
 
 class WindowInfo:
+    """Information about a time window for analysis.
+
+    Contains all the necessary indices and slices for a specific time window
+    used in the sliding window analysis approach.
+
+    Attributes:
+        window (int): Index between training and prediction.
+        train_end (int): End index of training period.
+        train_start (int): Start index of training period.
+        train_los_cutoff (int): Cutoff point for LOS calculation in training.
+        test_start (int): Start index of test period.
+        test_end (int): End index of test period.
+        train_window (slice): Slice object for training window.
+        train_test_window (slice): Slice object for combined train+test window.
+        test_window (slice): Slice object for test window.
+        model_config (ModelConfig): Associated model configuration.
+    """
+
     def __init__(self, window: int, model_config: ModelConfig):
+        """Initialize window information.
+
+        Args:
+            window (int): Index between training and prediction..
+            model_config (ModelConfig): Model configuration with window sizes.
+        """
         self.window: int = window
         self.train_end: int = self.window
         self.train_start: int = self.window - model_config.train_width
@@ -34,9 +58,29 @@ class WindowInfo:
 
 
 class SeriesData:
-    def __init__(
-        self, x_full: np.ndarray, y_full: np.ndarray, model_config: ModelConfig
-    ):
+    """Time series data container with sliding window functionality.
+
+    Manages time series data and provides iteration over sliding windows
+    for temporal analysis of length of stay models.
+
+    Attributes:
+        model_config (ModelConfig): Configuration for window sizes and parameters.
+        x_full (np.ndarray): Full input time series (e.g., admissions).
+        y_full (np.ndarray): Full output time series (e.g., occupancy).
+        windows (np.ndarray): Array of window start indices.
+        window_infos (list[WindowInfo]): List of WindowInfo objects.
+        n_windows (int): Number of analysis windows.
+        n_days (int): Total number of days in the data.
+    """
+
+    def __init__(self, x_full: np.ndarray, y_full: np.ndarray, model_config: ModelConfig):
+        """Initialize series data with sliding windows.
+
+        Args:
+            x_full (np.ndarray): Full input time series data.
+            y_full (np.ndarray): Full output time series data.
+            model_config (ModelConfig): Configuration for window parameters.
+        """
         self.model_config: ModelConfig = model_config
         self.x_full: np.ndarray = x_full
         self.y_full: np.ndarray = y_full
@@ -49,38 +93,28 @@ class SeriesData:
 
     def _calc_windows(self, model_config):
         start = model_config.train_width
-        self.windows = np.arange(
-            start, len(self.x_full) - model_config.kernel_width, model_config.step
-        )
-        self.window_infos = [
-            WindowInfo(window, model_config) for window in self.windows
-        ]
+        self.windows = np.arange(start, len(self.x_full) - model_config.kernel_width, model_config.step)
+        self.window_infos = [WindowInfo(window, model_config) for window in self.windows]
         self.n_windows = len(self.windows)
 
     @functools.lru_cache
     def get_train_data(self, window_id: int):
         if window_id > len(self.windows):
-            raise ValueError(
-                f"Window ID {window_id} out of range for {len(self.windows)} windows."
-            )
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         w = self.window_infos[window_id]
         return self.x_full[w.train_window], self.y_full[w.train_window]
 
     @functools.lru_cache
     def get_test_data(self, window_id):
         if window_id > len(self.windows):
-            raise ValueError(
-                f"Window ID {window_id} out of range for {len(self.windows)} windows."
-            )
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         w = self.window_infos[window_id]
         return self.x_full[w.train_test_window], self.y_full[w.train_test_window]
 
     @functools.lru_cache
     def get_window_info(self, window_id):
         if window_id > len(self.windows):
-            raise ValueError(
-                f"Window ID {window_id} out of range for {len(self.windows)} windows."
-            )
+            raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         return self.window_infos[window_id]
 
     def __iter__(self):

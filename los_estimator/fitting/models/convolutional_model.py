@@ -1,3 +1,10 @@
+"""Convolutional model for length of stay estimation.
+
+This module implements convolution-based models that use admission data
+and length of stay distributions to predict ICU occupancy through
+mathematical convolution operations.
+"""
+
 import sys
 from typing import TYPE_CHECKING
 
@@ -14,7 +21,20 @@ else:
 
 
 def los_distro_converter(los):
-    """Converts from distribution of discharge to distribution of presence in icu (monotonically decreasing)."""
+    """Convert discharge distribution to ICU presence distribution.
+
+    Converts from distribution of discharge to distribution of presence in ICU
+    (monotonically decreasing) by computing the cumulative survival function.
+
+    Args:
+        los (np.ndarray): Length of stay distribution (2D array).
+
+    Returns:
+        np.ndarray: ICU presence distribution.
+
+    Raises:
+        Exception: If los is not 2D.
+    """
     if len(los.shape) == 1:
         raise Exception("los_distro must be 2D")
     los2 = 1 - np.cumsum(los, axis=1)
@@ -22,6 +42,19 @@ def los_distro_converter(los):
 
 
 def calc_its_convolution(admissions, los_distro1, los_cutoff):
+    """Calculate ICU occupancy using convolution with LOS distribution.
+
+    Computes the ICU occupancy time series by convolving admission data
+    with length of stay distributions, accounting for variable kernels over time.
+
+    Args:
+        admissions (np.ndarray): Daily admission counts.
+        los_distro1 (np.ndarray): Length of stay distribution(s).
+        los_cutoff (int): Number of initial days to set to zero.
+
+    Returns:
+        np.ndarray: Predicted ICU occupancy time series.
+    """
     if len(los_distro1.shape) == 1:
         los_distro1 = los_distro1[None, :]
     los_distro = los_distro_converter(los_distro1)
@@ -34,6 +67,18 @@ def calc_its_convolution(admissions, los_distro1, los_cutoff):
 
 @njit
 def convolve_variable_kernel(admissions, los_distro):
+    """Perform convolution with time-varying kernels.
+
+    Efficiently computes convolution where the kernel can change over time,
+    using Numba JIT compilation for performance.
+
+    Args:
+        admissions (np.ndarray): Admission time series.
+        los_distro (np.ndarray): Time-varying LOS distributions (2D).
+
+    Returns:
+        np.ndarray: Convolved result representing ICU occupancy.
+    """
     adm_len = admissions.shape[0]
     n_kernel, kernel_len = los_distro.shape
 

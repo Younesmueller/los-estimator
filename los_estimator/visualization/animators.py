@@ -54,20 +54,15 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         """Generate context for animation frames."""
         ac = self.ac
         ac.distro_colors = {
-            distro: self.visualization_config.colors[i]
-            for i, distro in enumerate(self.all_fit_results)
+            distro: self.visualization_config.colors[i] for i, distro in enumerate(self.all_fit_results)
         }
         d = dict(ac.alternative_names)
         ac.distro_patches = [
-            Patch(
-                color=ac.distro_colors[distro], label=d.get(distro, distro.capitalize())
-            )
+            Patch(color=ac.distro_colors[distro], label=d.get(distro, distro.capitalize()))
             for distro in self.all_fit_results
         ]
         d = dict(ac.replace_short_names)
-        self.ac.short_distro_names = [
-            d.get(distro, distro) for distro in self.all_fit_results
-        ]
+        self.ac.short_distro_names = [d.get(distro, distro) for distro in self.all_fit_results]
 
     def _get_subplots(self, SHOW_MUTANTS):
         """Get subplot configuration for animation."""
@@ -143,20 +138,14 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
             y = result_obj.curve[self.model_config.los_cutoff :]
             s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
-            ax_main.plot(
-                s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro]
-            )
+            ax_main.plot(s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
 
-        (line_inc,) = ax_inc.plot(
-            x_full, linestyle="--", label="New ICU Admissions (Scaled)"
-        )
+        (line_inc,) = ax_inc.plot(x_full, linestyle="--", label="New ICU Admissions (Scaled)")
         ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
         ma = np.nanmax(x_full)
         ax_inc.set_ylim(-ma / 7.5, ma * 4)
 
-        legend1 = ax_main.legend(
-            handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2
-        )
+        legend1 = ax_main.legend(handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2)
         legend2 = ax_main.legend(
             handles=[line_bedload, line_inc, span_los_cutoff, span_train, span_test],
             loc="upper right",
@@ -209,9 +198,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             window_counter += 1
 
             w = window_info
-            fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = (
-                self._get_subplots(SHOW_MUTANTS)
-            )
+            fig, ax_main, ax_inc, ax_kernel, ax_err_train, ax_err_test, ax_mutant = self._get_subplots(SHOW_MUTANTS)
 
             self._plot_ax_main(ax_main, ax_inc, window_id)
             self._plot_ax_kernel(ax_kernel, window_id)
@@ -235,9 +222,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         for col in df_mutant.columns:
             (line,) = ax_mutant.plot(df_mutant[col].values)
             mutant_lines.append(line)
-            ax_mutant.fill_between(
-                range(len(y_full)), df_mutant[col].values, 0, alpha=0.3
-            )
+            ax_mutant.fill_between(range(len(y_full)), df_mutant[col].values, 0, alpha=0.3)
 
         ax_mutant.legend(mutant_lines, df_mutant.columns, loc="upper right")
         ax_mutant.set_xticks([])
@@ -293,15 +278,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if self.ac.debug_hide_failed and not result_obj.success:
                 continue
 
-            ax_kernel.plot(
-                result_obj.kernel, label=name, color=ac.distro_colors[distro]
-            )
+            ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
 
         ax_kernel.plot(self.vc.real_los, color="black", label="Sentinel LoS Charité")
 
-        ax_kernel.legend(
-            handles=ac.distro_patches, loc="upper right", fancybox=True, ncol=2
-        )
+        ax_kernel.legend(handles=ac.distro_patches, loc="upper right", fancybox=True, ncol=2)
         ax_kernel.set_ylim(0, 0.1)
         ax_kernel.set_xlim(-2, 80)
         ax_kernel.set_ylabel("Discharge Probability")

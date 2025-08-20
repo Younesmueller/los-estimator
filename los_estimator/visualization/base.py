@@ -9,7 +9,14 @@ from ..config import OutputFolderConfig, VisualizationConfig
 
 
 def get_color_palette() -> List[str]:
-    """Get extended color palette for plotting."""
+    """Get extended color palette for plotting.
+
+    Returns a comprehensive color palette combining matplotlib's default
+    color cycle with additional colors for extensive plotting needs.
+
+    Returns:
+        List[str]: List of color codes in hexadecimal format.
+    """
     # take matplotlib standard color wheel
     colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
     # add extra color palette
@@ -29,13 +36,29 @@ def get_color_palette() -> List[str]:
 
 
 class VisualizerBase:
-    """Base class for all visualizers."""
+    """Base class for all visualizers.
+
+    Provides common functionality for visualization components including
+    plot styling, color management, and file saving capabilities.
+
+    Attributes:
+        visualization_config (VisualizationConfig): Configuration for plots.
+        output_config (OutputFolderConfig, optional): Output directory config.
+        figsize (Tuple[float, float]): Default figure size for plots.
+        colors (List[str]): Color palette for plots.
+    """
 
     def __init__(
         self,
         visualization_config: VisualizationConfig,
         output_config: Optional[OutputFolderConfig] = None,
     ):
+        """Initialize the base visualizer.
+
+        Args:
+            visualization_config (VisualizationConfig): Plot configuration settings.
+            output_config (OutputFolderConfig, optional): Output folder configuration.
+        """
         self.visualization_config: VisualizationConfig = visualization_config
         self.output_config: Optional[OutputFolderConfig] = output_config
 
