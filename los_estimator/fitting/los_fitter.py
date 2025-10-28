@@ -4,9 +4,12 @@ This module provides functions for fitting convolution-based models to hospital
 length of stay data using various distribution types and optimization methods.
 """
 
+from __future__ import annotations
+
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
+from typing import Callable, Optional, Tuple, Union, List
 
 from los_estimator.fitting.models.compartmental_model import calc_its_comp
 from los_estimator.fitting.models.convolutional_model import calc_its_convolution
@@ -16,7 +19,7 @@ from .errors import ErrorFunctions
 from .fit_results import SingleFitResult
 
 
-def combine_past_kernel(past_kernels, kernel):
+def combine_past_kernel(past_kernels: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """Combine past kernels with a new kernel.
 
     Args:
@@ -29,7 +32,9 @@ def combine_past_kernel(past_kernels, kernel):
     return np.vstack([*past_kernels, kernel])
 
 
-def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
+def get_objective_convolution(
+    distro: str, kernel_width: int, los_cutoff: int, error_fun: Callable[[np.ndarray, np.ndarray], float]
+) -> Callable[[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]], float]:
     """Create an objective function for convolution-based fitting.
 
     Args:
@@ -42,7 +47,9 @@ def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
         callable: Objective function that takes model parameters and data.
     """
 
-    def objective_function(model_config, inc, icu, past_kernels=None):
+    def objective_function(
+        model_config: np.ndarray, inc: np.ndarray, icu: np.ndarray, past_kernels: Optional[np.ndarray] = None
+    ) -> float:
         kernel = Distributions.generate_kernel(distro, model_config, kernel_width)
         if past_kernels is not None:
             kernel = combine_past_kernel(past_kernels, kernel)
@@ -54,7 +61,11 @@ def get_objective_convolution(distro, kernel_width, los_cutoff, error_fun):
     return objective_function
 
 
-def initialize_distro_parameters(distro, distro_boundaries, distro_init_params):
+def initialize_distro_parameters(
+    distro: str,
+    distro_boundaries: Optional[List[Tuple[Optional[float], Optional[float]]]],
+    distro_init_params: Optional[List[float]],
+) -> Tuple[List[Tuple[Optional[float], Optional[float]]], List[float]]:
     """Initialize distribution parameters and boundaries for optimization.
 
     Sets up default boundaries and initial parameters for a given distribution
@@ -81,17 +92,17 @@ def initialize_distro_parameters(distro, distro_boundaries, distro_init_params):
 
 
 def fit_convolution(
-    distro,
-    train_data,
-    test_data,
-    kernel_width,
-    los_cutoff,
-    distro_boundaries=None,
-    distro_init_params=None,
-    past_kernels=None,
-    method="L-BFGS-B",
-    error_fun="mse",
-):
+    distro: str,
+    train_data: Tuple[np.ndarray, np.ndarray],
+    test_data: Tuple[np.ndarray, np.ndarray],
+    kernel_width: int,
+    los_cutoff: int,
+    distro_boundaries: Optional[List[Tuple[Optional[float], Optional[float]]]] = None,
+    distro_init_params: Optional[List[float]] = None,
+    past_kernels: Optional[np.ndarray] = None,
+    method: str = "L-BFGS-B",
+    error_fun: str = "mse",
+) -> SingleFitResult:
     """Fit a convolution-based model to length of stay data.
 
     Performs optimization to find the best parameters for a specified distribution
@@ -165,8 +176,19 @@ def fit_convolution(
     return fit_results
 
 
-def objective_compartemental(error_fun):
-    def objective_function(model_config, inc, icu, los_cutoff):
+def objective_compartemental(
+    error_fun: Callable[[np.ndarray, np.ndarray], float],
+) -> Callable[[np.ndarray, np.ndarray, np.ndarray, int], float]:
+    """Create an objective function for compartmental model fitting.
+
+    Args:
+        error_fun (callable): Error function to minimize.
+
+    Returns:
+        callable: Objective function for compartmental model optimization.
+    """
+
+    def objective_function(model_config: np.ndarray, inc: np.ndarray, icu: np.ndarray, los_cutoff: int) -> float:
         discharge_rate, transition_rate, delay = model_config
         pred = calc_its_comp(inc, discharge_rate, transition_rate, delay, init=icu[0])
         return error_fun(pred[los_cutoff : len(icu)], icu[los_cutoff:])
@@ -175,13 +197,13 @@ def objective_compartemental(error_fun):
 
 
 def fit_compartmental(
-    train_data,
-    test_data,
-    initial_guess_comp,
-    los_cutoff,
-    method="TNC",
-    error_fun="mse",
-):
+    train_data: Tuple[np.ndarray, np.ndarray],
+    test_data: Tuple[np.ndarray, np.ndarray],
+    initial_guess_comp: List[float],
+    los_cutoff: int,
+    method: str = "TNC",
+    error_fun: str = "mse",
+) -> SingleFitResult:
     x_train, y_train = train_data
     x_test, y_test = test_data
 

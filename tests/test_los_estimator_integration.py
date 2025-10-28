@@ -46,9 +46,7 @@ class TestLosEstimatorIntegration:
         new_result = estimator.all_fit_results
 
         for distro in self.original_result.keys():
-            assert (
-                distro in new_result
-            ), f"Distribution {distro} not found in new results"
+            assert distro in new_result, f"Distribution {distro} not found in new results"
 
     def test_kernel_comparison_accuracy(self):
         """Test that kernel values match expected results within tolerance."""
@@ -60,9 +58,7 @@ class TestLosEstimatorIntegration:
                 continue
 
             comp_fit_result = self.original_result[distro]
-            kernel_diff = np.abs(
-                fit_result.all_kernels - comp_fit_result.all_kernels
-            ).max()
+            kernel_diff = np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max()
 
             assert np.allclose(
                 fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4
@@ -80,20 +76,14 @@ class TestLosEstimatorIntegration:
             comp_fit_result = self.original_result[distro]
 
             train_error_diff = np.abs(
-                fit_result.train_relative_errors.mean()
-                - comp_fit_result.train_relative_errors.mean()
+                fit_result.train_relative_errors.mean() - comp_fit_result.train_relative_errors.mean()
             )
             test_error_diff = np.abs(
-                fit_result.test_relative_errors.mean()
-                - comp_fit_result.test_relative_errors.mean()
+                fit_result.test_relative_errors.mean() - comp_fit_result.test_relative_errors.mean()
             )
 
-            assert (
-                train_error_diff <= 1e-4
-            ), f"Train error difference too large for {distro}: {train_error_diff:.4f}"
-            assert (
-                test_error_diff <= 1e-4
-            ), f"Test error difference too large for {distro}: {test_error_diff:.4f}"
+            assert train_error_diff <= 1e-4, f"Train error difference too large for {distro}: {train_error_diff:.4f}"
+            assert test_error_diff <= 1e-4, f"Test error difference too large for {distro}: {test_error_diff:.4f}"
 
     def test_cli_execution_completes_successfully(self):
         """Test that the CLI execution completes without errors."""
@@ -125,9 +115,7 @@ class TestLosEstimatorIntegration:
             print("CLI stderr:", result.stderr)
 
             # Assertions
-            assert (
-                result.returncode == 0
-            ), f"CLI execution failed with return code {result.returncode}"
+            assert result.returncode == 0, f"CLI execution failed with return code {result.returncode}"
             # if result.stderr is not None:
             #     assert "error" not in result.stderr.lower(), f"CLI stderr contains errors: {result.stderr}"
 

@@ -15,13 +15,14 @@
     - ABGELEHNT  
       - [ ] Make the animator faster by reusing the graph
       - [ ] Speichere Zwischenergebnisse 
-- [ ] Documentation
-    - [ ] Config
-    - [ ] Core
-    - [ ] Data
-    - [ ] Fitting
-    - [ ] Visualization
+    - [ ] 025-08-20 19:27:20 - los_estimator - WARNING - This function is deprecated and will be removed in future versions. _ax_plot_error_error_point
+- [x] Documentation
 - [x] Write CLI
 - [x] Cleanup of the repo
 - [x] Save results
 
+# Additional features
+- [ ] alternative loss metric
+- [ ] penalization of kernel change over time
+- [ ] automatic trend switch detection
+- [ ] simpler window definition: 
