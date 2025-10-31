@@ -242,7 +242,7 @@ class LosEstimationRun:
         col = "icu_admissions_smooth" if self.model_config.smooth_data else "icu_admissions"
         series_data = (
             self.data.df_occupancy[col].values,
-            self.data.df_occupancy["icu_admissions"].values,
+            self.data.df_occupancy["icu_occupancy"].values,
         )
         self.series_data = SeriesData(*series_data, self.model_config)
 

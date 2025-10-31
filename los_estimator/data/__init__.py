@@ -139,14 +139,6 @@ class DataLoader:
             xtick_label=xtick_label,
         )
 
-    def select_mutants(self, df_occupancy, df_mutant) -> pd.DataFrame:
-        """Select relevant mutants from the mutant distribution data."""
-        df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
-        df_mutant["Omikron_BA.1/2"] = df_mutant["Omikron_BA.1"] + df_mutant["Omikron_BA.2"]
-        df_mutant["Omikron_BA.4/5"] = df_mutant["Omikron_BA.4"] + df_mutant["Omikron_BA.5"]
-        df_mutant = df_mutant[["Delta_AY.1", "Omikron_BA.1/2", "Omikron_BA.4/5"]]
-        return df_mutant
-
     def load_icu_data(self, start_day, end_day) -> pd.DataFrame:
         """Load incidence and ICU occupancy data."""
         c = self.data_config
