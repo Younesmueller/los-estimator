@@ -34,6 +34,12 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
             continue
 
         comp_fit_result = compare_all_fit_results[distro]
+        if fit_result.all_kernels.shape != comp_fit_result.all_kernels.shape:
+            print(f"❌ Shape mismatch for kernels in distribution: {distro}")
+            print(f"Expected shape: {comp_fit_result.all_kernels.shape}, but got: {fit_result.all_kernels.shape}")
+            all_successful = False
+            continue
+
         if not np.allclose(fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4):
             print(f"❌ Kernel comparison failed for distribution: {distro}")
             print(f"Kernel Difference: {np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max():.4f}")
@@ -154,10 +160,3 @@ estimator = LosEstimationRun(
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
-
-# %%
-
-estimator.animate_results()
-
-
-# %%
