@@ -19,6 +19,7 @@ __all__ = [
     "load_configurations",
     "save_configurations",
     "default_config_path",
+    "update_configurations",
 ]
 
 default_config_path = Path(__file__).parent.parent / "default_config.toml"
@@ -116,21 +117,19 @@ class DataConfig:
     required for length of stay analysis.
 
     Attributes:
-        cases_file (str): Path to file containing case/admission data.
-        icu_occupancy_file (str): Path to ICU occupancy time series data.
+        icu_file (str): Path to ICU occupancy time series data.
         los_file (str): Path to length of stay reference data.
         init_params_file (str): Path to initial parameter configuration.
         start_day (str): Start date for analysis period.
         end_day (str): End date for analysis period.
     """
 
-    cases_file: str
-    icu_occupancy_file: str
+    icu_file: str
     los_file: str
-    init_params_file: str
     start_day: str
     end_day: str
 
+    init_params_file: Optional[str] = None
     mutants_file: Optional[str] = None
 
     def __post_init__(self):
@@ -339,3 +338,20 @@ def save_configurations(path, configurations):
     config_dicts = {config.config_name: asdict(config) for config in configurations}
     with open(path, "w") as f:
         toml.dump(config_dicts, f)
+
+
+def update_configurations(d1, d2):
+    """Recursively update dictionary d1 with values from d2.
+
+    Performs a deep merge of dictionaries, recursively updating nested
+    dictionaries rather than replacing them entirely.
+
+    Args:
+        d1 (dict): Dictionary to update (modified in place).
+        d2 (dict): Dictionary with new values to merge in.
+    """
+    for key, value in d2.items():
+        if isinstance(value, dict):
+            update_configurations(d1.setdefault(key, {}), value)
+        else:
+            d1[key] = value

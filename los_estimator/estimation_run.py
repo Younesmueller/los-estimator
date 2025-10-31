@@ -239,16 +239,17 @@ class LosEstimationRun:
         self.animate_results()
 
     def fit(self):
-        col = "new_icu_smooth" if self.model_config.smooth_data else "new_icu"
+        col = "icu_admissions_smooth" if self.model_config.smooth_data else "icu_admissions"
         series_data = (
             self.data.df_occupancy[col].values,
-            self.data.df_occupancy["icu"].values,
+            self.data.df_occupancy["icu_admissions"].values,
         )
         self.series_data = SeriesData(*series_data, self.model_config)
 
         init_parameters = defaultdict(list)
-        for distro, row in self.data.df_init.iterrows():
-            init_parameters[distro] = row["params"]
+        if self.data.df_init is not None:
+            for distro, row in self.data.df_init.iterrows():
+                init_parameters[distro] = row["params"]
 
         self.fitter = MultiSeriesFitter(
             self.series_data,

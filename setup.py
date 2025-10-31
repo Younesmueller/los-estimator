@@ -9,9 +9,7 @@ this_directory = Path(__file__).parent
 try:
     long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 except FileNotFoundError:
-    long_description = (
-        "Length of Stay Estimator for ICU data using deconvolution methods"
-    )
+    long_description = "Length of Stay Estimator for ICU data using deconvolution methods"
 
 setup(
     name="los_estimator",
@@ -117,7 +115,6 @@ setup(
             "los_estimator/data",
             [
                 "data/cases.csv",
-                "data/hosp_ag.csv",
                 "data/Intensivregister_Bundeslaender_Kapazitaeten.csv",
                 "data/Intensivregister_Deutschland_Altersgruppen.csv",
                 "data/VOC_VOI_Tabelle.xlsx",
@@ -126,8 +123,8 @@ setup(
         (
             "los_estimator/data/dynamic",
             [
-                "data/dynamic/los_berlin_all.csv",
-                "data/dynamic/los_berlin_fit_result.csv",
+                "data/dynamic/sample_los.csv",
+                "data/dynamic/sample_los_fit_values.csv",
             ],
         ),
         (

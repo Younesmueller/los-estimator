@@ -11,27 +11,10 @@ project_root = Path(__file__).parents[2]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from los_estimator.config import load_configurations
+from los_estimator.config import load_configurations, update_configurations
 from los_estimator.estimation_run import LosEstimationRun
 
 logger = logging.getLogger("los_estimator")
-
-
-def update_dict(d1, d2):
-    """Recursively update dictionary d1 with values from d2.
-
-    Performs a deep merge of dictionaries, recursively updating nested
-    dictionaries rather than replacing them entirely.
-
-    Args:
-        d1 (dict): Dictionary to update (modified in place).
-        d2 (dict): Dictionary with new values to merge in.
-    """
-    for key, value in d2.items():
-        if isinstance(value, dict):
-            update_dict(d1.setdefault(key, {}), value)
-        else:
-            d1[key] = value
 
 
 def setup_parser():
@@ -86,7 +69,7 @@ def main():
 
         if args.overwrite_config_file:
             overwrite_cfg = load_configurations(args.overwrite_config_file)
-            update_dict(cfg, overwrite_cfg)
+            update_configurations(cfg, overwrite_cfg)
 
         if args.show_plots is not None:
             cfg["visualization_config"].show_figures = args.show_plots

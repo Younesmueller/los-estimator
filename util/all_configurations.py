@@ -19,9 +19,8 @@ from los_estimator.fitting.errors import ErrorType
 
 data_config = DataConfig(
     base_path="C:/data/src/los-estimator/los-estimator/data",
-    cases_file="./cases.csv",
-    icu_occupancy_file="./Intensivregister_Bundeslaender_Kapazitaeten.csv",
-    los_file="../01_create_los_profiles/berlin/output_los/los_berlin_all.csv",
+    icu_file="./Intensivregister_Bundeslaender_Kapazitaeten.csv",
+    los_file="../01_create_los_profiles/berlin/output_los/sample_los.csv",
     init_params_file="../02_fit_los_distributions/output_los/los_berlin_all/fit_results.csv",
     mutants_file="./VOC_VOI_Tabelle.xlsx",
     start_day="2021-07-29",
@@ -58,17 +57,13 @@ model_config = ModelConfig(
 
 output_config = OutputFolderConfig("./results")
 
-debug_configuration = DebugConfig(
-    one_window=False, less_windows=True, less_distros=False, only_linear=False
-)
+debug_configuration = DebugConfig(one_window=False, less_windows=True, less_distros=False, only_linear=False)
 
 visualization_config = VisualizationConfig(
     save_figures=True,
     show_figures=True,
 )
-animation_config = AnimationConfig(
-    debug_animation=False, debug_hide_failed=True, show_figures=True, save_figures=False
-)
+animation_config = AnimationConfig(debug_animation=False, debug_hide_failed=True, show_figures=True, save_figures=False)
 
 estimator = LosEstimationRun(
     data_config,

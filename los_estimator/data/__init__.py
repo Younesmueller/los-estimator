@@ -117,11 +117,14 @@ class DataLoader:
     def load_all_data(self):
         c = self.data_config
 
-        real_los = self._load_los(file=c.los_file)[0]
-        df_occupancy = self.load_inc_beds(c.start_day, c.end_day)
+        df_occupancy = self.load_icu_data(c.start_day, c.end_day)
+
+        # optional data
         df_init = self.load_init_parameters(c.init_params_file)
-        df_mutant = self.load_mutant_distribution(c.mutants_file)
-        df_mutant = self.select_mutants(df_occupancy, df_mutant)
+        df_mutant = self.load_mutant_data(c.mutants_file)
+        if df_mutant is not None:
+            df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
+        real_los = self.load_los(c.los_file)
 
         xtick_pos = None
         xtick_label = None
@@ -144,89 +147,38 @@ class DataLoader:
         df_mutant = df_mutant[["Delta_AY.1", "Omikron_BA.1/2", "Omikron_BA.4/5"]]
         return df_mutant
 
-    def load_inc_beds(self, start_day, end_day) -> pd.DataFrame:
+    def load_icu_data(self, start_day, end_day) -> pd.DataFrame:
         """Load incidence and ICU occupancy data."""
-        df_inc, _ = self._load_incidences(start_day, end_day)
-        df_icu = self._load_icu_occupancy(start_day, end_day)
+        c = self.data_config
+        df_icu = self.read_csv(c.icu_file, parse_dates=["Unnamed: 0"])
+        df_icu = df_icu.set_index("Unnamed: 0")
 
-        df = df_inc.join(df_icu, how="inner")
+        df_icu = df_icu[df_icu.index >= start_day]
+        df_icu = df_icu[df_icu.index <= end_day]
 
-        df["new_icu_smooth"] = df["new_icu"].rolling(7).mean()
-        return df
+        return df_icu
 
     def load_init_parameters(self, file) -> pd.DataFrame:
         """Load initial parameters for the model."""
+        if file is None:
+            return None
         df_init = self.read_csv(file, index_col=0)
         df_init = df_init.set_index("distro")
         # interpret model_config as array float of format [f1 f2 f3 ...]
         df_init["params"] = df_init["params"].apply(lambda x: [float(i) for i in x[1:-1].split()])
         return df_init
 
-    def _load_los(self, cutoff_percentage=0.9, file="") -> tuple[np.ndarray, int]:
+    def load_los(self, file=None) -> np.ndarray:
+        if file is None:
+            return None
         df_los = self.read_csv(file, index_col=0)
-
         los = df_los.iloc[:, 0].to_numpy(dtype=float)
         los /= los.sum()
+        return los
 
-        los_cutoff = int(np.argmax(los.cumsum() > cutoff_percentage))
-        return los, los_cutoff
-
-    def _load_incidences(self, start_day, end_day):
-        """cases_*.csv contains the germany wide covid data provided from RKI. It is derived from https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv"""
-        c = self.data_config
-        df_inc = self.read_csv(c.cases_file, index_col=0, parse_dates=["Refdatum"])
-        raw = df_inc.copy()
-        df_inc = df_inc[["AnzahlFall", "daily"]]
-
-        date_range = pd.date_range(start="2020-01-02", end=df_inc.index.min(), inclusive="left")
-        new_data = pd.DataFrame(0, index=date_range, columns=df_inc.columns)
-        df_inc = pd.concat([new_data, df_inc])
-
-        df_inc = df_inc[start_day:end_day]
-        return df_inc, raw
-
-    def _load_icu_occupancy(self, start_day, end_day):
-        """icu_occupancy_*.csv contains the germany wide used icu cases.
-        It contains the number of occupied beds. From apprx. june on it also contains the number of newly admitted patients.
-        It is derived from https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv
-        """
-
-        c = self.data_config
-
-        df_icu = self.read_csv(c.icu_occupancy_file, parse_dates=["datum"])
-        df_icu = df_icu[["datum", "faelle_covid_aktuell", "faelle_covid_erstaufnahmen"]]
-        df_icu.columns = ["datum", "icu", "new_icu"]
-        df_icu = df_icu.groupby("datum").sum()
-
-        # Fill up the time from beginning of 2020 to data begin
-        date_range = pd.date_range(start="2020-01-01", end=df_icu.index.min(), inclusive="left")
-        new_data = pd.DataFrame(0, index=date_range, columns=df_icu.columns)
-        df_icu = pd.concat([new_data, df_icu])
-
-        df_icu = df_icu[df_icu.index >= start_day]
-        df_icu = df_icu[df_icu.index <= end_day]
-        return df_icu
-
-    def load_mutant_distribution(self, path) -> pd.DataFrame:
-        """Load the mutant distribution data."""
-        raw_df = self.read_excel(path, sheet_name=1)
-        c = [col for col in raw_df.columns if "Anteil" in col]
-        df = raw_df[c]
-        c = [col.split("+")[0] for col in df.columns]
-        df.columns = c
-        df = df.iloc[:-1, :]
-        KW1 = "2021-01-04"
-        df["date"] = pd.date_range(start=KW1, periods=len(df), freq="7D")
-        df = df.set_index("date")
-        one_week_after = df.index[-1] + pd.Timedelta(days=7)
-        dr = pd.date_range(start=df.index[0], end=one_week_after, freq="D")
-        df = df.reindex(dr, method="ffill")
-        dr = pd.date_range(start="2020-03-10", end=one_week_after, freq="D")
-        df = df.reindex(dr)
-        df = df.fillna(0)
-        df["wildtype"] = 100 - df.sum(axis=1)
-        df.loc["2022-05-05":, "wildtype"] = 0
-
-        df = df[[df.columns[-1]] + list(df.columns[:-1])]
-
-        return df
+    def load_mutant_data(self, file=None) -> pd.DataFrame:
+        if file is None:
+            return None
+        df_mutant = self.read_csv(file, parse_dates=["Unnamed: 0"])
+        df_mutant = df_mutant.set_index("Unnamed: 0")
+        return df_mutant

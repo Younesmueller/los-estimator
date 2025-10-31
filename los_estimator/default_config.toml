@@ -1,16 +1,17 @@
 [data_config]
-cases_file = "${data}/cases.csv"
-icu_occupancy_file = "${data}/Intensivregister_Bundeslaender_Kapazitaeten.csv"
-los_file = "${data}/dynamic/los_berlin_all.csv"
-init_params_file = "${data}/dynamic/los_berlin_fit_result.csv"
+icu_file = "${data}/preprocessing/output/icu.csv"
+los_file = "${data}/dynamic/sample_los.csv"
+# optional files
+init_params_file = "${data}/dynamic/sample_los_fit_values.csv"
+mutants_file = "${data}/preprocessing/output/mutant_distribution.csv"
+
 start_day = "2021-07-29"
 end_day = "2025-01-01"
 
-mutants_file = "${data}/VOC_VOI_Tabelle.xlsx"
 
 [output_config]
 base = "./results"
-run_name = "250805_1615_dev_step7_train102_test21_fit_admissions_unsmoothed_mse_reuse_last_parametrization_variable_kernels"
+run_name = ""
 
 [model_config]
 kernel_width = 120
@@ -22,7 +23,14 @@ step = 7
 error_fun = "mse"
 reuse_last_parametrization = true
 variable_kernels = true
-distributions = [ "gaussian", "exponential", "cauchy", "t", "linear", "compartmental",]
+distributions = [
+    "gaussian",
+    "exponential",
+    "cauchy",
+    "t",
+    "linear",
+    "compartmental",
+]
 
 [debug_config]
 one_window = false
@@ -33,10 +41,31 @@ only_linear = false
 [visualization_config]
 save_figures = true
 show_figures = true
-xlims = [ -30, 725,]
-figsize = [ 12, 8,]
+xlims = [-30, 725]
+figsize = [12, 8]
 style = "seaborn-v0_8"
-colors = [ "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#FFA07A", "#20B2AA", "#FF6347", "#808000", "#FF00FF", "#FFD700", "#00FF00", "#00FFFF", "#0000FF", "#8A2BE2",]
+colors = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+    "#FFA07A",
+    "#20B2AA",
+    "#FF6347",
+    "#808000",
+    "#FF00FF",
+    "#FFD700",
+    "#00FF00",
+    "#00FFFF",
+    "#0000FF",
+    "#8A2BE2",
+]
 savefig_dpi = 300
 figure_dpi = 100
 
@@ -45,5 +74,27 @@ show_figures = true
 save_figures = true
 debug_animation = false
 debug_hide_failed = true
-alternative_names = [ [ "block", "Constant Discharge",], [ "sentinel", "Baseline: Sentinel",],]
-replace_short_names = [ [ "exponential", "exp",], [ "gaussian", "gauss",], [ "compartmental", "comp",],]
+alternative_names = [
+    [
+        "block",
+        "Constant Discharge",
+    ],
+    [
+        "sentinel",
+        "Baseline: Sentinel",
+    ],
+]
+replace_short_names = [
+    [
+        "exponential",
+        "exp",
+    ],
+    [
+        "gaussian",
+        "gauss",
+    ],
+    [
+        "compartmental",
+        "comp",
+    ],
+]

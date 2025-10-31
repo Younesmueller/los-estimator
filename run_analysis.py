@@ -62,12 +62,13 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         return fit_result.train_relative_errors, comp_fit_result.train_relative_errors
 
 
-from los_estimator.config import default_config_path
-
 # %%
-from los_estimator.estimation_run import LosEstimationRun, load_configurations
+from los_estimator.estimation_run import LosEstimationRun, load_configurations, default_config_path, load_configurations
+from los_estimator.config import update_configurations
 
 cfg = load_configurations(default_config_path)
+overwrite_cfg = load_configurations(default_config_path.parent / "overwrite_config.toml")
+
 
 model_config = cfg["model_config"]
 data_config = cfg["data_config"]
@@ -76,53 +77,58 @@ debug_config = cfg["debug_config"]
 visualization_config = cfg["visualization_config"]
 animation_config = cfg["animation_config"]
 
-
-def update(obj, **kwargs):
-    for key, value in kwargs.items():
-        setattr(obj, key, value)
-    return obj
-
-
-model_config = update(
-    model_config,
-    kernel_width=120,
-    los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
-    smooth_data=False,
-    train_width=42 + 60,
-    test_width=21,  # 28 * 4
-    step=7,
-    error_fun="mse",
-    reuse_last_parametrization=True,
-    variable_kernels=True,
-    distributions=[
-        # "lognorm",
-        # "weibull",
-        "gaussian",
-        "exponential",
-        # "gamma",
-        # "beta",
-        "cauchy",
-        "t",
-        # "invgauss",
-        "linear",
-        # "block",
-        # "sentinel",
-        "compartmental",
-    ],
-)
-
 visualization_config.show_figures = False
 animation_config.show_figures = False
-animation_config.debug_animation = True
 
 
-debug_config = update(
-    debug_config,
-    one_window=False,
-    less_windows=False,
-    less_distros=False,
-    only_linear=False,
-)
+update_configurations(cfg, overwrite_cfg)
+
+
+# def update(obj, **kwargs):
+#     for key, value in kwargs.items():
+#         setattr(obj, key, value)
+#     return obj
+
+
+# model_config = update(
+#     model_config,
+#     kernel_width=120,
+#     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
+#     smooth_data=False,
+#     train_width=42 + 60,
+#     test_width=21,  # 28 * 4
+#     step=7,
+#     error_fun="mse",
+#     reuse_last_parametrization=True,
+#     variable_kernels=True,
+#     distributions=[
+#         # "lognorm",
+#         # "weibull",
+#         "gaussian",
+#         "exponential",
+#         # "gamma",
+#         # "beta",
+#         "cauchy",
+#         "t",
+#         # "invgauss",
+#         "linear",
+#         # "block",
+#         # "sentinel",
+#         "compartmental",
+#     ],
+# )
+
+
+# animation_config.debug_animation = True
+
+
+# debug_config = update(
+#     debug_config,
+#     one_window=False,
+#     less_windows=False,
+#     less_distros=False,
+#     only_linear=False,
+# )
 
 # visualization_config = update(visualization_config,
 #     save_figures=True,

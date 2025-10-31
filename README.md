@@ -99,11 +99,10 @@ print(f"Hospital data shape: {hospital_df.shape}")
 The package includes several German COVID-19 datasets:
 
 - **Cases Data**: `cases.csv` - Daily case numbers with reference dates
-- **Hospital Data**: `hosp_ag.csv` - Age-grouped hospitalization data
 - **ICU Capacity**: `Intensivregister_Bundeslaender_Kapazitaeten.csv` - State-level ICU capacities
 - **ICU Demographics**: `Intensivregister_Deutschland_Altersgruppen.csv` - Age group ICU data
 - **VOC/VOI Data**: `VOC_VOI_Tabelle.xlsx` - Variants of Concern/Interest tracking
-- **Berlin Specific**: `los_berlin_all.csv` - Berlin-specific LOS data
+- **Sample LoS**: `sample_los.csv` - Sample for a LoS distribution
 
 ## ⚙️ Configuration
 
@@ -113,7 +112,6 @@ Create a configuration file (TOML format) to customize the analysis:
 [data_config]
 start_date = "2020-03-01"
 end_date = "2023-12-31"
-icu_occupancy_file = "hosp_ag.csv"
 
 [model_config]
 distribution_types = ["exponential", "cauchy", "compartmental"]

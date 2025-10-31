@@ -1,0 +1,40 @@
+[model_config]
+kernel_width = 120
+los_cutoff = 60
+smooth_data = false
+train_width = 102
+test_width = 21
+step = 7
+error_fun = "mse"
+reuse_last_parametrization = true
+variable_kernels = true
+distributions = [
+    # "lognorm",
+    # "weibull",
+    "gaussian",
+    "exponential",
+    # "gamma",
+    # "beta",
+    "cauchy",
+    "t",
+    # "invgauss",
+    "linear",
+    # "block",
+    # "sentinel",
+    "compartmental",
+]
+
+
+[visualization_config]
+show_figures = false
+
+[animation_config]
+show_figures = false
+debug_animation = true
+
+
+[debug_config]
+one_window = false
+less_windows = false
+less_distros = false
+only_linear = false
