@@ -41,7 +41,7 @@ def los_distro_converter(los):
     return los2
 
 
-def calc_its_convolution(admissions, los_distro1, los_cutoff):
+def calc_its_convolution(admissions, los_distro1):
     """Calculate ICU occupancy using convolution with LOS distribution.
 
     Computes the ICU occupancy time series by convolving admission data
@@ -50,7 +50,6 @@ def calc_its_convolution(admissions, los_distro1, los_cutoff):
     Args:
         admissions (np.ndarray): Daily admission counts.
         los_distro1 (np.ndarray): Length of stay distribution(s).
-        los_cutoff (int): Number of initial days to set to zero.
 
     Returns:
         np.ndarray: Predicted ICU occupancy time series.
@@ -58,15 +57,13 @@ def calc_its_convolution(admissions, los_distro1, los_cutoff):
     if len(los_distro1.shape) == 1:
         los_distro1 = los_distro1[None, :]
     los_distro = los_distro_converter(los_distro1)
-    its = convolve_variable_kernel(admissions, los_distro)
-    its[:los_cutoff] = (
-        0  # Remove beginning and end of the signal according to the los_cutoff (los_cutoff is the point, where the main mass of the los_distro is)
-    )
+    its = convolve_2d_changing_kernel(admissions, los_distro)
+    its[: los_distro.shape[1]] = 0  # Remove initial transient response
     return its
 
 
 @njit
-def convolve_variable_kernel(admissions, los_distro):
+def convolve_2d_changing_kernel(admissions, los_distro):
     """Perform convolution with time-varying kernels.
 
     Efficiently computes convolution where the kernel can change over time,

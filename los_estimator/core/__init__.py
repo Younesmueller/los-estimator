@@ -24,7 +24,6 @@ class WindowInfo:
         window (int): Index between training and prediction.
         train_end (int): End index of training period.
         train_start (int): Start index of training period.
-        train_los_cutoff (int): Cutoff point for LOS calculation in training.
         test_start (int): Start index of test period.
         test_end (int): End index of test period.
         train_window (slice): Slice object for training window.
@@ -41,15 +40,19 @@ class WindowInfo:
             model_config (ModelConfig): Model configuration with window sizes.
         """
         self.window: int = window
+        self.kernel_width: int = model_config.kernel_width
+
         self.train_end: int = self.window
-        self.train_start: int = self.window - model_config.train_width
-        self.train_los_cutoff: int = self.train_start + model_config.los_cutoff
+        self.train_start: int = self.train_end - model_config.train_width
+
         self.test_start: int = self.train_end
         self.test_end: int = self.test_start + model_config.test_width
+        self.training_prediction_start: int = self.train_start + model_config.kernel_width
 
         self.train_window: slice = slice(self.train_start, self.train_end)
         self.train_test_window: slice = slice(self.train_start, self.test_end)
         self.test_window: slice = slice(self.test_start, self.test_end)
+        self.test_window_with_runup: slice = slice(self.test_start - model_config.kernel_width, self.test_end)
 
         self.model_config: ModelConfig = model_config
 
@@ -109,7 +112,7 @@ class SeriesData:
         if window_id > len(self.windows):
             raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         w = self.window_infos[window_id]
-        return self.x_full[w.train_test_window], self.y_full[w.train_test_window]
+        return self.x_full[w.test_window_with_runup], self.y_full[w.test_window_with_runup]
 
     @functools.lru_cache
     def get_window_info(self, window_id):
@@ -128,4 +131,4 @@ class SeriesData:
         return self.n_windows
 
     def __repr__(self):
-        return f"SeriesData(n_windows={self.n_windows}, kernel_width={self.model_config.kernel_width}, los_cutoff={self.model_config.los_cutoff})"
+        return f"SeriesData(n_windows={self.n_windows}, kernel_width={self.model_config.kernel_width}"

@@ -116,7 +116,7 @@ end_date = "2023-12-31"
 [model_config]
 distribution_types = ["exponential", "cauchy", "compartmental"]
 fit_method = "mse"
-use_variable_kernels = true
+iterative_kernel_fit = true
 
 [visualization_config]
 show_figures = true

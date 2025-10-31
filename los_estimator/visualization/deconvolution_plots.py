@@ -160,14 +160,12 @@ class DeconvolutionPlots(VisualizerBase):
                 ax.axvspan(w.train_start, w.train_end, color="red", alpha=error_window_alpha)
                 continue
 
-            x = np.arange(w.train_los_cutoff, w.train_end)
-            y = fit_result.curve[self.model_config.los_cutoff : self.model_config.train_width]
+            x = np.arange(w.training_prediction_start, w.train_end)
+            y = fit_result.train_prediction[self.model_config.kernel_width : self.model_config.train_width]
             ax.plot(x, y, color=self.colors[0])
 
-            x = np.arange(w.train_end, w.test_end)
-            y = fit_result.curve[
-                self.model_config.train_width : self.model_config.train_width + self.model_config.test_width
-            ]
+            x = np.arange(w.train_end + w.kernel_width, w.test_end)
+            y = fit_result.test_prediction[w.kernel_width : self.model_config.test_width]
             ax.plot(x, y, color=self.colors[1])
 
         legend_handles = [

@@ -59,7 +59,6 @@ class ModelConfig:
 
     Attributes:
         kernel_width (int): Width of the distribution kernel in days.
-        los_cutoff (int): Number of initial days to exclude from fitting.
         smooth_data (bool): Whether to apply smoothing to input data.
         train_width (int): Width of training window in days.
         test_width (int): Width of test window in days.
@@ -68,14 +67,13 @@ class ModelConfig:
     """
 
     kernel_width: int = 120
-    los_cutoff: int = 60
     smooth_data: bool = False
     train_width: int = 42 + 60
     test_width: int = 21
     step: int = 7
     error_fun: str = "mse"
     reuse_last_parametrization: bool = True
-    variable_kernels: bool = True
+    iterative_kernel_fit: bool = True
     distributions: List[str] = field(
         default_factory=lambda: [
             "lognorm",

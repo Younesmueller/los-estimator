@@ -86,7 +86,7 @@ def mse(pred, real):
     return np.mean((pred - real) ** 2)
 
 
-def objective_function_compartmental(model_config, inc, icu, los_cutoff):
+def objective_function_compartmental(model_config, inc, icu):
     """Objective function for compartmental model optimization.
 
     Computes the error between predicted and observed ICU occupancy
@@ -96,7 +96,6 @@ def objective_function_compartmental(model_config, inc, icu, los_cutoff):
         model_config (tuple): Model parameters (discharge_rate, transition_rate, delay).
         inc (np.ndarray): Incidence/admission data.
         icu (np.ndarray): Observed ICU occupancy data.
-        los_cutoff (int): Number of initial days to exclude from error calculation.
 
     Returns:
         float: Mean squared error between predicted and observed values.
@@ -105,4 +104,4 @@ def objective_function_compartmental(model_config, inc, icu, los_cutoff):
 
     pred = calc_its_comp(inc, discharge_rate, transition_rate, delay, init=icu[0])
 
-    return mse(pred[los_cutoff:], icu[los_cutoff:])
+    return mse(pred[model_config.kernel_width :], icu[model_config.kernel_width :])

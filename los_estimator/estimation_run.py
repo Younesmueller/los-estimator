@@ -215,8 +215,8 @@ class LosEstimationRun:
         run_name += "_" + model_config.error_fun
         if model_config.reuse_last_parametrization:
             run_name += "_reuse_last_parametrization"
-        if model_config.variable_kernels:
-            run_name += "_variable_kernels"
+        if model_config.iterative_kernel_fit:
+            run_name += "_iterative_kernel_fit"
 
         run_name += f"_{self.run_nickname}" if self.run_nickname else ""
         model_config.run_name = run_name

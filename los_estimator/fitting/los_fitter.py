@@ -33,14 +33,13 @@ def combine_past_kernel(past_kernels: np.ndarray, kernel: np.ndarray) -> np.ndar
 
 
 def get_objective_convolution(
-    distro: str, kernel_width: int, los_cutoff: int, error_fun: Callable[[np.ndarray, np.ndarray], float]
+    distro: str, kernel_width: int, error_fun: Callable[[np.ndarray, np.ndarray], float]
 ) -> Callable[[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]], float]:
     """Create an objective function for convolution-based fitting.
 
     Args:
         distro (str): Distribution type for the kernel.
         kernel_width (int): Width of the kernel in days.
-        los_cutoff (int): Number of days to skip at the beginning for comparison.
         error_fun (callable): Error function to minimize.
 
     Returns:
@@ -48,14 +47,20 @@ def get_objective_convolution(
     """
 
     def objective_function(
-        model_config: np.ndarray, inc: np.ndarray, icu: np.ndarray, past_kernels: Optional[np.ndarray] = None
+        model_config: np.ndarray,
+        inc: np.ndarray,
+        icu: np.ndarray,
+        past_kernels: Optional[np.ndarray] = None,
+        return_prediction=False,
     ) -> float:
         kernel = Distributions.generate_kernel(distro, model_config, kernel_width)
         if past_kernels is not None:
             kernel = combine_past_kernel(past_kernels, kernel)
 
-        observed = calc_its_convolution(inc, kernel, los_cutoff)
-        res = error_fun(icu[los_cutoff:], observed[los_cutoff:])
+        observed = calc_its_convolution(inc, kernel)
+        res = error_fun(icu[kernel_width:], observed[kernel_width:])
+        if return_prediction:
+            return res, observed
         return res
 
     return objective_function
@@ -96,7 +101,6 @@ def fit_convolution(
     train_data: Tuple[np.ndarray, np.ndarray],
     test_data: Tuple[np.ndarray, np.ndarray],
     kernel_width: int,
-    los_cutoff: int,
     distro_boundaries: Optional[List[Tuple[Optional[float], Optional[float]]]] = None,
     distro_init_params: Optional[List[float]] = None,
     past_kernels: Optional[np.ndarray] = None,
@@ -113,7 +117,6 @@ def fit_convolution(
         train_data (tuple): (x_train, y_train) training data arrays.
         test_data (tuple): (x_test, y_test) test data arrays.
         kernel_width (int): Width of the distribution kernel in days.
-        los_cutoff (int): Number of initial days to exclude from error calculation.
         distro_boundaries (list, optional): Parameter bounds for optimization.
         distro_init_params (list, optional): Initial parameter values.
         past_kernels (np.ndarray, optional): Previously fitted kernels to combine.
@@ -124,17 +127,14 @@ def fit_convolution(
         SingleFitResult: Object containing fit results, parameters, and predictions.
     """
 
-    x_train, y_train = train_data
-    x_test, y_test = test_data
     error_fun = ErrorFunctions[error_fun]
 
     distro_boundaries, distro_init_params = initialize_distro_parameters(distro, distro_boundaries, distro_init_params)
 
-    obj_fun = get_objective_convolution(distro, kernel_width, los_cutoff, error_fun)
+    obj_fun = get_objective_convolution(distro, kernel_width, error_fun)
 
     args = (
-        x_train,
-        y_train,
+        *train_data,
         past_kernels,
     )
 
@@ -148,28 +148,22 @@ def fit_convolution(
 
     distro_params = result.x
 
-    # Generate the fitted kernel and predictions
     fitted_kernel = Distributions.generate_kernel(distro, distro_params, kernel_width)
-    if past_kernels is None:
-        y_pred = calc_its_convolution(x_test, fitted_kernel, los_cutoff)
-    else:
-        kernels = combine_past_kernel(past_kernels, fitted_kernel)
-        y_pred = calc_its_convolution(x_test, kernels, los_cutoff)
 
-    train_len = len(x_train)
-    train_err = obj_fun(result.x, x_train, y_train, *args[2:])
-    test_err = obj_fun(result.x, x_test[train_len - los_cutoff :], y_test[train_len - los_cutoff :], *args[2:])
+    train_err, train_prediction = obj_fun(distro_params, *train_data, *args[2:], return_prediction=True)
+    test_err, test_prediction = obj_fun(distro_params, *test_data, *args[2:], return_prediction=True)
 
     fit_results = SingleFitResult(
         distro=distro,
-        train_data=x_train,
-        test_data=x_test,
+        train_data=train_data,
+        test_data=test_data,
         success=result.success,
         minimization_result=result,
         train_error=train_err,
         test_error=test_err,
         kernel=fitted_kernel,
-        curve=y_pred,
+        train_prediction=train_prediction,
+        test_prediction=test_prediction,
         model_config=distro_params,
     )
 
@@ -188,10 +182,10 @@ def objective_compartemental(
         callable: Objective function for compartmental model optimization.
     """
 
-    def objective_function(model_config: np.ndarray, inc: np.ndarray, icu: np.ndarray, los_cutoff: int) -> float:
+    def objective_function(model_config: np.ndarray, inc: np.ndarray, icu: np.ndarray, kernel_width: int) -> float:
         discharge_rate, transition_rate, delay = model_config
         pred = calc_its_comp(inc, discharge_rate, transition_rate, delay, init=icu[0])
-        return error_fun(pred[los_cutoff : len(icu)], icu[los_cutoff:])
+        return error_fun(pred[kernel_width : len(icu)], icu[kernel_width:])
 
     return objective_function
 
@@ -200,7 +194,7 @@ def fit_compartmental(
     train_data: Tuple[np.ndarray, np.ndarray],
     test_data: Tuple[np.ndarray, np.ndarray],
     initial_guess_comp: List[float],
-    los_cutoff: int,
+    kernel_width: int,
     method: str = "TNC",
     error_fun: str = "mse",
 ) -> SingleFitResult:
@@ -213,19 +207,15 @@ def fit_compartmental(
     result = minimize(
         obj_fun,
         initial_guess_comp,
-        args=(x_train, y_train, los_cutoff),
+        args=(x_train, y_train, kernel_width),
         method=method,
         bounds=[(0, 1), (1, 1), (0, 0)],
     )
-    y_pred = calc_its_comp(x_test, *result.x, y_test[0])
+    train_prediction = calc_its_comp(x_train, *result.x, y_train[0])
+    test_prediction = calc_its_comp(x_test, *result.x, y_test[0])
 
-    test_x = x_test[len(x_train) - los_cutoff :]
-    test_y = y_test[len(x_train) - los_cutoff :]
-
-    train_err = obj_fun(result.x, x_train, y_train, los_cutoff)
-    test_err = obj_fun(result.x, test_x, test_y, los_cutoff)
-    relative_error = np.abs((y_pred - y_test) / (y_test + 1))
-    relative_error[np.isnan(relative_error)] = 0
+    train_err = obj_fun(result.x, x_train, y_train, kernel_width)
+    test_err = obj_fun(result.x, x_test, y_test, kernel_width)
 
     result_obj = SingleFitResult(
         distro="compartmental",
@@ -235,10 +225,9 @@ def fit_compartmental(
         minimization_result=result,
         train_error=train_err,
         test_error=test_err,
-        rel_train_error=relative_error[: len(x_train)],
-        rel_test_error=relative_error[len(x_train) :],
         kernel=np.zeros(1),
-        curve=y_pred,
+        train_prediction=train_prediction,
+        test_prediction=test_prediction,
         model_config=result.x,
     )
 

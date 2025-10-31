@@ -1,13 +1,12 @@
 [model_config]
-kernel_width = 120
-los_cutoff = 60
+kernel_width = 60
 smooth_data = false
 train_width = 102
 test_width = 21
 step = 7
 error_fun = "mse"
 reuse_last_parametrization = true
-variable_kernels = true
+iterative_kernel_fit = true
 distributions = [
     # "lognorm",
     # "weibull",

@@ -129,8 +129,8 @@ class MultiSeriesFitter:
 
     def _find_past_kernels(self, fit_result, first_window, w):
         past_kernels = None
-        if not first_window and self.model_config.variable_kernels:
-            past_kernels = fit_result.all_kernels[w.train_start : w.train_start + self.model_config.los_cutoff]
+        if not first_window and self.model_config.iterative_kernel_fit:
+            past_kernels = fit_result.all_kernels[w.train_start : w.train_start + self.model_config.kernel_width]
         return past_kernels
 
     def fit(self):
@@ -171,7 +171,7 @@ class MultiSeriesFitter:
                         train_data,
                         test_data,
                         initial_guess_comp=[1 / 7, 1, 0],
-                        los_cutoff=model_config.los_cutoff,
+                        kernel_width=model_config.kernel_width,
                     )
                     y_pred = calc_its_comp(
                         series_data.x_full,
@@ -189,18 +189,13 @@ class MultiSeriesFitter:
                         train_data,
                         test_data,
                         self.model_config.kernel_width,
-                        self.model_config.los_cutoff,
                         distro_init_params=init_vals,
                         past_kernels=past_kernels,
                         error_fun=model_config.error_fun,
                     )
 
                     self._update_past_kernels(fit_result, is_first_window, w, result_obj.kernel)
-                    y_pred = calc_its_convolution(
-                        series_data.x_full,
-                        fit_result.all_kernels,
-                        self.model_config.los_cutoff,
-                    )
+                    y_pred = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
 
                 rel_err = np.abs(y_pred - series_data.y_full) / (series_data.y_full + 1)
                 result_obj.rel_train_error = np.mean(rel_err[w.train_window])
@@ -218,9 +213,7 @@ class MultiSeriesFitter:
             is_first_window = False
         if failed_windows:
             logger.warning(f"Failed to fit {distro} on windows: {failed_windows}")
-        fit_result.prediction = calc_its_convolution(
-            series_data.x_full, fit_result.all_kernels, self.model_config.los_cutoff
-        )
+        fit_result.prediction = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
 
         return fit_result
 

@@ -106,19 +106,19 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
         (line_bedload,) = ax_main.plot(y_full, color="black", label="ICU Bedload")
 
-        span_los_cutoff = ax_main.axvspan(
+        span_train_initialization = ax_main.axvspan(
             w.train_start,
-            w.train_los_cutoff,
+            w.training_prediction_start,
             color="magenta",
             alpha=0.1,
-            label=f"Train Window (Convolution Edge) = {self.model_config.train_width} days",
+            label=f"Convolution initialization = {self.model_config.train_width} days",
         )
         span_train = ax_main.axvspan(
-            w.train_los_cutoff,
+            w.training_prediction_start,
             w.train_end,
             color="red",
             alpha=0.2,
-            label=f"Training = {self.model_config.train_width-self.model_config.los_cutoff} days",
+            label=f"Train Window = {self.model_config.train_width-self.model_config.kernel_width} days",
         )
         span_test = ax_main.axvspan(
             w.test_start,
@@ -136,9 +136,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if self.ac.debug_hide_failed and not result_obj.success:
                 continue
 
-            y = result_obj.curve[self.model_config.los_cutoff :]
-            s = np.arange(len(y)) + self.model_config.los_cutoff + w.train_start
-            ax_main.plot(s, y, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
+            y_train = result_obj.train_prediction[self.model_config.kernel_width :]
+            y_test = result_obj.test_prediction[self.model_config.kernel_width :]
+            x_train = np.arange(len(y_train)) + w.training_prediction_start
+            x_test = np.arange(len(y_test)) + w.test_start
+
+            ax_main.plot(x_train, y_train, linestyle="--", color=ac.distro_colors[distro])
+            ax_main.plot(x_test, y_test, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
 
         (line_inc,) = ax_inc.plot(x_full, linestyle="--", label="New ICU Admissions (Scaled)")
         ax_inc.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
@@ -147,7 +151,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
         legend1 = ax_main.legend(handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2)
         legend2 = ax_main.legend(
-            handles=[line_bedload, line_inc, span_los_cutoff, span_train, span_test],
+            handles=[line_bedload, line_inc, span_train_initialization, span_train, span_test],
             loc="upper right",
         )
 

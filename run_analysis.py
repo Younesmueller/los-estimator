@@ -99,14 +99,13 @@ update_configurations(cfg, overwrite_cfg)
 # model_config = update(
 #     model_config,
 #     kernel_width=120,
-#     los_cutoff=60,  # Ca. 90% of all patients are discharged after 41 days
 #     smooth_data=False,
 #     train_width=42 + 60,
 #     test_width=21,  # 28 * 4
 #     step=7,
 #     error_fun="mse",
 #     reuse_last_parametrization=True,
-#     variable_kernels=True,
+#     iterative_kernel_fit=True,
 #     distributions=[
 #         # "lognorm",
 #         # "weibull",

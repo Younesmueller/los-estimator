@@ -20,10 +20,12 @@ class SingleFitResult:
     train_error: np.ndarray
     test_error: np.ndarray
     kernel: np.ndarray
-    curve: np.ndarray
     model_config: ModelConfig
+    train_prediction: Optional[np.ndarray] = None
+    test_prediction: Optional[np.ndarray] = None
     rel_train_error: Optional[np.ndarray] = None
     rel_test_error: Optional[np.ndarray] = None
+    curve: Optional[np.ndarray] = None
 
     def __repr__(self):
         # return a string with all variables
