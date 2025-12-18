@@ -115,11 +115,11 @@ class _ErrorFunctions:
 
     @njit
     def mape(x, y):
-        return np.mean(np.abs((x - y) / x)) * 100
+        return np.mean(np.abs((x - y) / x))
 
     @njit
     def smape(x, y):
-        return np.mean(np.abs(x - y) / (np.abs(x) + np.abs(y)) * 2) * 100
+        return np.mean(np.abs(x - y) / (np.abs(x) + np.abs(y)) * 2)
 
     @njit
     def r2(x, y):

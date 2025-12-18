@@ -197,10 +197,6 @@ class MultiSeriesFitter:
                     self._update_past_kernels(fit_result, is_first_window, w, result_obj.kernel)
                     y_pred = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
 
-                rel_err = np.abs(y_pred - series_data.y_full) / (series_data.y_full + 1)
-                result_obj.rel_train_error = np.mean(rel_err[w.train_window])
-                result_obj.rel_test_error = np.mean(rel_err[w.test_window])
-
             except Exception as e:
                 logger.error(f"Error fitting {distro} on window {window_id}: {e}")
                 result_obj = SingleFitResult()
@@ -213,7 +209,7 @@ class MultiSeriesFitter:
             is_first_window = False
         if failed_windows:
             logger.warning(f"Failed to fit {distro} on windows: {failed_windows}")
-        fit_result.prediction = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
+        fit_result.train_data_reproduction = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
 
         return fit_result
 

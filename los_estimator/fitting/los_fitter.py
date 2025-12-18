@@ -150,8 +150,8 @@ def fit_convolution(
 
     fitted_kernel = Distributions.generate_kernel(distro, distro_params, kernel_width)
 
-    train_err, train_prediction = obj_fun(distro_params, *train_data, *args[2:], return_prediction=True)
-    test_err, test_prediction = obj_fun(distro_params, *test_data, *args[2:], return_prediction=True)
+    train_err, train_prediction = obj_fun(distro_params, *train_data, past_kernels, return_prediction=True)
+    test_err, test_prediction = obj_fun(distro_params, *test_data, past_kernels, return_prediction=True)
 
     fit_results = SingleFitResult(
         distro=distro,

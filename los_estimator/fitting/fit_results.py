@@ -39,7 +39,6 @@ class SingleFitResult:
             f"rel_train_error={self.rel_train_error}, "
             f"rel_test_error={self.rel_test_error}, "
             f"kernel={self.kernel.shape}, "
-            f"curve={self.curve.shape}, "
             f"model_config={self.model_config})"
         )
 
@@ -108,7 +107,7 @@ class SeriesFitResult:
         self.fit_results[window_id] = value
 
     def __repr__(self):
-        return f"SeriesFitResult(distro={self.distro}, n_windows={len(self.window_infos)}, train_relative_error={self.train_relative_errors}, test_relative_error={self.test_relative_errors})"
+        return f"SeriesFitResult(distro={self.distro}, n_windows={len(self.window_infos)}, train_relative_error: {len(self.train_relative_errors)}, test_relative_error: {len(self.test_relative_errors)})"
 
 
 class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):

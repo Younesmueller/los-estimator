@@ -11,7 +11,7 @@ import dill
 from los_estimator.config import *
 from los_estimator.core import *
 from los_estimator.data import DataLoader, DataPackage
-from los_estimator.evaluation import FitResultEvaluator
+from los_estimator.evaluation import Evaluator
 from los_estimator.fitting import MultiSeriesFitter
 from los_estimator.fitting.fit_results import MultiSeriesFitResults
 from los_estimator.visualization import (
@@ -98,7 +98,7 @@ class LosEstimationRun:
         self.all_fit_results: MultiSeriesFitResults
         self.series_data: SeriesData
 
-        self.evaluators: dict[str, FitResultEvaluator]
+        self.evaluator: Evaluator
         self.data_loaded = False
 
     def load_data(self):
@@ -265,13 +265,11 @@ class LosEstimationRun:
     def evaluate(self):
         if self.all_fit_results is None:
             raise ValueError("No fit results available. Please run the fit method first.")
-        self.evaluators = {}
-        for distro, fit_result in self.all_fit_results.items():
-            evaluator = FitResultEvaluator(distro, self.series_data.y_full, fit_result.prediction)
-            evaluator.evaluate()
-            self.evaluators[distro] = evaluator
-        for distro, evaluator in self.evaluators.items():
-            logger.info(f"Evaluating {distro} distribution")
+        self.evaluator = Evaluator(
+            all_fit_results=self.all_fit_results,
+            series_data=self.series_data,
+        )
+        self.evaluator.calculate_metrics()
 
     def save_results(self):
         to_save = {
@@ -279,9 +277,7 @@ class LosEstimationRun:
             "chosen_windows": self.fitter.chosen_windows,
             "all_fit_results": self.all_fit_results,
         }
-
-        for name, evaluator in self.evaluators.items():
-            evaluator.save(self.output_config.metrics)
+        self.evaluator.save_result(self.output_config.metrics)
 
         for name, data in to_save.items():
             path = os.path.join(self.output_config.results, f"{name}.pkl")
