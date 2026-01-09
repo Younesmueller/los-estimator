@@ -246,8 +246,8 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if window_id >= len(fit_result.fit_results):
                 continue
             c = ac.distro_colors[distro]
-            train_err = fit_result.train_relative_errors[window_id]
-            test_err = fit_result.test_relative_errors[window_id]
+            train_err = fit_result.train_errors[window_id]
+            test_err = fit_result.test_errors[window_id]
 
             if self.ac.debug_hide_failed and not fit_result[window_id].success:
                 ax_err_train.bar(i, 1e100, color="lightgrey", hatch="/")

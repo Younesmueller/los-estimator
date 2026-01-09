@@ -144,8 +144,8 @@ class MultiSeriesFitter:
         all_fit_results.bake()
 
         for distro, fit_result in all_fit_results.items():
-            train_mean = fit_result.train_relative_errors.mean()
-            test_mean = fit_result.test_relative_errors.mean()
+            train_mean = fit_result.train_errors.mean()
+            test_mean = fit_result.test_errors.mean()
             logger.info(
                 f"{distro[:7]}: Mean Train Error: {float(train_mean):.2f}, Mean Test Error: {float(test_mean):.2f}"
             )

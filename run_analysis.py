@@ -49,10 +49,8 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
             all_successful = False
             continue
 
-        train_error_diff = np.abs(
-            fit_result.train_relative_errors.mean() - comp_fit_result.train_relative_errors.mean()
-        )
-        test_error_diff = np.abs(fit_result.test_relative_errors.mean() - comp_fit_result.test_relative_errors.mean())
+        train_error_diff = np.abs(fit_result.train_errors.mean() - comp_fit_result.train_errors.mean())
+        test_error_diff = np.abs(fit_result.test_errors.mean() - comp_fit_result.test_errors.mean())
 
         if train_error_diff > 1e-4 or test_error_diff > 1e-4:
             print(f"❌ Comparison failed for distribution: {distro}")
@@ -67,7 +65,7 @@ def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
         print("✅ All distributions compared successfully!")
     else:
         print("❌ Some distributions failed the comparison.")
-        return fit_result.train_relative_errors, comp_fit_result.train_relative_errors
+        return fit_result.train_errors, comp_fit_result.train_errors
 
 
 # %%
@@ -162,7 +160,13 @@ estimator = LosEstimationRun(
 estimator.run_analysis(vis=False)
 
 _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+fit_results = estimator.all_fit_results
 
+print("done.")
+
+# %%
+estimator.visualize_results()
+print("visualized.")
 # %%
 fit_results = estimator.all_fit_results
 fit_result = fit_results.results[1]
@@ -565,38 +569,34 @@ fig.show()
 
 
 # %%
-for i in range(3):
-    col = 1
-    row = i + 1
-    legend_name = f"legend{i+2}"  # legend1 is the theme's default. start at legend2 to avoid.
-    x = ((col - 1) * (subplot_width + horizontal_spacing)) + (subplot_width / 2)
-    y = 1 - ((row - 1) * (subplot_height + vertical_spacing)) + legend_horizontal_spacing
-
-    fig.update_traces(col=1, row=i + 1, legend_name=f"legend_{i}")
-    fig.update_layout(
-        {
-            legend_name: dict(
-                x=x,
-                y=y,
-                xanchor="center",
-                yanchor="bottom",
-                bgcolor="rgba(0,0,0,0)",
-            )
-        }
-    )
-
+# for i in range(3):
+#     col = 1
+#     row = i + 1
+#     legend_name = f"legend{i+2}"  # legend1 is the theme's default. start at legend2 to avoid.
+#     x = ((col - 1) * (subplot_width + horizontal_spacing)) + (subplot_width / 2)
+#     y = 1 - ((row - 1) * (subplot_height + vertical_spacing)) + legend_horizontal_spacing
+#
+#     fig.update_traces(col=1, row=i + 1, legend_name=f"legend_{i}")
+#     fig.update_layout(
+#         {
+#             legend_name: dict(
+#                 x=x,
+#                 y=y,
+#                 xanchor="center",
+#                 yanchor="bottom",
+#                 bgcolor="rgba(0,0,0,0)",
+#             )
+#         }
+#     )
+#
 # fig.update_yaxes(col=1,row=2,title_text="Window Index",gridwidth=1, gridcolor="lightgray")
-
-fig.show()
-
+#
+# fig.show()
+#
 # output_dir = Path(estimator.output_config.figures)
 # output_dir.mkdir(parents=True, exist_ok=True)
 # filename = output_dir / f"training_prediction_{distro}.html"
 # fig.write_html(str(filename), include_plotlyjs="cdn", full_html=True)
-# %%
-
-
-# %%
 
 
 ################################################################################################################################################################################################
@@ -680,21 +680,28 @@ fig.update_layout(
     title=f"MSE over time",
     template="plotly_white",
 )
-# fig.show()
+fig.show()
 filename = Path(estimator.output_config.figures) / f"mse_plot.html"
 
 fig.write_html(str(filename), include_plotlyjs="cdn", full_html=True)
 print(f"Saved figure to {filename}")
 # %%
-
-# Print estimations
-metrics = eval_result.metric_names
-time_points = [w.window for w in fit_result.window_infos]
-for i_distro, distro in enumerate(estimator.all_fit_results.keys()):
-
-    time_points = [w.window for w in fit_result.window_infos]
+skip_graph = True
+figure_explanation = (
+    "For each Distribution, for each metric: plot all fit results, predictions and train metric and test metric"
+)
+if skip_graph:
+    print("Skipping Figure:", figure_explanation)
+else:
+    print("Generating Figure:", figure_explanation)
+    # Figure Explanation: For each Distribution, for each metric: plot all fit results, predictions and train metric and test metric
+    # Print estimations
+    metrics = eval_result.metric_names
     for i_distro, distro in enumerate(estimator.all_fit_results.keys()):
+        if i_distro > 1:
+            continue
         fit_res = estimator.all_fit_results[distro]
+        time_points = [w.window for w in fit_res.window_infos]
 
         for i_metric, metric in enumerate(metrics):
             fig = make_subplots(
@@ -763,7 +770,7 @@ for i_distro, distro in enumerate(estimator.all_fit_results.keys()):
                 fig.update_xaxes(range=[time_points[0], time_points[-1]])
 
             fig.update_layout(height=700, width=900, showlegend=True)
-            # # fig.show()
+            fig.show()
 # %%
 data_package = estimator.evaluator.window_data_package
 data_package
@@ -1142,7 +1149,7 @@ for distro, fit_res in list(estimator.all_fit_results.items())[distro_id : distr
     )
 
     fig.update_layout(
-        title=f"{distro} — fitted kernel example, {param_str}",
+        title=f"{distro} - fitted kernel example, {param_str}",
         xaxis_title="days",
         yaxis_title="discharge probability",
         template="plotly_white",

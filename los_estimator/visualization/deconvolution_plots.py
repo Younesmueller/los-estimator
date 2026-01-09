@@ -190,13 +190,9 @@ class DeconvolutionPlots(VisualizerBase):
 
     def _ax_plot_error_error_points(self, ax2, fr_series, distro):
         """Plot error points on given axis."""
-        logger.warning(
-            "This function is deprecated and will be removed in future versions. _ax_plot_error_error_points"
-        )
-        return
         x = self.series_data.windows
-        ax2.plot(x, fr_series.train_relative_errors, label="Train Error")
-        ax2.plot(x, fr_series.test_relative_errors, label="Test Error")
+        ax2.plot(x, fr_series.train_errors, label="Train Error")
+        ax2.plot(x, fr_series.test_errors, label="Test Error")
 
         for i, fit_result in enumerate(fr_series.fit_results):
             if not fit_result.success:
@@ -214,8 +210,8 @@ class DeconvolutionPlots(VisualizerBase):
         ]
         ax2.legend(handles=legend_handles, loc="upper right")
 
-        ax2.set_ylim(-0.1, 0.5)
-        ax2.set_title("Relative Errors")
+        # ax2.set_ylim(-0.1, 0.5)
+        ax2.set_title("Error over time")
         ax2.grid(zorder=0)
 
     def show_error_windows(self, distro: Optional[Union[str, List[str]]] = None):

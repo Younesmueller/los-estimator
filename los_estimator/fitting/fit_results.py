@@ -47,8 +47,8 @@ class SeriesFitResult:
     distro: str
     window_infos: list[WindowInfo]
     fit_results: list[SingleFitResult]
-    train_relative_errors: np.ndarray
-    test_relative_errors: np.ndarray
+    train_errors: np.ndarray
+    test_errors: np.ndarray
     successes: list[bool]
     n_success: np.ndarray
     all_kernels: np.ndarray
@@ -59,8 +59,8 @@ class SeriesFitResult:
         self.distro = distro
         self.window_infos = []
         self.fit_results = []
-        self.train_relative_errors = None
-        self.test_relative_errors = None
+        self.train_errors = None
+        self.test_errors = None
         self.successes = []
         self.n_success = None
         self.all_kernels = None
@@ -89,10 +89,10 @@ class SeriesFitResult:
                 train_err[i] = np.inf
                 test_err[i] = np.inf
                 continue
-            train_err[i] = fr.rel_train_error
-            test_err[i] = fr.rel_test_error
-        self.train_relative_errors = train_err
-        self.test_relative_errors = test_err
+            train_err[i] = fr.train_error
+            test_err[i] = fr.test_error
+        self.train_errors = train_err
+        self.test_errors = test_err
 
     def __getitem__(self, window_id):
         if isinstance(window_id, slice):
@@ -107,7 +107,7 @@ class SeriesFitResult:
         self.fit_results[window_id] = value
 
     def __repr__(self):
-        return f"SeriesFitResult(distro={self.distro}, n_windows={len(self.window_infos)}, train_relative_error: {len(self.train_relative_errors)}, test_relative_error: {len(self.test_relative_errors)})"
+        return f"SeriesFitResult(distro={self.distro}, n_windows={len(self.window_infos)}, train_relative_error: {len(self.train_errors)}, test_relative_error: {len(self.test_errors)})"
 
 
 class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
@@ -138,8 +138,8 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
         for distro, fit_result in self.items():
             fit_result.bake()
         self.n_windows = len(self.results[0].fit_results) if self.results else 0
-        self.train_errors_by_distro = np.array([fr.train_relative_errors for fr in self.results]).T
-        self.test_errors_by_distro = np.array([fr.test_relative_errors for fr in self.results]).T
+        self.train_errors_by_distro = np.array([fr.train_errors for fr in self.results]).T
+        self.test_errors_by_distro = np.array([fr.test_errors for fr in self.results]).T
         self.successes_by_distro = np.array([fr.successes for fr in self.results]).T
         self.failures_by_distro = 1 - self.successes_by_distro.astype(int)
         self.n_success_by_distro = np.array([fr.n_success for fr in self.results]).T

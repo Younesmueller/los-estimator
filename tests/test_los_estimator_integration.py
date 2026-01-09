@@ -75,12 +75,8 @@ class TestLosEstimatorIntegration:
 
             comp_fit_result = self.original_result[distro]
 
-            train_error_diff = np.abs(
-                fit_result.train_relative_errors.mean() - comp_fit_result.train_relative_errors.mean()
-            )
-            test_error_diff = np.abs(
-                fit_result.test_relative_errors.mean() - comp_fit_result.test_relative_errors.mean()
-            )
+            train_error_diff = np.abs(fit_result.train_errors.mean() - comp_fit_result.train_errors.mean())
+            test_error_diff = np.abs(fit_result.test_errors.mean() - comp_fit_result.test_errors.mean())
 
             assert train_error_diff <= 1e-4, f"Train error difference too large for {distro}: {train_error_diff:.4f}"
             assert test_error_diff <= 1e-4, f"Test error difference too large for {distro}: {test_error_diff:.4f}"
