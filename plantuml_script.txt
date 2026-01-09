@@ -1,3 +1,0 @@
-py2puml los_estimator los_estimator > class_diagram.puml
-
-py2puml los_estimator.fitting los_estimator > fitting.puml
