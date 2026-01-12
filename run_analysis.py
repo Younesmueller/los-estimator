@@ -156,16 +156,21 @@ estimator = LosEstimationRun(
     animation_config,
 )
 
+# estimator.set_up()
+# estimator.load_data()
+# estimator.fit()
+# estimator.evaluate()
+# estimator.save_results()
 
-estimator.run_analysis(vis=False)
+estimator.run_analysis()
 
-try:
-    _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
-except Exception as e:
-    print(f"An error occurred during comparison: {e}")
-fit_results = estimator.all_fit_results
+# try:
+#     _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
+# except Exception as e:
+#     print(f"An error occurred during comparison: {e}")
+# fit_results = estimator.all_fit_results
 
 print("done.")
 
-
 # %%
+estimator.animate_results()

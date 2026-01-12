@@ -111,7 +111,7 @@ class MultiSeriesFitter:
             list: Filtered window data based on debug settings.
         """
         window_data = list(series_data)
-        self.chosen_windows = [-1]
+        self.chosen_windows = np.arange(len(series_data)).tolist()
         if self.DEBUG["LESS_WINDOWS"]:
             window_data = window_data[:3]
             self.chosen_windows = [0, 1, 2]

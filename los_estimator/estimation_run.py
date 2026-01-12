@@ -20,6 +20,7 @@ from los_estimator.visualization import (
     InputDataVisualizer,
     get_color_palette,
 )
+from los_estimator.visualization.metrics import MetricsPlots
 
 logger = logging.getLogger("los_estimator")
 
@@ -164,6 +165,20 @@ class LosEstimationRun:
         file_handler.setLevel(logging.INFO)
         logger.addHandler(file_handler)
 
+    def visualize_metrics(self):
+        """Generate visualizations of evaluation metrics.
+
+        Creates plots for evaluation metrics using the MetricsPlots visualizer.
+        """
+        metrics_plots = MetricsPlots(
+            series_data=self.series_data,
+            visualization_config=self.visualization_config,
+            visualization_context=self.visualization_context,
+            output_config=self.output_config,
+            evaluation_results=self.evaluator.result,
+        )
+        metrics_plots.plot_metrics()
+
     def visualize_results(self):
         """Generate visualizations of the fitting results.
 
@@ -233,6 +248,8 @@ class LosEstimationRun:
 
         self.evaluate()
         self.save_results()
+
+        self.visualize_metrics()
 
         self.visualize_results()
 

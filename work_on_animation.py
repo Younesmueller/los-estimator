@@ -1,3 +1,4 @@
+# %%
 """Animation functionality for deconvolution analysis."""
 
 import logging
@@ -10,16 +11,16 @@ import numpy as np
 import pandas as pd
 from matplotlib.patches import Patch
 
-from ..config import (
+from los_estimator.config import (
     AnimationConfig,
     ModelConfig,
     OutputFolderConfig,
     VisualizationConfig,
     VisualizationContext,
 )
-from ..core import SeriesData
-from ..fitting import MultiSeriesFitResults
-from .deconvolution_plots import DeconvolutionPlots
+from los_estimator.core import SeriesData
+from los_estimator.fitting import MultiSeriesFitResults
+from los_estimator.visualization.deconvolution_plots import DeconvolutionPlots
 
 logger = logging.getLogger("los_estimator")
 
@@ -298,9 +299,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
             ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
 
-        sample_kernel_handle = []
-        if hasattr(self.vc, "real_los") and self.vc.real_los is not None:
-            sample_kernel_handle = ax_kernel.plot(self.vc.real_los, color="black", label="Reference Distribution")
+        sample_kernel_handle = ax_kernel.plot(self.vc.real_los, color="black", label="Sentinel LoS Charité")
 
         ax_kernel.legend(handles=sample_kernel_handle + ac.distro_patches, loc="upper right", fancybox=True, ncol=2)
         ax_kernel.set_ylim(0, 0.1)
@@ -308,3 +307,18 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         ax_kernel.set_ylabel("Discharge Probability")
         ax_kernel.set_xlabel("Days After Admission")
         ax_kernel.set_title("Estimated LoS Kernels")
+
+
+animator = DeconvolutionAnimator(
+    all_fit_results=estimator.all_fit_results,
+    series_data=estimator.series_data,
+    model_config=estimator.model_config,
+    visualization_config=estimator.visualization_config,
+    visualization_context=estimator.visualization_context,
+    animation_config=estimator.animation_config,
+    output_folder_config=estimator.output_config,
+    window_ids=estimator.fitter.chosen_windows,
+)
+animator.window_ids = [1, 5, 10]
+animator.ac.show_figures = True
+animator.animate_fit_deconvolution()

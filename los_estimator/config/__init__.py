@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from pyparsing import Union
 import toml
 
 __all__ = [
@@ -221,6 +222,8 @@ class AnimationConfig:
     )
     distro_colors: dict[str, str] = field(default_factory=lambda: {})
     distro_patches: dict[str, str] = field(default_factory=lambda: {})
+    train_error_lim: Union[str, float] = "auto"
+    test_error_lim: Union[str, float] = "auto"
 
 
 @config("visualization_config")

@@ -153,6 +153,9 @@ def fit_convolution(
     train_err, train_prediction = obj_fun(distro_params, *train_data, past_kernels, return_prediction=True)
     test_err, test_prediction = obj_fun(distro_params, *test_data, past_kernels, return_prediction=True)
 
+    rel_train_error = train_prediction[kernel_width:] / train_data[1][kernel_width:]
+    rel_test_error = test_prediction[kernel_width:] / test_data[1][kernel_width:]
+
     fit_results = SingleFitResult(
         distro=distro,
         train_data=train_data,
@@ -165,6 +168,8 @@ def fit_convolution(
         train_prediction=train_prediction,
         test_prediction=test_prediction,
         model_config=distro_params,
+        rel_train_error=rel_train_error,
+        rel_test_error=rel_test_error,
     )
 
     return fit_results
@@ -217,6 +222,9 @@ def fit_compartmental(
     train_err = obj_fun(result.x, x_train, y_train, kernel_width)
     test_err = obj_fun(result.x, x_test, y_test, kernel_width)
 
+    rel_train_error = train_prediction / train_data[1]
+    rel_test_error = test_prediction / test_data[1]
+
     result_obj = SingleFitResult(
         distro="compartmental",
         train_data=x_train,
@@ -229,6 +237,8 @@ def fit_compartmental(
         train_prediction=train_prediction,
         test_prediction=test_prediction,
         model_config=result.x,
+        rel_train_error=rel_train_error,
+        rel_test_error=rel_test_error,
     )
 
     return result_obj

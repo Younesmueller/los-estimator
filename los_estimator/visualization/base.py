@@ -61,6 +61,8 @@ class VisualizerBase:
         """
         self.visualization_config: VisualizationConfig = visualization_config
         self.output_config: Optional[OutputFolderConfig] = output_config
+        if output_config is not None:
+            self.output_path = output_config.figures
 
         try:
             plt.style.use(visualization_config.style)
@@ -95,7 +97,7 @@ class VisualizerBase:
             if filename and self.output_config:
                 if not filename.endswith(".png"):
                     filename = filename + ".png"
-                full_path = os.path.join(self.output_config.figures, filename)
+                full_path = os.path.join(self.output_path, filename)
                 fig.savefig(full_path, bbox_inches="tight")
 
         if self.visualization_config.show_figures:

@@ -73,6 +73,8 @@ show_figures = true
 save_figures = true
 debug_animation = false
 debug_hide_failed = true
+train_error_lim = "auto"
+test_error_lim = "auto"
 alternative_names = [
     [
         "block",
