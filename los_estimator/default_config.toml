@@ -3,7 +3,7 @@ icu_file = "${data}/preprocessing/output/icu.csv"
 los_file = "${data}/dynamic/sample_los.csv"
 # optional files
 init_params_file = "${data}/dynamic/sample_los_fit_values.csv"
-mutants_file = "${data}/preprocessing/output/mutant_distribution.csv"
+# mutants_file = "${data}/preprocessing/output/mutant_distribution.csv"
 
 start_day = "2021-07-29"
 end_day = "2025-01-01"

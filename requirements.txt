@@ -12,3 +12,4 @@ toml>=0.10.2
 click>=8.1.0
 dill
 toml
+pillow

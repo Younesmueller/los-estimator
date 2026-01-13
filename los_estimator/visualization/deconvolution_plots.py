@@ -1,4 +1,6 @@
+# %%
 """Deconvolution plotting functionality."""
+
 
 import logging
 from typing import List, Optional, Union
@@ -19,6 +21,9 @@ from ..fitting import MultiSeriesFitResults
 from .base import VisualizerBase
 
 logger = logging.getLogger("los_estimator")
+
+
+# %%
 
 
 class DeconvolutionPlots(VisualizerBase):
@@ -52,26 +57,7 @@ class DeconvolutionPlots(VisualizerBase):
         self.series_data: SeriesData = series_data
         self.model_config: ModelConfig = model_config
 
-    def plot_successful_fits(self):
-        """Plot number of failed fits and successful fits."""
-        fit_results = self.all_fit_results
-
-        fig = self._figure()
-
-        for i, distro in enumerate(fit_results):
-            plt.bar(
-                i,
-                fit_results[distro].n_success,
-                color=self.colors[i],
-                label=distro.capitalize(),
-            )
-
-        plt.xticks(np.arange(len(fit_results)), fit_results.keys(), rotation=45)
-        self._set_title("Number of successful fits\n")
-        plt.axhline(self.series_data.n_windows, color="red", linestyle="--", label="Total")
-        plt.xticks(rotation=45)
-
-        self._show("successful_fits.png", fig)
+        self.error_fun = model_config.error_fun
 
     def _pairplot(self, col2, col1):
         """Create scatter plot comparing two metrics."""
@@ -100,119 +86,87 @@ class DeconvolutionPlots(VisualizerBase):
         self._set_title(f"Model Performance: {name}")
         self._show(name or f"{col2}_vs_{col1}.png", fig)
 
-    def plot_err_failure_rates(self):
-        """Plot error vs failure rate comparisons."""
-        self._pairplot("Median Loss Train", "Failure Rate")
-        self._pairplot("Median Loss Test", "Failure Rate")
-        self._pairplot("Mean Loss Test (no outliers)", "Failure Rate")
-
     def plot_error_comparison(self):
         """Plot error comparison across models."""
-        sorted_summary = self.all_fit_results.summary.sort_values("Median Loss Test")
+        sorted_summary = self.all_fit_results.summary.sort_values("Median Loss Train")
         sorted_summary = sorted_summary[
             [
-                "Median Loss Test",
-                "Failure Rate",
+                # "Failure Rate",
+                # "Mean Loss Train",
                 "Median Loss Train",
-                "Upper Quartile Train",
-                "Lower Quartile Train",
+                # "Upper Quartile Train",
+                # "Lower Quartile Train",
+                # "Mean Loss Test",
+                "Median Loss Test",
+                "Mean Loss Test (no outliers)",
+                "Mean Loss Train (no outliers)",
             ]
         ]
 
-        sorted_summary.plot(subplots=True, figsize=(10, 10))
+        sorted_summary.plot.bar(subplots=False, figsize=(10, 6))
 
         plt.legend()
-        plt.title("Median Loss")
         xticks = list(sorted_summary.index)
         plt.xticks(np.arange(len(xticks)), xticks, rotation=45)
-        self._set_title("Error Comparison of Models")
+        plt.xlabel("Distribution Functions")
+        plt.ylabel(self.error_fun.capitalize())
+        plt.suptitle(self._get_full_title("Error Comparison of Models"))
+        plt.tight_layout()
         self._show("error_comparison.png")
 
-    def boxplot_errors(self, errors, title, ylabel, file):
+    def boxplot_errors(self, errors, title, ylabel, file, show_outliers):
         """Create boxplot of errors."""
         self._figure()
-        plt.boxplot(errors)
-        distro_and_n = [f"{distro.capitalize()} n={fr.n_success}" for distro, fr in self.all_fit_results.items()]
+        plt.boxplot(errors, showfliers=show_outliers)
+        distro_and_n = [f"{distro.capitalize()}" for distro, fr in self.all_fit_results.items()]
         plt.xticks(np.arange(len(distro_and_n)) + 1, distro_and_n, rotation=45)
         plt.title(title)
         plt.ylabel(ylabel)
         plt.tight_layout()
         self._show(file)
 
-    def stripplot_errors(self, title, file):
-        """Create stripplot of errors."""
-        self._figure()
-        sns.stripplot(data=self.all_fit_results.train_errors_by_distro, jitter=0.2)
-        plt.xticks(
-            np.arange(len(self.all_fit_results)),
-            self.all_fit_results.distros,
-            rotation=45,
-        )
-        self._set_title(title)
-        self._show(file)
-
-    def _ax_plot_prediction_error_window(self, ax, fr_series, distro, error_window_alpha=0.1):
+    def _ax_plot_prediction_error_window(self, ax, fr_series, distro):
         """Plot prediction error window on given axis."""
-        ax.plot(self.series_data.y_full, color="black", alpha=0.8, linestyle="--")
+        (l_real,) = ax.plot(self.series_data.y_full, color="black", alpha=0.8, linestyle="--", label="Real Occupancy")
         for w, fit_result in zip(fr_series.window_infos, fr_series.fit_results):
-
-            if not fit_result.success and error_window_alpha > 0:
-                ax.axvspan(w.train_start, w.train_end, color="red", alpha=error_window_alpha)
-                continue
 
             x = np.arange(w.training_prediction_start, w.train_end)
             y = fit_result.train_prediction[self.model_config.kernel_width : self.model_config.train_width]
-            ax.plot(x, y, color=self.colors[0])
+            (l_train,) = ax.plot(x, y, color=self.colors[0], label=f"{distro.capitalize()} Train", linestyle="-")
 
-            x = np.arange(w.train_end + w.kernel_width, w.test_end)
-            y = fit_result.test_prediction[w.kernel_width : self.model_config.test_width]
-            ax.plot(x, y, color=self.colors[1])
-
-        legend_handles = [
+            x = np.arange(w.train_end, w.test_end)
+            y = fit_result.test_prediction[w.kernel_width : w.kernel_width + self.model_config.test_width]
+            (l_test,) = ax.plot(
+                x, y, color=self.colors[1], label=f"{distro.capitalize()} Prediction", linestyle="--", alpha=0.5
+            )
+        legend_handles = [l_real, l_train, l_test]
+        [
             plt.Line2D([0], [0], color="black", linestyle="--", label="Real"),
             plt.Line2D([0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"),
-            plt.Line2D(
-                [0],
-                [0],
-                color=self.colors[1],
-                label=f"{distro.capitalize()} Prediction",
-            ),
+            plt.Line2D([0], [0], color=self.colors[1], label=f"{distro.capitalize()} Prediction"),
         ]
-        if error_window_alpha > 0:
-            legend_handles += [Patch(color="red", alpha=0.1, label="Failed Training Windows")]
         ax.legend(handles=legend_handles, loc="upper right")
 
         ax.set_ylim(-100, 6000)
-        ax.set_xticks(self.vc.xtick_pos[::2])
-        ax.set_xticklabels(self.vc.xtick_label[::2])
+        ax.set_xticks(self.vc.xtick_pos[1::2])
+        ax.set_xticklabels(self.vc.xtick_label[1::2])
         ax.set_xlim(*self.vc.xlims)
+        ax.set_ylabel("Ouccupied Beds")
+        ax.set_title("Predictions vs Real Occupancy")
         ax.grid(zorder=0)
 
     def _ax_plot_error_error_points(self, ax2, fr_series, distro):
         """Plot error points on given axis."""
         x = self.series_data.windows
-        ax2.plot(x, fr_series.train_errors, label="Train Error")
-        ax2.plot(x, fr_series.test_errors, label="Test Error")
+        (l1,) = ax2.plot(x, fr_series.train_errors, label="Train Error", color=self.colors[0], linestyle="-", alpha=0.7)
+        (l2,) = ax2.plot(x, fr_series.test_errors, label="Test Error", color=self.colors[1], linestyle="--", alpha=0.7)
 
-        for i, fit_result in enumerate(fr_series.fit_results):
-            if not fit_result.success:
-                ax2.axvline(x[i], color="red", alpha=0.5)
+        ax2.legend(handles=[l1, l2], loc="upper right")
 
-        legend_handles = [
-            plt.Line2D([0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"),
-            plt.Line2D(
-                [0],
-                [0],
-                color=self.colors[1],
-                label=f"{distro.capitalize()} Prediction",
-            ),
-            plt.Line2D([0], [0], color="red", label="Failed Training Windows", alpha=0.5),
-        ]
-        ax2.legend(handles=legend_handles, loc="upper right")
-
-        # ax2.set_ylim(-0.1, 0.5)
-        ax2.set_title("Error over time")
+        ax2.set_title("Rolling Fit Errors")
         ax2.grid(zorder=0)
+        ax2.set_ylabel(self.error_fun.capitalize())
+        ax2.set_xlabel("Days")
 
     def show_error_windows(self, distro: Optional[Union[str, List[str]]] = None):
         """Show error windows for specified distributions."""
@@ -226,7 +180,6 @@ class DeconvolutionPlots(VisualizerBase):
 
             plt.suptitle(f"{distro.capitalize()} Distribution\n{self.model_config.run_name}")
             plt.tight_layout()
-
             self._show(f"prediction_error_{distro}_fit.png")
 
     def show_all_error_windows_superimposed(self):
@@ -235,15 +188,9 @@ class DeconvolutionPlots(VisualizerBase):
         for distro in self.all_fit_results.distros:
             fr_series = self.all_fit_results[distro]
 
-            self._ax_plot_prediction_error_window(ax, fr_series, distro, error_window_alpha=0.05)
+            self._ax_plot_prediction_error_window(ax, fr_series, distro)
             self._ax_plot_error_error_points(ax2, fr_series, distro)
-
-        for line in ax2.get_children():
-            if isinstance(line, plt.Line2D):
-                if line.get_color() == "red":
-                    line.remove()
-
-        self._set_title("All Predictions and Error")
+        plt.suptitle(self._get_full_title("All Predictions and Error"))
         plt.tight_layout()
         self._show("prediction_error_all_distros.png")
 
@@ -263,8 +210,9 @@ class DeconvolutionPlots(VisualizerBase):
         for distro in self.all_fit_results.distros:
             fr_series = self.all_fit_results[distro]
 
-            self._ax_plot_prediction_error_window(ax, fr_series, distro, error_window_alpha=0)
+            self._ax_plot_prediction_error_window(ax, fr_series, distro)
 
+        ax.legend(labels=["Real Occupancy", "Train", "Test"])
         self._set_title("All Predictions")
         plt.tight_layout()
         self._show("prediction_all_distros.png")
@@ -276,7 +224,7 @@ class DeconvolutionPlots(VisualizerBase):
         for distro in distros:
             self._figure(figsize=(10, 5))
             # plot real kernel
-            (r,) = plt.plot(self.vc.real_los, color="black", label="Real")
+            (r,) = plt.plot(self.vc.real_los, color="black", label="Sample Kernel")
 
             fit_results = self.all_fit_results[distro]
             for fit_result in fit_results.fit_results:
@@ -286,40 +234,115 @@ class DeconvolutionPlots(VisualizerBase):
                     fit_result.kernel,
                     alpha=0.3,
                     color=self.colors[0],
-                    label="All Estimated",
+                    label=f"Rolling {distro.capitalize()} Kernels",
                 )
             plt.legend(handles=[r, l])
             plt.ylim(-0.005, 0.3)
-            self._set_title(f"{distro.capitalize()} Kernel")
+            plt.xlim(-1, self.model_config.kernel_width + 1)
+            plt.xlabel("Days after admission")
+            plt.ylabel("Discharge Probability")
+
+            self._set_title(f"All Rolling {distro.capitalize()} Kernels")
             plt.tight_layout()
             plt.grid()
-            self._show(f"all_kernels_{distro}.png")
+            self._show(f"rolling_kernels_{distro}.png")
 
     def generate_plots_for_run(self):
         """Generate all plots for a run."""
 
-        self.plot_successful_fits()
-        self.plot_err_failure_rates()
         self.plot_error_comparison()
         self.boxplot_errors(
             self.all_fit_results.train_errors_by_distro,
             "Train Error",
-            "Relative Train Error",
+            self.error_fun.capitalize(),
             "train_error_boxplot.png",
+            show_outliers=True,
+        )
+        self.boxplot_errors(
+            self.all_fit_results.train_errors_by_distro,
+            "Train Error",
+            self.error_fun.capitalize(),
+            "train_error_boxplot_no_outliers.png",
+            show_outliers=False,
         )
         self.boxplot_errors(
             self.all_fit_results.test_errors_by_distro,
             "Test Error",
-            "Relative Test Error",
+            self.error_fun.capitalize(),
             "test_error_boxplot.png",
+            show_outliers=True,
         )
-        self.stripplot_errors("Train Error", "train_error_stripplot.png")
+        self.boxplot_errors(
+            self.all_fit_results.test_errors_by_distro,
+            "Test Error",
+            self.error_fun.capitalize(),
+            "test_error_boxplot_no_outliers.png",
+            show_outliers=False,
+        )
+
         self.show_error_windows()
         self.show_all_error_windows_superimposed()
         self.show_all_predictions()
         self.superimpose_kernels()
 
+        self.plot_train_vs_test_error()
+
+    def plot_train_vs_test_error(self):
+        _, axs = self._get_subplots(2, 3, sharex=True, sharey=True, figsize=(12, 6))
+        axs = axs.flatten()
+        for distro, ax in zip(self.all_fit_results.distros, axs):
+            fr = self.all_fit_results[distro]
+            x = fr.train_errors
+            y = fr.test_errors
+            ax.scatter(x, y, s=10)
+            ax.set_xlabel(f"Train {self.error_fun.capitalize()}")
+            ax.set_ylabel(f"Test {self.error_fun.capitalize()}")
+            ax.set_title(f"{distro.capitalize()} Distribution")
+        plt.suptitle(self._get_full_title("Train vs Test Error"))
+        plt.tight_layout()
+        self._show(f"train_vs_test_error_{distro}.png")
+
+    def _get_full_title(self, title: str) -> str:
+        """Get full title with run name."""
+        run_name = self.model_config.run_name
+        return title + "\n" + run_name
+
     def _set_title(self, title: str, *args, **kwargs):
         """Set the title of the current figure."""
-        run_name = self.model_config.run_name
-        plt.title(title + "\n" + run_name, *args, **kwargs)
+        plt.title(self._get_full_title(title), *args, **kwargs)
+
+
+# deconv_plot_visualizer = DeconvolutionPlots(
+#     estimator.all_fit_results,
+#     estimator.series_data,
+#     estimator.model_config,
+#     estimator.visualization_config,
+#     estimator.visualization_context,
+#     estimator.output_config,
+# )
+# deconv_plot_visualizer.generate_plots_for_run()
+# # deconv_plot_visualizer.plot_train_vs_test_error()
+
+# print("all klear!")
+
+# # %%
+# import logging
+# from typing import List, Optional, Union
+
+# import matplotlib.pyplot as plt
+# import numpy as np
+# import seaborn as sns
+# from matplotlib.patches import Patch
+
+
+# from los_estimator.config import (
+#     ModelConfig,
+#     OutputFolderConfig,
+#     VisualizationConfig,
+#     VisualizationContext,
+# )
+# from los_estimator.core import SeriesData
+# from los_estimator.fitting import MultiSeriesFitResults
+# from los_estimator.visualization.base import VisualizerBase
+
+# logger = logging.getLogger("los_estimator")

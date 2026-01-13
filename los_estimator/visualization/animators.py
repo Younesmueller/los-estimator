@@ -4,6 +4,10 @@ import logging
 import os
 from typing import Optional
 
+import glob
+import contextlib
+
+
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
@@ -293,8 +297,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
                 continue
             result_obj = result_series.fit_results[window_id]
             name = dict(ac.alternative_names).get(distro, distro.capitalize())
-            if self.ac.debug_hide_failed and not result_obj.success:
-                continue
 
             ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
 
@@ -308,3 +310,28 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         ax_kernel.set_ylabel("Discharge Probability")
         ax_kernel.set_xlabel("Days After Admission")
         ax_kernel.set_title("Estimated LoS Kernels")
+
+    def combine_to_gif(self):
+
+        from PIL import Image
+
+        # filepaths
+        folder = sorted(glob.glob("./results/*/"))[-1] + "animation/"
+        fp_in = folder + "./*.png"
+        fp_out = folder + "./combined_video.gif"
+        print("Combining images to gif...")
+
+        with contextlib.ExitStack() as stack:
+
+            # lazily load images
+            imgs = (stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in)))
+
+            imgs = (img.convert("RGBA") for img in imgs)
+
+            # get first image
+            img = next(imgs)
+
+            # save and append the following images
+            img.save(fp=fp_out, format="GIF", append_images=imgs, save_all=True, duration=500, loop=0)
+
+    print("done!")

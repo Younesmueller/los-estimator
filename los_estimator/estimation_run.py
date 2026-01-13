@@ -216,6 +216,8 @@ class LosEstimationRun:
 
         self.animator.animate_fit_deconvolution(self.data.df_mutant)
 
+        self.animator.combine_to_gif()
+
     def create_run(self):
         model_config = self.model_config
         timestamp = time.strftime("%y%m%d_%H%M")
@@ -301,5 +303,5 @@ class LosEstimationRun:
             with open(path, "wb") as f:
                 dill.dump(data, f)
 
-        path = os.path.join(self.output_config.results, "configurations.toml")
+        path = os.path.join(self.output_config.results, "run_configurations.toml")
         save_configurations(path, self.configurations)
