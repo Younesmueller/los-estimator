@@ -182,6 +182,7 @@ class OutputFolderConfig:
         self.figures = os.path.join(self.results, "figures")
         self.animation = os.path.join(self.results, "animation")
         self.metrics = os.path.join(self.results, "metrics")
+        self.model_data = os.path.join(self.results, "model_data")
 
     def __post_init__(self):
         self.build()

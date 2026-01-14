@@ -38,10 +38,6 @@ class EvaluationResult:
         train: Optional[NDArray[Any]] = None,
         test: Optional[NDArray[Any]] = None,
         window_data_package: Optional["WindowDataPackage"] = None,
-        train_mean: Optional[NDArray[Any]] = None,
-        test_mean: Optional[NDArray[Any]] = None,
-        train_median: Optional[NDArray[Any]] = None,
-        test_median: Optional[NDArray[Any]] = None,
     ) -> None:
         self.train: Optional[NDArray[Any]] = train
         self.test: Optional[NDArray[Any]] = test

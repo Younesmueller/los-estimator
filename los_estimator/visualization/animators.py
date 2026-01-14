@@ -41,6 +41,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         output_folder_config: OutputFolderConfig,
         animation_config: AnimationConfig,
         window_ids: Optional[list[int]] = None,
+        df_mutant: Optional[pd.DataFrame] = None,
     ):
         super().__init__(
             all_fit_results,
@@ -51,6 +52,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             output_config=output_folder_config,
         )
         self.window_ids = window_ids
+        self.df_mutant = df_mutant
         self.ac = animation_config
         self._generate_animation_context()
 
@@ -187,8 +189,9 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         else:
             plt.close(fig)
 
-    def animate_fit_deconvolution(self, df_mutant: Optional[pd.DataFrame] = None):
+    def animate_fit_deconvolution(self):
         """Create animation of fit deconvolution process."""
+        df_mutant = self.df_mutant
         SHOW_MUTANTS = df_mutant is not None
 
         self._create_animation_folder()
@@ -316,7 +319,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         from PIL import Image
 
         # filepaths
-        folder = sorted(glob.glob("./results/*/"))[-1] + "animation/"
+        folder = self.output_config.animation
         fp_in = folder + "./*.png"
         fp_out = folder + "./combined_video.gif"
         logger.info("Combining images to gif...")
@@ -326,7 +329,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             # lazily load images
             imgs = (stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in)))
 
-            imgs = (Image.composite(img, Image.new("RGB", img.size, (255, 255, 255)), img) for img in imgs)
+            # imgs = (Image.composite(img, Image.new("RGB", img.size, (255, 255, 255)), img) for img in imgs)
+            imgs = (
+                Image.composite(
+                    img.convert("RGBA"), Image.new("RGBA", img.size, (255, 255, 255, 255)), img.convert("RGBA")
+                ).convert("P")
+                for img in imgs
+            )
 
             # get first image
             img = next(imgs)

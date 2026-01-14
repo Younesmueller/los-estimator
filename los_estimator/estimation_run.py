@@ -41,6 +41,46 @@ class LosEstimationRun:
         debug_config (DebugConfig): Configuration for debugging options.
     """
 
+    @staticmethod
+    def load_run(folder):
+        path = Path(folder)
+
+        cfg = load_configurations(path / "run_configurations.toml")
+        model_config = cfg["model_config"]
+        data_config = cfg["data_config"]
+        output_config = cfg["output_config"]
+        debug_config = cfg["debug_config"]
+        visualization_config = cfg["visualization_config"]
+        animation_config = cfg["animation_config"]
+
+        run_nickname = None
+        if "run_nickname" in cfg:
+            run_nickname = cfg["run_nickname"]
+
+        run = LosEstimationRun(
+            data_config,
+            output_config,
+            model_config,
+            debug_config,
+            visualization_config,
+            animation_config,
+            run_nickname,
+        )
+
+        def _load(name):
+            file = path / f"{name}.pkl"
+            if file.exists():
+                with open(file, "rb") as f:
+                    return dill.load(f)
+            return None
+
+        run.series_data = _load("series_data")
+        run.chosen_windows = _load("chosen_windows")
+        run.all_fit_results = _load("all_fit_results")
+        run.visualization_context = _load("visualization_context")
+
+        return run
+
     def __init__(
         self,
         data_config: DataConfig,
@@ -79,7 +119,7 @@ class LosEstimationRun:
         self.animation_config: AnimationConfig = animation_config
 
         self.visualization_context: VisualizationContext = VisualizationContext()
-        self.data: DataPackage
+        self.data: DataPackage = None
 
         self.create_run()
         output_config.run_name = self.run_name
@@ -96,6 +136,7 @@ class LosEstimationRun:
 
         self.fitter: MultiSeriesFitter = None
         self.window_data: list = None
+        self.chosen_windows: List[int] = None
         self.all_fit_results: MultiSeriesFitResults = None
         self.series_data: SeriesData = None
         self.evaluator: Evaluator = None
@@ -202,6 +243,7 @@ class LosEstimationRun:
         if not self.animation_config.show_figures and not self.animation_config.save_figures:
             logger.info("Animation is disabled. Skipping animation creation.")
             return
+        df_mutant = self.data.df_mutant if self.data else None
         self.animator = DeconvolutionAnimator(
             all_fit_results=self.all_fit_results,
             series_data=self.series_data,
@@ -210,10 +252,11 @@ class LosEstimationRun:
             visualization_context=self.visualization_context,
             animation_config=self.animation_config,
             output_folder_config=self.output_config,
-            window_ids=self.fitter.chosen_windows,
+            window_ids=self.chosen_windows,
+            df_mutant=df_mutant,
         )
 
-        self.animator.animate_fit_deconvolution(self.data.df_mutant)
+        self.animator.animate_fit_deconvolution()
 
         self.animator.combine_to_gif()
 
@@ -278,6 +321,7 @@ class LosEstimationRun:
         self.fitter.DEBUG_MODE(self.debug_config)
 
         self.window_data, self.all_fit_results = self.fitter.fit()
+        self.chosen_windows = self.fitter.chosen_windows
         return self.window_data, self.all_fit_results
 
     def evaluate(self):
@@ -294,18 +338,18 @@ class LosEstimationRun:
         save_configurations(path, self.configurations)
 
         to_save = {}
-        if self.fitter is not None:
-            if self.fitter.series_data is not None:
-                to_save["series_data"] = self.fitter.series_data
-            if self.fitter.chosen_windows is not None:
-                to_save["chosen_windows"] = self.fitter.chosen_windows
+        if self.series_data is not None:
+            to_save["series_data"] = self.series_data
+        if self.chosen_windows is not None:
+            to_save["chosen_windows"] = self.chosen_windows
         if self.all_fit_results is not None:
             to_save["all_fit_results"] = self.all_fit_results
         if self.visualization_context is not None:
             to_save["visualization_context"] = self.visualization_context
 
+        Path(self.output_config.model_data).mkdir(parents=True, exist_ok=True)
         for name, data in to_save.items():
-            path = os.path.join(self.output_config.results, f"{name}.pkl")
+            path = os.path.join(self.output_config.model_data, f"{name}.pkl")
             with open(path, "wb") as f:
                 dill.dump(data, f)
         if self.evaluator is not None:
