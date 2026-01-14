@@ -68,7 +68,7 @@ class LosEstimationRun:
         )
 
         def _load(name):
-            file = path / f"{name}.pkl"
+            file = path / "model_data" / f"{name}.pkl"
             if file.exists():
                 with open(file, "rb") as f:
                     return dill.load(f)
