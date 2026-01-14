@@ -3,69 +3,16 @@
 # %load_ext autoreload
 # %autoreload 2
 import os
-from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from los_estimator.core import SeriesData
-from util.comparison_data_loader import load_comparison_data
-
 print("Let's Go!")
 # %%
 less_windows = False
-compare_all_fit_results = load_comparison_data(less_windows)
-print("Comparison data loaded successfully.")
 
 
 # %%
-def _compare_all_fitresults(all_fit_results, compare_all_fit_results):
-    print("Starting comparison of all fit results...")
-
-    all_successful = True
-    for distro in compare_all_fit_results.keys():
-        if distro not in all_fit_results:
-            print(f"❌ Distribution {distro} not found in comparison results.")
-            all_successful = False
-    for distro, fit_result in all_fit_results.items():
-        if distro == "compartmental":
-            continue
-        if distro not in compare_all_fit_results:
-            print(f"❌ Distribution {distro} not found in comparison results.")
-            all_successful = False
-            continue
-
-        comp_fit_result = compare_all_fit_results[distro]
-        if fit_result.all_kernels.shape != comp_fit_result.all_kernels.shape:
-            print(f"❌ Shape mismatch for kernels in distribution: {distro}")
-            print(f"Expected shape: {comp_fit_result.all_kernels.shape}, but got: {fit_result.all_kernels.shape}")
-            all_successful = False
-            continue
-
-        if not np.allclose(fit_result.all_kernels, comp_fit_result.all_kernels, atol=1e-4):
-            print(f"❌ Kernel comparison failed for distribution: {distro}")
-            print(f"Kernel Difference: {np.abs(fit_result.all_kernels - comp_fit_result.all_kernels).max():.4f}")
-            print("-" * 50)
-            all_successful = False
-            continue
-
-        train_error_diff = np.abs(fit_result.train_errors.mean() - comp_fit_result.train_errors.mean())
-        test_error_diff = np.abs(fit_result.test_errors.mean() - comp_fit_result.test_errors.mean())
-
-        if train_error_diff > 1e-4 or test_error_diff > 1e-4:
-            print(f"❌ Comparison failed for distribution: {distro}")
-            print(f"Train Error Difference: {train_error_diff:.4f}")
-            print(f"Test Error Difference: {test_error_diff:.4f}")
-            print("-" * 50)
-            all_successful = False
-        else:
-            print(f"✅ Comparison successful for distribution: {distro}")
-
-    if all_successful:
-        print("✅ All distributions compared successfully!")
-    else:
-        print("❌ Some distributions failed the comparison.")
-        return fit_result.train_errors, comp_fit_result.train_errors
 
 
 # %%
@@ -155,22 +102,6 @@ estimator = LosEstimationRun(
     visualization_config,
     animation_config,
 )
-
-# estimator.set_up()
-# estimator.load_data()
-# estimator.fit()
-# estimator.evaluate()
-# estimator.save_results()
-
 estimator.run_analysis()
 
-# try:
-#     _compare_all_fitresults(estimator.all_fit_results, compare_all_fit_results)
-# except Exception as e:
-#     print(f"An error occurred during comparison: {e}")
-# fit_results = estimator.all_fit_results
-
 print("done.")
-
-# %%
-estimator.animate_results()

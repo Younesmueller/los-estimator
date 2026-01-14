@@ -310,39 +310,3 @@ class DeconvolutionPlots(VisualizerBase):
     def _set_title(self, title: str, *args, **kwargs):
         """Set the title of the current figure."""
         plt.title(self._get_full_title(title), *args, **kwargs)
-
-
-# deconv_plot_visualizer = DeconvolutionPlots(
-#     estimator.all_fit_results,
-#     estimator.series_data,
-#     estimator.model_config,
-#     estimator.visualization_config,
-#     estimator.visualization_context,
-#     estimator.output_config,
-# )
-# deconv_plot_visualizer.generate_plots_for_run()
-# # deconv_plot_visualizer.plot_train_vs_test_error()
-
-# print("all klear!")
-
-# # %%
-# import logging
-# from typing import List, Optional, Union
-
-# import matplotlib.pyplot as plt
-# import numpy as np
-# import seaborn as sns
-# from matplotlib.patches import Patch
-
-
-# from los_estimator.config import (
-#     ModelConfig,
-#     OutputFolderConfig,
-#     VisualizationConfig,
-#     VisualizationContext,
-# )
-# from los_estimator.core import SeriesData
-# from los_estimator.fitting import MultiSeriesFitResults
-# from los_estimator.visualization.base import VisualizerBase
-
-# logger = logging.getLogger("los_estimator")

@@ -94,12 +94,11 @@ class LosEstimationRun:
             self.visualization_config, self.visualization_context
         )
 
-        self.fitter: MultiSeriesFitter
-        self.window_data: list
-        self.all_fit_results: MultiSeriesFitResults
-        self.series_data: SeriesData
-
-        self.evaluator: Evaluator
+        self.fitter: MultiSeriesFitter = None
+        self.window_data: list = None
+        self.all_fit_results: MultiSeriesFitResults = None
+        self.series_data: SeriesData = None
+        self.evaluator: Evaluator = None
         self.data_loaded = False
 
     def load_data(self):
@@ -291,17 +290,23 @@ class LosEstimationRun:
         self.evaluator.calculate_metrics()
 
     def save_results(self):
-        to_save = {
-            "series_data": self.fitter.series_data,
-            "chosen_windows": self.fitter.chosen_windows,
-            "all_fit_results": self.all_fit_results,
-        }
-        self.evaluator.save_result(self.output_config.metrics)
+        path = os.path.join(self.output_config.results, "run_configurations.toml")
+        save_configurations(path, self.configurations)
+
+        to_save = {}
+        if self.fitter is not None:
+            if self.fitter.series_data is not None:
+                to_save["series_data"] = self.fitter.series_data
+            if self.fitter.chosen_windows is not None:
+                to_save["chosen_windows"] = self.fitter.chosen_windows
+        if self.all_fit_results is not None:
+            to_save["all_fit_results"] = self.all_fit_results
+        if self.visualization_context is not None:
+            to_save["visualization_context"] = self.visualization_context
 
         for name, data in to_save.items():
             path = os.path.join(self.output_config.results, f"{name}.pkl")
             with open(path, "wb") as f:
                 dill.dump(data, f)
-
-        path = os.path.join(self.output_config.results, "run_configurations.toml")
-        save_configurations(path, self.configurations)
+        if self.evaluator is not None:
+            self.evaluator.save_result(self.output_config.metrics)

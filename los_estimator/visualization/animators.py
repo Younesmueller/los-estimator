@@ -319,14 +319,14 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         folder = sorted(glob.glob("./results/*/"))[-1] + "animation/"
         fp_in = folder + "./*.png"
         fp_out = folder + "./combined_video.gif"
-        print("Combining images to gif...")
+        logger.info("Combining images to gif...")
 
         with contextlib.ExitStack() as stack:
 
             # lazily load images
             imgs = (stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in)))
 
-            imgs = (img.convert("RGBA") for img in imgs)
+            imgs = (Image.composite(img, Image.new("RGB", img.size, (255, 255, 255)), img) for img in imgs)
 
             # get first image
             img = next(imgs)
@@ -334,4 +334,4 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             # save and append the following images
             img.save(fp=fp_out, format="GIF", append_images=imgs, save_all=True, duration=500, loop=0)
 
-    print("done!")
+        logger.info("GIF saved successfully!")
