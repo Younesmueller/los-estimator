@@ -2,11 +2,12 @@
 
 import functools
 from typing import Optional
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from los_estimator.config import ModelConfig
+from los_estimator.config import DebugConfig, ModelConfig
 
 __all__ = [
     "WindowInfo",
@@ -76,7 +77,13 @@ class SeriesData:
         n_days (int): Total number of days in the data.
     """
 
-    def __init__(self, x_full: np.ndarray, y_full: np.ndarray, model_config: ModelConfig):
+    def __init__(
+        self,
+        x_full: np.ndarray,
+        y_full: np.ndarray,
+        model_config: ModelConfig,
+        debug_config: Optional[DebugConfig] = None,
+    ):
         """Initialize series data with sliding windows.
 
         Args:
@@ -90,13 +97,20 @@ class SeriesData:
         self.windows: np.ndarray
         self.window_infos: list[WindowInfo]
         self.n_windows: int
+        self.debug_config: Optional[DebugConfig] = debug_config or DebugConfig()
         self._calc_windows(model_config)
 
         self.n_days: int = len(self.x_full)
 
     def _calc_windows(self, model_config):
         start = model_config.train_width
-        self.windows = np.arange(start, len(self.x_full) - model_config.kernel_width, model_config.step)
+        windows = np.arange(start, len(self.x_full) - model_config.kernel_width, model_config.step)
+        if self.debug_config.less_windows:
+            windows = windows[:3]
+        elif self.debug_config.one_window:
+            windows = windows[10:11]
+        self.windows = windows
+
         self.window_infos = [WindowInfo(window, model_config) for window in self.windows]
         self.n_windows = len(self.windows)
 

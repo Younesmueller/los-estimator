@@ -75,7 +75,6 @@ class LosEstimationRun:
             return None
 
         run.series_data = _load("series_data")
-        run.chosen_windows = _load("chosen_windows")
         run.all_fit_results = _load("all_fit_results")
         run.visualization_context = _load("visualization_context")
 
@@ -136,7 +135,6 @@ class LosEstimationRun:
 
         self.fitter: MultiSeriesFitter = None
         self.window_data: list = None
-        self.chosen_windows: List[int] = None
         self.all_fit_results: MultiSeriesFitResults = None
         self.series_data: SeriesData = None
         self.evaluator: Evaluator = None
@@ -183,9 +181,6 @@ class LosEstimationRun:
 
         c.run_name = self.run_name
         c.build()
-
-        if Path(c.results).exists():
-            shutil.rmtree(c.results)
 
         Path(c.results).mkdir(parents=True, exist_ok=True)
         Path(c.figures).mkdir(parents=True, exist_ok=True)
@@ -252,7 +247,6 @@ class LosEstimationRun:
             visualization_context=self.visualization_context,
             animation_config=self.animation_config,
             output_folder_config=self.output_config,
-            window_ids=self.chosen_windows,
             df_mutant=df_mutant,
         )
 
@@ -305,7 +299,7 @@ class LosEstimationRun:
             self.data.df_occupancy[col].values,
             self.data.df_occupancy["icu_occupancy"].values,
         )
-        self.series_data = SeriesData(*series_data, self.model_config)
+        self.series_data = SeriesData(*series_data, self.model_config, self.debug_config)
 
         init_parameters = defaultdict(list)
         if self.data.df_init is not None:
@@ -321,7 +315,6 @@ class LosEstimationRun:
         self.fitter.DEBUG_MODE(self.debug_config)
 
         self.window_data, self.all_fit_results = self.fitter.fit()
-        self.chosen_windows = self.fitter.chosen_windows
         return self.window_data, self.all_fit_results
 
     def evaluate(self):
@@ -340,8 +333,6 @@ class LosEstimationRun:
         to_save = {}
         if self.series_data is not None:
             to_save["series_data"] = self.series_data
-        if self.chosen_windows is not None:
-            to_save["chosen_windows"] = self.chosen_windows
         if self.all_fit_results is not None:
             to_save["all_fit_results"] = self.all_fit_results
         if self.visualization_context is not None:

@@ -40,7 +40,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         visualization_context: VisualizationContext,
         output_folder_config: OutputFolderConfig,
         animation_config: AnimationConfig,
-        window_ids: Optional[list[int]] = None,
         df_mutant: Optional[pd.DataFrame] = None,
     ):
         super().__init__(
@@ -51,7 +50,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             visualization_context,
             output_config=output_folder_config,
         )
-        self.window_ids = window_ids
         self.df_mutant = df_mutant
         self.ac = animation_config
         self._generate_animation_context()
@@ -197,8 +195,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         self._create_animation_folder()
 
         to_enumerate = list(enumerate(self.series_data.window_infos))
-        if self.window_ids is not None:
-            to_enumerate = [to_enumerate[i] for i in self.window_ids]
         window_counter = 1
 
         if self.ac.debug_animation:

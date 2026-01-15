@@ -84,7 +84,7 @@ class MultiSeriesFitter:
             "ONLY_LINEAR": dc.only_linear,
         }
         self.distributions = self._get_debug_distro(self._distributions)
-        self.window_data = self._get_debug_window_data(self.series_data)
+        self.window_data = list(self.series_data)
 
     def _get_debug_distro(self, distributions):
         """Filter distributions for debug mode.
@@ -100,26 +100,6 @@ class MultiSeriesFitter:
         if self.DEBUG["ONLY_LINEAR"]:
             return ["linear"]
         return distributions
-
-    def _get_debug_window_data(self, series_data):
-        """Filter window data for debug mode.
-
-        Args:
-            series_data (SeriesData): Full series data.
-
-        Returns:
-            list: Filtered window data based on debug settings.
-        """
-        window_data = list(series_data)
-        self.chosen_windows = np.arange(len(series_data)).tolist()
-        if self.DEBUG["LESS_WINDOWS"]:
-            window_data = window_data[:3]
-            self.chosen_windows = [0, 1, 2]
-        elif self.DEBUG["ONE_WINDOW"]:
-            window_data = window_data[10:11]
-            self.chosen_windows = [10]
-
-        return window_data
 
     def _update_past_kernels(self, fit_result, first_window, w, kernel):
         if first_window:

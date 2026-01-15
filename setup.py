@@ -13,7 +13,7 @@ except FileNotFoundError:
 
 setup(
     name="los_estimator",
-    version="1.1.0",
+    version="0.1",
     author="LOS Estimator Team",
     author_email="los_estimator@example.com",
     description="Length of Stay Estimator for ICU data using deconvolution methods",
@@ -99,10 +99,7 @@ setup(
         ],
     },
     package_data={
-        "los_estimator": [
-            "config/*.toml",
-            "default_config.toml",
-        ],
+        "los_estimator": ["config/*.toml", "default_config.toml", "overwrite_config.toml"],
         "": [
             "data/*.csv",
             "data/*.xlsx",

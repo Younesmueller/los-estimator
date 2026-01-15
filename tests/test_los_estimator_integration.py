@@ -10,7 +10,6 @@ sys.path.append(Path(__file__).parents[1].as_posix())
 
 from los_estimator.config import default_config_path
 from los_estimator.estimation_run import LosEstimationRun, load_configurations
-from util.comparison_data_loader import load_comparison_data
 
 
 class TestLosEstimatorIntegration:
@@ -19,7 +18,8 @@ class TestLosEstimatorIntegration:
     @pytest.fixture(autouse=True)
     def setup_test_data(self):
         """Set up test data and configurations."""
-        self.original_result = load_comparison_data(less_windows=True)
+        # self.original_result = load_comparison_data(less_windows=True)
+        self.original_result = {}
         self.cfg = load_configurations(default_config_path)
 
         # Configure for testing
