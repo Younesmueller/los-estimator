@@ -1,6 +1,5 @@
 [model_config]
 kernel_width = 60
-smooth_data = false
 train_width = 102
 test_width = 21
 step = 7
@@ -18,7 +17,6 @@ distributions = [
     "t",
     # "invgauss",
     "linear",
-    # "block",
     # "sentinel",
     "compartmental",
 ]
@@ -29,7 +27,6 @@ show_figures = false
 
 [animation_config]
 show_figures = false
-debug_animation = true
 
 
 [debug_config]

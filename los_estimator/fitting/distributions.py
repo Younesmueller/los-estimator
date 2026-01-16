@@ -42,7 +42,6 @@ class DistributionTypes:
     T = "t"
     INVGAUSS = "invgauss"
     LINEAR = "linear"
-    BLOCK = "block"
     SENTINEL = "sentinel"
 
 
@@ -150,18 +149,11 @@ class DistributionsClass:
             pdf=lambda x, L: np.clip(-x / L + 1, 0, None),
             to_string=lambda L: f"L={L}",
         ),
-        DistributionTypes.BLOCK: Distribution(
-            name=DistributionTypes.BLOCK,
-            init_values=[],
-            boundaries=[],
-            pdf=lambda x: np.eye(1, len(x), 1, dtype=float).ravel(),
-            to_string=lambda: "Block Distribution",
-        ),
         DistributionTypes.SENTINEL: Distribution(
             name=DistributionTypes.SENTINEL,
             init_values=[],
             boundaries=[],
-            pdf=lambda x: np.asarray(sentinel_los_berlin, dtype=float),
+            pdf=lambda x: np.asarray(sentinel_los_berlin[: len(x)], dtype=float),
             to_string=lambda: "Sentinel Distribution",
         ),
     }

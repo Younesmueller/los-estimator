@@ -66,7 +66,7 @@ class DeconvolutionPlots(VisualizerBase):
         fig = self._figure()
 
         for i, distro in enumerate(self.all_fit_results.distros):
-            if distro in ["sentinel", "block"]:
+            if distro in ["sentinel"]:
                 continue
             val1 = self.all_fit_results.summary[col1][distro]
             val2 = self.all_fit_results.summary[col2][distro]
@@ -223,20 +223,26 @@ class DeconvolutionPlots(VisualizerBase):
 
         for distro in distros:
             self._figure(figsize=(10, 5))
+
             # plot real kernel
-            (r,) = plt.plot(self.vc.real_los, color="black", label="Sample Kernel")
+            l, r = None, None
+            if self.vc.real_los is not None:
+                (r,) = plt.plot(self.vc.real_los, color="black", label="Sample Kernel")
 
             fit_results = self.all_fit_results[distro]
             for fit_result in fit_results.fit_results:
-                if not fit_result.success:
-                    continue
                 (l,) = plt.plot(
                     fit_result.kernel,
                     alpha=0.3,
                     color=self.colors[0],
                     label=f"Rolling {distro.capitalize()} Kernels",
                 )
-            plt.legend(handles=[r, l])
+            handles = []
+            if r is not None:
+                handles.append(r)
+            if l is not None:
+                handles.append(l)
+            plt.legend(handles=handles)
             plt.ylim(-0.005, 0.3)
             plt.xlim(-1, self.model_config.kernel_width + 1)
             plt.xlabel("Days after admission")
@@ -288,7 +294,8 @@ class DeconvolutionPlots(VisualizerBase):
         self.plot_train_vs_test_error()
 
     def plot_train_vs_test_error(self):
-        _, axs = self._get_subplots(2, 3, sharex=True, sharey=True, figsize=(12, 6))
+        n_distros = len(self.all_fit_results.distros)
+        _, axs = self._get_subplots(n_distros // 3, 3, sharex=True, sharey=True, figsize=(12, 6))
         axs = axs.flatten()
         for distro, ax in zip(self.all_fit_results.distros, axs):
             fr = self.all_fit_results[distro]

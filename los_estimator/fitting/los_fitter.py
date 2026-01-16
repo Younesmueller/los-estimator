@@ -6,6 +6,7 @@ length of stay data using various distribution types and optimization methods.
 
 from __future__ import annotations
 
+import dill
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize, OptimizeResult
@@ -96,7 +97,18 @@ def initialize_distro_parameters(
     return distro_boundaries, distro_init_params
 
 
-def fit_convolution(
+def fit_convolution(*args, perform_exit=False, **kwargs):
+    if perform_exit:
+        if args[0] == "lognorm":
+            with open("args.dill", "wb") as f:
+                dill.dump(args, f)
+            with open("kwargs.dill", "wb") as f:
+                dill.dump(kwargs, f)
+            raise RuntimeError("Saved args and kwargs for debugging.")
+    return _fit_convolution(*args, **kwargs)
+
+
+def _fit_convolution(
     distro: str,
     train_data: Tuple[np.ndarray, np.ndarray],
     test_data: Tuple[np.ndarray, np.ndarray],
@@ -104,7 +116,7 @@ def fit_convolution(
     distro_boundaries: Optional[List[Tuple[Optional[float], Optional[float]]]] = None,
     distro_init_params: Optional[List[float]] = None,
     past_kernels: Optional[np.ndarray] = None,
-    method: str = "L-BFGS-B",
+    method: str = "Nelder-Mead",
     error_fun: str = "mse",
 ) -> SingleFitResult:
     """Fit a convolution-based model to length of stay data.

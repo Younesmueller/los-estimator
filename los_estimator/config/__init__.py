@@ -60,7 +60,6 @@ class ModelConfig:
 
     Attributes:
         kernel_width (int): Width of the distribution kernel in days.
-        smooth_data (bool): Whether to apply smoothing to input data.
         train_width (int): Width of training window in days.
         test_width (int): Width of test window in days.
         step (int): Step size for sliding window analysis.
@@ -68,7 +67,6 @@ class ModelConfig:
     """
 
     kernel_width: int = 120
-    smooth_data: bool = False
     train_width: int = 42 + 60
     test_width: int = 21
     step: int = 7
@@ -87,7 +85,6 @@ class ModelConfig:
             "t",
             # "invgauss",
             "linear",
-            # "block",
             # "sentinel",
             "compartmental",
         ]
@@ -124,9 +121,9 @@ class DataConfig:
     """
 
     icu_file: str
-    los_file: str
-    start_day: str
-    end_day: str
+    los_file: str = None
+    start_day: str = None
+    end_day: str = None
 
     init_params_file: Optional[str] = None
     mutants_file: Optional[str] = None
@@ -198,7 +195,6 @@ class AnimationConfig:
     Attributes:
         show_figures (bool): Whether to display animations when created.
         save_figures (bool): Whether to save animation files to disk.
-        debug_animation (bool): Enable debugging mode for animations.
         debug_hide_failed (bool): Hide failed fits in debug animations.
         alternative_names (List[Tuple[str, str]]): Alternative display names for models.
         replace_short_names (List[Tuple[str, str]]): Short name replacements for displays.
@@ -206,11 +202,9 @@ class AnimationConfig:
 
     show_figures: bool = False
     save_figures: bool = True
-    debug_animation: bool = False
     debug_hide_failed: bool = False
     alternative_names: List[Tuple[str, str]] = field(
         default_factory=lambda: [
-            ("block", "Constant Discharge"),
             ("sentinel", "Baseline: Sentinel"),
         ]
     )

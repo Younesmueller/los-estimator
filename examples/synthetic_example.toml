@@ -1,12 +1,9 @@
 [data_config]
-icu_file = "${data}/preprocessing/output/icu.csv"
-los_file = "${data}/dynamic/sample_los.csv"
-# optional files
+icu_file = "./synthetic_icu_data.csv"
 init_params_file = "${data}/dynamic/sample_los_fit_values.csv"
-# mutants_file = "${data}/preprocessing/output/mutant_distribution.csv"
-
+los_file = "./synthetic_icu_kernel.csv"
 start_day = "2021-07-29"
-end_day = "2025-01-01"
+end_day = "2022-10-01"
 
 
 [output_config]
@@ -14,20 +11,24 @@ base = "./results"
 run_name = ""
 
 [model_config]
-kernel_width = 60
-train_width = 102
+kernel_width = 100
+train_width = 120
 test_width = 21
 step = 7
 error_fun = "mse"
-reuse_last_parametrization = true
-iterative_kernel_fit = true
+reuse_last_parametrization = false
+iterative_kernel_fit = false
 distributions = [
+    "lognorm",
+    "weibull",
     "gaussian",
     "exponential",
+    "gamma",
+    "beta",
     "cauchy",
     "t",
+    "invgauss",
     "linear",
-    "compartmental",
 ]
 
 [debug_config]
@@ -39,7 +40,7 @@ only_linear = false
 [visualization_config]
 save_figures = true
 show_figures = false
-xlims = [-30, 725]
+xlims = [-30, 425]
 figsize = [12, 8]
 style = "seaborn-v0_8"
 colors = [
@@ -73,16 +74,7 @@ save_figures = true
 debug_hide_failed = true
 train_error_lim = "auto"
 test_error_lim = "auto"
-alternative_names = [
-    [
-        "block",
-        "Constant Discharge",
-    ],
-    [
-        "sentinel",
-        "Baseline: Sentinel",
-    ],
-]
+alternative_names = [["sentinel", "Baseline: Sentinel"]]
 replace_short_names = [
     [
         "exponential",

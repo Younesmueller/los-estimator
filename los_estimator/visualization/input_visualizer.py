@@ -58,7 +58,6 @@ class InputDataVisualizer(VisualizerBase):
         """
         fig, ax = self._get_subplots(2, 1, figsize=(10, 5), sharex=True)
 
-        self.data.df_occupancy["icu_admissions_smooth"].plot(ax=ax[1], label="icu_admissions", color="orange")
         self.data.df_occupancy["icu_occupancy"].plot(ax=ax[0], label="icu_occupancy")
         ax[0].set_title("Tägliche Neuzugänge ICU, geglättet")
         ax[1].set_title("ICU Bettenbelegung")

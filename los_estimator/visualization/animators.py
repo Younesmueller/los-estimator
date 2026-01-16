@@ -143,8 +143,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if window_id >= len(result_series.fit_results):
                 continue
             result_obj = result_series.fit_results[window_id]
-            if self.ac.debug_hide_failed and not result_obj.success:
-                continue
 
             y_train = result_obj.train_prediction[self.model_config.kernel_width :]
             y_test = result_obj.test_prediction[self.model_config.kernel_width :]
@@ -197,8 +195,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         to_enumerate = list(enumerate(self.series_data.window_infos))
         window_counter = 1
 
-        if self.ac.debug_animation:
-            to_enumerate = to_enumerate[: min(3, len(to_enumerate))]
         n_windows = len(to_enumerate)
         for window_id, window_info in to_enumerate:
             logger.info(f"Animating window {window_counter}/{n_windows}")
@@ -277,13 +273,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
         error_fun = self.model_config.error_fun.capitalize()
         ax_err_train.set_ylim(0, train_error_lim * 1.1)
-        ax_err_train.set_title("Relative Train Error")
+        ax_err_train.set_title("Train Error")
         ax_err_train.set_xticks(range(len(self.all_fit_results)))
         ax_err_train.set_xticklabels(ac.short_distro_names, rotation=75)
         ax_err_train.set_ylabel(error_fun)
 
         ax_err_test.set_ylim(0, test_error_lim * 1.1)
-        ax_err_test.set_title("Relative Test Error")
+        ax_err_test.set_title("Test Error")
         ax_err_test.set_xticks(range(len(self.all_fit_results)))
         ax_err_test.set_xticklabels(ac.short_distro_names, rotation=75)
         ax_err_test.set_ylabel(error_fun)

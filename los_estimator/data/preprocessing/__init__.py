@@ -25,8 +25,6 @@ def preprocess_icu_occupancy():
     new_data = pd.DataFrame(0, index=date_range, columns=df_icu.columns)
     df_icu = pd.concat([new_data, df_icu])
 
-    df_icu["icu_admissions_smooth"] = df_icu["icu_admissions"].rolling(7).mean()
-
     os.makedirs(output_folder, exist_ok=True)
     df_icu.to_csv(os.path.join(output_folder, "icu.csv"))
 

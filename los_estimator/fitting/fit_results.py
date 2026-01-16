@@ -74,10 +74,16 @@ class SeriesFitResult:
         self.successes = [fr.success for fr in self.fit_results]
         self.n_success = sum(self.successes)
         self.transition_rates = np.array(
-            [fr.model_config[0] if (fr is not None) else np.nan for fr in self.fit_results]
+            [
+                fr.model_config[0] if ((fr is not None) and len(fr.model_config) > 0) else np.nan
+                for fr in self.fit_results
+            ]
         )
         self.transition_delays = np.array(
-            [fr.model_config[1] if (fr is not None) else np.nan for fr in self.fit_results]
+            [
+                fr.model_config[1] if ((fr is not None) and len(fr.model_config) > 1) else np.nan
+                for fr in self.fit_results
+            ]
         )
 
     def _collect_errors(self):

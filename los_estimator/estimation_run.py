@@ -261,10 +261,6 @@ class LosEstimationRun:
 
         run_name += f"_step{model_config.step}_train{model_config.train_width}_test{model_config.test_width}"
         run_name += "_fit_admissions"
-        if model_config.smooth_data:
-            run_name += "_smoothed"
-        else:
-            run_name += "_unsmoothed"
         run_name += "_" + model_config.error_fun
         if model_config.reuse_last_parametrization:
             run_name += "_reuse_last_parametrization"
@@ -293,8 +289,11 @@ class LosEstimationRun:
 
         self.animate_results()
 
+        logger.info("LOS estimation run completed.")
+        logger.info(f"Results saved in: {self.output_config.results}")
+
     def fit(self):
-        col = "icu_admissions_smooth" if self.model_config.smooth_data else "icu_admissions"
+        col = "icu_admissions"
         series_data = (
             self.data.df_occupancy[col].values,
             self.data.df_occupancy["icu_occupancy"].values,

@@ -30,9 +30,6 @@ debug_config = cfg["debug_config"]
 visualization_config = cfg["visualization_config"]
 animation_config = cfg["animation_config"]
 
-visualization_config.show_figures = False
-animation_config.show_figures = False
-
 
 update_configurations(cfg, overwrite_cfg)
 debug_config.less_windows = False
@@ -47,7 +44,6 @@ debug_config.less_windows = False
 # model_config = update(
 #     model_config,
 #     kernel_width=120,
-#     smooth_data=False,
 #     train_width=42 + 60,
 #     test_width=21,  # 28 * 4
 #     step=7,
@@ -65,14 +61,10 @@ debug_config.less_windows = False
 #         "t",
 #         # "invgauss",
 #         "linear",
-#         # "block",
 #         # "sentinel",
 #         "compartmental",
 #     ],
 # )
-
-
-# animation_config.debug_animation = True
 
 
 # debug_config = update(
@@ -88,7 +80,6 @@ debug_config.less_windows = False
 #     show_figures=True,
 # )
 # animation_config = update(animation_config,
-#     debug_animation=False,
 #     debug_hide_failed=True,
 #     show_figures=True,
 #     save_figures=False
