@@ -74,4 +74,7 @@ A convenience script is provided:
 
 This script applies the same analysis pipeline using configurations from the package. Edit :file:`run_analysis.py` directly to adjust settings programmatically if preferred.
 
-.. include:: ../usage/output_formats.rst
+Output Structure
+----------------
+
+See :doc:`output_format` for complete documentation of all output artifacts.

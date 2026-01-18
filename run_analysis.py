@@ -28,10 +28,8 @@ animation_config = cfg["animation_config"]
 
 
 update_configurations(cfg, overwrite_cfg)
-debug_config.less_windows = False
 
 # %%
-debug_config.less_windows = True
 estimator = LosEstimationRun(
     data_config,
     output_config,

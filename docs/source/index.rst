@@ -1,13 +1,28 @@
 
 .. include:: ../../README.rst
 
+Documentation
+=============
+
 .. toctree::
-   :maxdepth: 1
-   :caption: Contents:   
+   :maxdepth: 2
+   :caption: User Guide
 
    usage/quickstart
    usage/real_data
+   usage/cli_usage
    usage/input
    usage/output_format
-   usage/cli_usage
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
    apiref/api
+
+Indices and Tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

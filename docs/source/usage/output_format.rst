@@ -1,5 +1,10 @@
-Output Artifacts
-----------------
+Output Format
+=============
+
+This page describes the structure and content of all output artifacts produced by the LoS Estimator.
+
+Directory Structure
+-------------------
 
 Results are saved to the ``results/`` directory with the following structure:
 

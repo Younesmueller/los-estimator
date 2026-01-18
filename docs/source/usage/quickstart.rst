@@ -1,55 +1,80 @@
 Quickstart
-===============
-To get started clone the LOS Estimator repository and setup a virtual environment for its dependencies
+==========
 
-.. code:: bash
+This guide provides a quick introduction to the LoS Estimator using a synthetic dataset.
 
-    $ git clone git@git.rwth-aachen.de:jrc-combine/los-estimator.git
-    $ cd los-estimator
-    $ python -m venv .venv
-    $ .\.venv\Scripts\activate
-    $ pip install -r requirements.txt
+Installation
+------------
+
+First, clone the repository and set up a virtual environment:
+
+.. code-block:: bash
+
+    git clone git@git.rwth-aachen.de:jrc-combine/los-estimator.git
+    cd los-estimator
+    python -m venv .venv
+    
+    # On Windows
+    .\.venv\Scripts\activate
+    
+    # On Linux/macOS
+    source .venv/bin/activate
+    
+    pip install -r requirements.txt
 
 Synthetic Example
 -----------------
-Included in the package is an example script :file:`examples/synthetic_example.py` which demonstrates how to use the LOS Estimator for a synthetic dataset. You can run this script directly after setting up the environment:
 
-.. code:: bash
+The package includes a demonstration script that generates synthetic ICU data and performs LoS estimation:
 
-    $ python examples/synthetic_example.py
+.. code-block:: bash
 
-This script will generate synthetic data, run the LOS estimation, and visualize the results.
-The configuration is pulled from :file:`examples/synthetic_example.toml`.
-You can also modify the parameters in the script to experiment with different configurations.
+    python examples/synthetic_example.py
 
-The script generates a synthetic dataset, by simulating a time series of ICU admissions and applying a lognormal LoS distribution to create LoS occupancy data.
-It then performs an estimation of the LoS distribution from the generated data and visualizes the results.
+This script demonstrates the complete workflow:
 
-Results
--------
+1. Generates synthetic ICU admission time series
+2. Simulates occupancy data using a known lognormal LoS distribution
+3. Estimates the LoS distribution from the simulated data
+4. Compares estimated distributions against the ground truth
+5. Generates visualizations and animations
 
-In :file:`examples/synthetic_example/results`, you can find the results of the run.
-In :file:`run.log` the log of the run is stored.
-In :file:`run_configurations.toml`, the final used configuration including all changes to the default configuration is saved.
+The configuration is read from :file:`examples/synthetic_example.toml`. You can modify parameters in this file or the script to experiment with different settings.
 
+Understanding the Results
+-------------------------
 
-Metrics
-^^^^^^^
-In :file:`/metrics`, the calculated metrics can be found in csv files and plots.
+Results are saved to :file:`examples/results/` with the following structure:
 
-Visualization
-^^^^^^^^^^^^^
-In :file:`/visualization`, various visualizations of the estimation results are provided.
+**Run Metadata**
+    - :file:`run.log` - Complete execution log
+    - :file:`run_configurations.toml` - Configuration snapshot for reproducibility
 
-Animation
-^^^^^^^^^
-In :file:`/animation`, the trained models are visualized for each time step of the rolling window training. In :file:`examples/animation/combined_video.gif`, the animation is combined into a gif.
+**Performance Metrics**
+    - :file:`metrics/` - CSV files and plots showing model performance across windows
+
+**Visualizations**
+    - :file:`figures/` - Static plots of fitting results, errors, and comparisons
+
+**Animations**
+    - :file:`animation/` - Frame-by-frame visualizations showing model evolution
+    - :file:`animation/combined_video.gif` - Animated overview of the fitting process
 
 .. image:: ../img/animation.gif
    :alt: Animation Gif
    :align: center
    :width: 1000px
 
-Model data
-^^^^^^^^^^
-In :file:`/models_data`, the trained model parameters for each time step of the rolling window training are saved in csv files. Also the python pickle files of the trained models are saved here.
+**Model Data**
+    - :file:`model_data/` - Fitted parameters per window (CSV format)
+    - :file:`model_data/*.pkl` - Serialized Python objects for later analysis
+
+For detailed output documentation, see :doc:`output_format`.
+
+Next Steps
+----------
+
+- Try the :doc:`real_data` example with actual ICU data
+- Review :doc:`cli_usage` for command-line options
+- Explore :doc:`input` to understand data requirements
+- Check the :doc:`../apiref/api` for programmatic usage

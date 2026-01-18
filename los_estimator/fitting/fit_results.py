@@ -136,10 +136,11 @@ class SeriesFitResult:
     def bake(self):
         """Finalize the series by computing derived arrays and metrics.
 
-        This method:
-        - Aggregates `train_error` and `test_error` into `train_errors` and `test_errors`.
-        - Extracts transition-related metrics from `model_config` into
-          `transition_rates` and `transition_delays`.
+        This method aggregates individual window results and computes:
+
+        - Training and test error arrays across all windows
+        - Success/failure counts for optimizer convergence
+        - Transition rate and delay estimates from model parameters
         """
         self._collect_errors()
         self.transition_rates = np.array(
@@ -264,13 +265,15 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
     def bake(self):
         """Finalize all series and compute cross-distribution arrays.
 
-        This method:
-        - Calls `bake()` on each `SeriesFitResult`.
-        - Builds matrices for train/test errors and transition metrics.
-        - Produces a summary DataFrame with central tendency and robustness metrics.
+        Processes all distribution results and creates comparison matrices:
+
+        - Calls bake() on each SeriesFitResult
+        - Builds train/test error matrices (windows × distributions)
+        - Computes transition rate and delay matrices
+        - Generates summary DataFrame with statistics and robustness metrics
 
         Returns:
-            MultiSeriesFitResults: The same instance, for chaining.
+            MultiSeriesFitResults: Self, for method chaining.
         """
         self.distros = list(self.keys())
         self.results = list(self.values())
@@ -288,12 +291,13 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
         return self
 
     def _make_summary(self):
-        """Build a comparison DataFrame summarizing error statistics per distro.
+        """Build a comparison DataFrame summarizing error statistics per distribution.
 
-        The summary includes:
-        - Mean/Median train and test loss
-        - Upper/Lower quartiles for train loss
-        - Mean losses with outliers removed (IQR-based filtering)
+        Computes comprehensive summary statistics including:
+
+        - Mean and median train/test loss
+        - Upper and lower quartiles for training loss
+        - Robust mean estimates excluding IQR-based outliers
         """
         df_train = pd.DataFrame(self.train_errors_by_distro, columns=self.distros)
         df_test = pd.DataFrame(self.test_errors_by_distro, columns=self.distros)

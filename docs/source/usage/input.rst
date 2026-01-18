@@ -1,40 +1,78 @@
 Input Format
 ============
 
-Configuration
--------------
-The configuration for the LOS Estimator is provided in a TOML file.
-The default configuration can be found at :file:`los_estimator/default_config.toml`.
+This page describes the required input formats for running the LoS Estimator.
 
-.. include:: ../usage/_key_configs.rst
+Configuration Files
+-------------------
 
+Configuration is managed via TOML files. The default configuration at :file:`los_estimator/default_config.toml` provides all necessary settings.
 
-Data files
+.. include:: _key_configs.rst
+
+Data Files
 ----------
 
-LoS data
-^^^^^^^^
-The los estimator expects a csv file containing the input data with the following columns:
+ICU Data (Required)
+^^^^^^^^^^^^^^^^^^^
 
-* date: Date in YYYY-MM-DD format
-* admissions: Number of new ICU admissions on that date
-* occupancy: Number of ICU beds occupied on that date
+The primary input is a CSV file containing ICU admission and occupancy time series with the following columns:
 
-Init parameters
-^^^^^^^^^^^^^^^
+- ``date`` - Date in YYYY-MM-DD format
+- ``admissions`` - Number of new ICU admissions on that date (integer)
+- ``occupancy`` - Total ICU beds occupied on that date (integer)
 
-Optionally, initial paramter values can be provided in a csv file with the following columns:
+**Example:**
 
-* distro: Name of the LoS distribution (e.g., lognormal, gamma, etc.)
-* params: List of parameters in brackets, seperated by spaces
+.. code-block:: text
 
-Sample LoS distribution
-^^^^^^^^^^^^^^^^^^^^^^^
+    date,admissions,occupancy
+    2020-01-01,5,20
+    2020-01-02,3,22
+    2020-01-03,7,25
+    ...
 
-Optionally, a sample LoS distribution file can be provided. A sample ditribution is provided with the package. In csv format with the following columns:
+**File Path:** Specify the path to this file in your configuration as ``data_config.icu_file``.
 
-* day: Length of stay in days
-* probability: Discharge probability for that day
+Initial Parameters (Optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can provide initial parameter values for optimization to improve convergence. The file should be CSV formatted:
+
+- ``distro`` - Distribution name (e.g., "lognorm", "gamma", "gaussian")
+- ``params`` - Space-separated parameter values in brackets, e.g., ``[2.5 1.0 1.2]``
+
+**Example:**
+
+.. code-block:: text
+
+    distro,params
+    lognorm,[2.5 0.8 1.0]
+    gamma,[3.0 0.5 1.0]
+
+**File Path:** Specify as ``data_config.init_params_file`` in your configuration.
+
+Sample LoS Distribution (Optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For validation purposes, you can provide a known LoS distribution (typically for synthetic data). The file should be CSV formatted:
+
+- ``day`` - Length of stay in days (integer, 0 to max_los)
+- ``probability`` - Discharge probability for that day (float, 0-1)
+
+**Example:**
+
+.. code-block:: text
+
+    day,probability
+    0,0.05
+    1,0.10
+    2,0.15
+    ...
+
+**File Path:** Specify as ``data_config.los_file`` in your configuration.
+
+**Note:** The package includes a sample distribution file for the synthetic example.
 
 
 

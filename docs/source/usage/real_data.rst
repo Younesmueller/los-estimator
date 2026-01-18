@@ -8,64 +8,104 @@ A prepared script is provided in :file:`run_analysis.py` that performs the estim
 
 Data Preparation
 ----------------
-The package provides a copy of preprocessed ICU data from Germany that can be used without further preprocessing.
 
-Manual preprocessing (optional)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-If updated data is desired, the data can be preprocessed using the provided preprocessing script:
+Using Preprocessed Data
+^^^^^^^^^^^^^^^^^^^^^^^
 
-    
-The RKI provides COVID-19 related data including ICU admissions and occupancy for Germany.
-You can download the data from the `RKI Intensivregister <https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv>`_.
-Place the downloaded CSV file in the :file:`los_estimator/data/preprocessing` directory.
+The package includes preprocessed ICU data from Germany ready for analysis. The :file:`default_config.toml` is already configured to use these files—no additional setup is required.
 
-Then call the script :file:`los_estimator/data/preprocessing/__init__.py` to preprocess the data and generate the required input files for the LoS Estimator.
+Updating with Fresh Data (Optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code:: bash
+To use the latest data from the Robert Koch Institute (RKI):
 
-    $ python los_estimator/data/preprocessing/__init__.py
+1. **Download the data:**
 
-The :file:`default_config.toml` is configured to access the preprocessed data files directly.
+   The RKI maintains COVID-19 ICU data at the `Intensivregister repository <https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv>`_.
+
+2. **Place the CSV file:**
+
+   Save the downloaded file to :file:`los_estimator/data/preprocessing/inputs`
+
+3. **Run the preprocessing script:**
+
+   .. code-block:: bash
+
+       python los_estimator/data/preprocessing/__init__.py
+
+   This generates the required csv file.
+
+4. **Verify configuration:**
+
+   Ensure :file:`default_config.toml` points to the newly generated files.
 
 
-Performing the Estimation
+Running the Analysis
+--------------------
+
+Using the Analysis Script
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Run the provided convenience script:
+
+.. code-block:: bash
+
+    python run_analysis.py
+
+**Note:** By default, ``less_windows`` is disabled in the script, allowing analysis of all windows. To perform a quick test with fewer windows, edit the script and set ``less_windows = True``.
+
+Using the Command Line
+^^^^^^^^^^^^^^^^^^^^^^
+
+Alternatively, use the CLI directly:
+
+.. code-block:: bash
+
+    python -m los_estimator --config_file los_estimator/default_config.toml
+
+For full CLI documentation, see :doc:`cli_usage`.
+
+Understanding the Results
 -------------------------
-To perform the estimation using the real data, run the provided script :file:`run_analysis.py`:
 
-.. code:: bash
+The analysis generates comprehensive output in the :file:`results/` directory. Each run creates a timestamped folder containing:
 
-    $ python run_analysis.py
+- Performance metrics and comparison tables
+- Visualizations of fitted distributions and errors
+- Animations showing model evolution over time
+- Serialized data for post-processing
 
-By default the flag `less_windows` is set to true, reducing the number of rolling windows to 3 for faster execution during testing.
-For a full run set the flag to false in the script.
-
-Performing the Estimation via CLI
-----------------------------------
-Alternatively, run the estimator directly from the command line:
-
-.. code:: bash
-
-    $ python -m los_estimator --config_file los_estimator/default_config.toml
-
-See :doc:`../usage/cli_usage` for full CLI documentation including argument reference and configuration options.
-
-Results
--------
-The results of the estimation will be saved in the :file:`results` directory.
-Further information on the results structure can be found in the :doc:`/usage/output_format` guide.
+For a complete description of all output artifacts, see :doc:`output_format`.
 
 
-Reloading Results for Re-Visualization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Reloading and Re-Visualization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To reload and re-visualize results without re-fitting:
+Results can be reloaded without re-running the entire analysis:
 
-.. code:: python
+.. code-block:: python
 
     from los_estimator.estimation_run import LosEstimationRun
 
+    # Load previous results
     run = LosEstimationRun.load_run("results/<run_folder>")
-    run.visualize_results()  # Re-create plots
-    run.animate_results()     # Re-create animations
+    
+    # Generate new visualizations with updated settings
+    run.visualize_results()
+    run.animate_results()
 
-Modify visualization settings in config before reloading to test different styles.
+This is useful for:
+
+- Adjusting figure sizes, colors, or styles
+- Creating publication-quality plots
+- Experimenting with different visualization layouts
+- Generating animations with different frame rates
+
+Simply modify the ``visualization_config`` or ``animation_config`` in your configuration file before reloading.
+
+Next Steps
+----------
+
+- Explore the :doc:`cli_usage` for advanced configuration options
+- Review :doc:`output_format` for detailed artifact documentation
+- Check the :doc:`../apiref/api` for programmatic access to results
