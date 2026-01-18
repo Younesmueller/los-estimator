@@ -65,7 +65,6 @@ from .fitting import MultiSeriesFitter
 from .visualization import (
     DeconvolutionAnimator,
     DeconvolutionPlots,
-    InputDataVisualizer,
 )
 
 __all__ = [
@@ -91,7 +90,6 @@ __all__ = [
     # Fitting
     "MultiSeriesFitter",
     # Visualization
-    "InputDataVisualizer",
     "DeconvolutionPlots",
     "DeconvolutionAnimator",
 ]

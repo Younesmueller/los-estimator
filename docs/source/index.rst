@@ -1,18 +1,11 @@
-.. LoS Estimator documentation master file, created by
-   sphinx-quickstart on Fri Jan 16 15:11:29 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
-LoS Estimator documentation
-===========================
-
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+.. include:: ../../README.rst
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-   
-   api
+   :maxdepth: 1
+   :caption: Contents:   
+
+   usage/quickstart
+   usage/real_data
+   usage/input
+   apiref/api

@@ -8,12 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 print("Let's Go!")
-# %%
-less_windows = False
 
-
-# %%
-
+#
 
 # %%
 from los_estimator.estimation_run import LosEstimationRun, load_configurations, default_config_path, load_configurations
@@ -34,55 +30,6 @@ animation_config = cfg["animation_config"]
 update_configurations(cfg, overwrite_cfg)
 debug_config.less_windows = False
 
-
-# def update(obj, **kwargs):
-#     for key, value in kwargs.items():
-#         setattr(obj, key, value)
-#     return obj
-
-
-# model_config = update(
-#     model_config,
-#     kernel_width=120,
-#     train_width=42 + 60,
-#     test_width=21,  # 28 * 4
-#     step=7,
-#     error_fun="mse",
-#     reuse_last_parametrization=True,
-#     iterative_kernel_fit=True,
-#     distributions=[
-#         # "lognorm",
-#         # "weibull",
-#         "gaussian",
-#         "exponential",
-#         # "gamma",
-#         # "beta",
-#         "cauchy",
-#         "t",
-#         # "invgauss",
-#         "linear",
-#         # "sentinel",
-#         "compartmental",
-#     ],
-# )
-
-
-# debug_config = update(
-#     debug_config,
-#     one_window=False,
-#     less_windows=False,
-#     less_distros=False,
-#     only_linear=False,
-# )
-
-# visualization_config = update(visualization_config,
-#     save_figures=True,
-#     show_figures=True,
-# )
-# animation_config = update(animation_config,
-#     show_figures=True,
-#     save_figures=False
-# )
 # %%
 debug_config.less_windows = True
 estimator = LosEstimationRun(

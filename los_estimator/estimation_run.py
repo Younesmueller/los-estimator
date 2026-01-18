@@ -4,7 +4,9 @@ import shutil
 import time
 from collections import defaultdict
 from pathlib import Path
+import pandas as pd
 from typing import Callable, Dict, List, Optional, Tuple
+import numpy as np
 
 import dill
 
@@ -17,7 +19,6 @@ from los_estimator.fitting.fit_results import MultiSeriesFitResults
 from los_estimator.visualization import (
     DeconvolutionAnimator,
     DeconvolutionPlots,
-    InputDataVisualizer,
     get_color_palette,
 )
 from los_estimator.visualization.metrics import MetricsPlots
@@ -129,10 +130,6 @@ class LosEstimationRun:
 
         self.data_loader: DataLoader = DataLoader(data_config)
 
-        self.input_visualizer: InputDataVisualizer = InputDataVisualizer(
-            self.visualization_config, self.visualization_context
-        )
-
         self.fitter: MultiSeriesFitter = None
         self.window_data: list = None
         self.all_fit_results: MultiSeriesFitResults = None
@@ -159,16 +156,6 @@ class LosEstimationRun:
         vc.animation_folder = self.output_config.animation
 
         self.data_loaded = True
-
-    def visualize_input_data(self):
-        """Generate visualizations of the input data.
-
-        Creates plots showing ICU occupancy data data, and other input
-        data visualizations using the configured InputDataVisualizer.
-        """
-        self.input_visualizer.data = self.data
-        self.input_visualizer.show_input_data()
-        self.input_visualizer.plot_icu_data()
 
     def set_up(self):
         """Set up the output directory structure and logging.
@@ -268,13 +255,11 @@ class LosEstimationRun:
         model_config.run_name = run_name
         self.run_name = run_name
 
-    def run_analysis(self, vis=False):
+    def run_analysis(self):
 
         self.set_up()
         self.load_data()
 
-        if vis:
-            self.visualize_input_data()
         self.fit()
 
         self.evaluate()
@@ -341,3 +326,33 @@ class LosEstimationRun:
                 dill.dump(data, f)
         if self.evaluator is not None:
             self.evaluator.save_result(self.output_config.metrics)
+        self.save_models()
+
+    def save_models(self):
+        models_path = Path(self.output_config.results) / "model_data"
+        if models_path.exists():
+            shutil.rmtree(models_path)
+        models_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Saving fitted models to {models_path.as_posix()}")
+
+        for distro in self.model_config.distributions:
+
+            series_fit_result = self.all_fit_results[distro]
+            window_ids = [w.window for w in series_fit_result.window_infos]
+            model_configs = np.array([fr.model_config for fr in series_fit_result])
+            kernels = series_fit_result.all_kernels[window_ids]
+            train_errors = series_fit_result.train_errors
+            test_errors = series_fit_result.test_errors
+            len_config = model_configs.shape[1]
+            len_kernels = kernels.shape[1]
+            data_dict = {
+                "window": window_ids,
+                "train_error": train_errors,
+                "test_error": test_errors,
+            }
+            data_dict.update({f"param_{i}": model_configs[:, i] for i in range(len_config)})
+            data_dict.update({f"kernel_{i}": kernels[:, i] for i in range(len_kernels)})
+            df = pd.DataFrame(data_dict)
+            df.to_csv(models_path / f"{distro}_models.csv", index=False)
+
+    logger.info("Model saving complete.")

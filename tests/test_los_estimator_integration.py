@@ -41,7 +41,7 @@ class TestLosEstimatorIntegration:
             self.cfg["animation_config"],
             run_nickname=f"test_run_{unique_id}",
         )
-        estimator.run_analysis(vis=False)
+        estimator.run_analysis()
 
         # Basic assertions
         assert hasattr(estimator, "all_fit_results")
