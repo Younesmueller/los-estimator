@@ -5,7 +5,9 @@ Configuration
 -------------
 The configuration for the LOS Estimator is provided in a TOML file.
 The default configuration can be found at :file:`los_estimator/default_config.toml`.
-In  you can find the documentation of all configuration options.
+
+.. include:: ../usage/_key_configs.rst
+
 
 Data files
 ----------

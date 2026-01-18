@@ -271,8 +271,8 @@ class LosEstimationRun:
 
         self.animate_results()
 
-        logger.info("LOS estimation run completed.")
         logger.info(f"Results saved in: {self.output_config.results}")
+        logger.info("LOS estimation run completed.")
 
     def fit(self):
         col = "icu_admissions"
@@ -330,8 +330,6 @@ class LosEstimationRun:
 
     def save_models(self):
         models_path = Path(self.output_config.results) / "model_data"
-        if models_path.exists():
-            shutil.rmtree(models_path)
         models_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Saving fitted models to {models_path.as_posix()}")
 

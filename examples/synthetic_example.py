@@ -45,3 +45,4 @@ estimator = LosEstimationRun(
     animation_config,
 )
 estimator.run_analysis()
+# %%

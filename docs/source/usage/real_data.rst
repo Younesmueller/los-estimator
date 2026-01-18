@@ -1,4 +1,4 @@
-Example with real data
+Estimation Run
 ======================
 This example demonstrates how to use the LoS Estimator with real-world data.
 We will use a sample dataset containing ICU admissions and occupancy data.
@@ -39,7 +39,33 @@ To perform the estimation using the real data, run the provided script :file:`ru
 By default the flag `less_windows` is set to true, reducing the number of rolling windows to 3 for faster execution during testing.
 For a full run set the flag to false in the script.
 
+Performing the Estimation via CLI
+----------------------------------
+Alternatively, run the estimator directly from the command line:
+
+.. code:: bash
+
+    $ python -m los_estimator --config_file los_estimator/default_config.toml
+
+See :doc:`../usage/cli_usage` for full CLI documentation including argument reference and configuration options.
+
 Results
 -------
 The results of the estimation will be saved in the :file:`results` directory.
-They are according to the results in the `Quickstart example <quickstart.html>`_.
+Further information on the results structure can be found in the :doc:`/usage/output_format` guide.
+
+
+Reloading Results for Re-Visualization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To reload and re-visualize results without re-fitting:
+
+.. code:: python
+
+    from los_estimator.estimation_run import LosEstimationRun
+
+    run = LosEstimationRun.load_run("results/<run_folder>")
+    run.visualize_results()  # Re-create plots
+    run.animate_results()     # Re-create animations
+
+Modify visualization settings in config before reloading to test different styles.

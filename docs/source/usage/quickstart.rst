@@ -26,8 +26,8 @@ The script generates a synthetic dataset, by simulating a time series of ICU adm
 It then performs an estimation of the LoS distribution from the generated data and visualizes the results.
 
 Results
-
 -------
+
 In :file:`examples/synthetic_example/results`, you can find the results of the run.
 In :file:`run.log` the log of the run is stored.
 In :file:`run_configurations.toml`, the final used configuration including all changes to the default configuration is saved.

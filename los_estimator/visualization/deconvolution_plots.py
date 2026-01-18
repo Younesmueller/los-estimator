@@ -306,7 +306,7 @@ class DeconvolutionPlots(VisualizerBase):
             ax.set_title(f"{distro.capitalize()} Distribution")
         plt.suptitle(self._get_full_title("Train vs Test Error"))
         plt.tight_layout()
-        self._show(f"train_vs_test_error_{distro}.png")
+        self._show(f"train_vs_test_error.png")
 
     def _get_full_title(self, title: str) -> str:
         """Get full title with run name."""
