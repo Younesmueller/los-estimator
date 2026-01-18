@@ -80,7 +80,6 @@ debug_config.less_windows = False
 #     show_figures=True,
 # )
 # animation_config = update(animation_config,
-#     debug_hide_failed=True,
 #     show_figures=True,
 #     save_figures=False
 # )

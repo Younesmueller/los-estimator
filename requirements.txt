@@ -13,3 +13,5 @@ click
 dill
 toml
 pillow
+sphinx
+sphinx-rtd-theme

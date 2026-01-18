@@ -36,11 +36,12 @@ class MetricsPlots(VisualizerBase):
         eval_res = self.evaluation_results
         colors = self.visualization_config.colors
 
-        for metric in eval_res.metric_names:
+        for i_metric, metric in enumerate(eval_res.metric_names):
             fig = self._figure()
 
             for i_distro, distro in enumerate(eval_res.distros):
-                train_res, test_res = eval_res.by_distro_and_metric(distro, metric)
+                train_res = eval_res.train[i_distro, :, i_metric]
+                test_res = eval_res.test[i_distro, :, i_metric]
                 plt.plot(
                     self.series_data.windows, test_res, label=f"{distro} - Test - {metric}", color=colors[i_distro]
                 )

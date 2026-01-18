@@ -5,30 +5,77 @@ This module provides:
 - WindowDataPackage: packages windowed train/test predictions and true values.
 - Evaluator: computes metrics over windowed results and can save them to CSV.
 
-The module exposes a stable API suitable for packaging.
+
 """
 
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
 
 from los_estimator.core import SeriesData
 from los_estimator.fitting.errors import ErrorFunctions
+from los_estimator.fitting.fit_results import MultiSeriesFitResults
 
-__version__ = "0.0.0"
-__all__ = ["EvaluationResult", "WindowDataPackage", "Evaluator", "__version__"]
+
+class WindowDataPackage:
+    """Pack windowed train/test predictions and ground-truth into a 2D object array for evaluation.
+
+    The data attribute is an array shaped (n_distros, n_windows) with tuples:
+    (y_true_train, y_pred_train, y_true_test, y_pred_test, x_train, x_test, window_info)
+    """
+
+    def __init__(self, all_fit_results: MultiSeriesFitResults, series_data: SeriesData) -> None:
+        self.all_fit_results: MultiSeriesFitResults = all_fit_results
+        self.series_data: SeriesData = series_data
+        self.data: Optional[NDArray[Any]] = None
+        self.n_distros: int = 0
+        self.n_windows: int = 0
+        self.build_package()
+
+    def iterate_index(self) -> Iterator[Tuple[int, int]]:
+        """Yield (i_distro, i_window) tuples."""
+        for i_distro in range(self.n_distros):
+            for i_window in range(self.n_windows):
+                yield i_distro, i_window
+
+    def build_package(self) -> None:
+        """Construct the data array from all_fit_results and series_data."""
+        self.n_distros = len(self.all_fit_results)
+        self.n_windows = self.all_fit_results.n_windows
+        data: NDArray[Any] = np.empty((self.n_distros, self.n_windows), dtype=object)
+
+        for i_distro, fit_result in enumerate(self.all_fit_results.values()):
+            for i_window, (single_fit_result, w) in enumerate(zip(fit_result.fit_results, fit_result.window_infos)):
+                y_pred_train = single_fit_result.train_prediction[w.kernel_width :]
+                y_pred_test = single_fit_result.test_prediction[w.kernel_width :]
+
+                y_true_train = self.series_data.y_full[w.training_prediction_start : w.train_end]
+                y_true_test = self.series_data.y_full[w.test_start : w.test_end]
+                x_train = np.arange(w.training_prediction_start, w.train_end)
+                x_test = np.arange(w.test_start, w.test_end)
+
+                data[i_distro][i_window] = (
+                    y_true_train,
+                    y_pred_train,
+                    y_true_test,
+                    y_pred_test,
+                    x_train,
+                    x_test,
+                    w,
+                )
+
+        self.data = data
 
 
 class EvaluationResult:
     """Container for evaluation metric results.
 
     Attributes:
-        train: 3D array (n_distros, n_windows, n_metrics) for training metrics.
-        test: 3D array (n_distros, n_windows, n_metrics) for test metrics.
-        distros: ordered list of distribution names.
-        metric_names: ordered list of metric names.
-        window_data_package: optional reference to the WindowDataPackage used.
+        train (Optional[NDArray[Any]]): 3D array (n_distros, n_windows, n_metrics) for training metrics.
+        test (Optional[NDArray[Any]]): 3D array (n_distros, n_windows, n_metrics) for test metrics.
+        distros (List[str]): ordered list of distribution names.
+        metric_names (List[str]): ordered list of metric names.
     """
 
     def __init__(
@@ -37,13 +84,11 @@ class EvaluationResult:
         metric_names: List[str],
         train: Optional[NDArray[Any]] = None,
         test: Optional[NDArray[Any]] = None,
-        window_data_package: Optional["WindowDataPackage"] = None,
     ) -> None:
         self.train: Optional[NDArray[Any]] = train
         self.test: Optional[NDArray[Any]] = test
         self.distros: List[str] = distros
         self.metric_names: List[str] = metric_names
-        self.window_data_package: Optional["WindowDataPackage"] = window_data_package
 
     def get_dfs(self) -> pd.DataFrame:
         """Return a DataFrame with train/test mean and median per distribution and metric."""
@@ -78,137 +123,24 @@ class EvaluationResult:
                         "test_median": float(test_median[i_distro, i_metric]),
                     }
                 )
-
         return pd.DataFrame(rows)
-
-    def iter_distros(self, ret_arr: bool = True) -> Iterator[Tuple[int, str, Optional[NDArray[Any]]]]:
-        """Iterate distributions. If ret_arr True returns (index, name, train_arr, test_arr)."""
-        for i_distro, distro in enumerate(self.distros):
-            if ret_arr:
-                assert self.train is not None and self.test is not None
-                yield i_distro, distro, self.train[i_distro, :, :], self.test[i_distro, :, :]
-            else:
-                yield i_distro, distro
-
-    def iter_metrics(self, ret_arr: bool = True) -> Iterator[Tuple[int, str, Optional[NDArray[Any]]]]:
-        """Iterate metrics. If ret_arr True returns (index, name, train_arr, test_arr)."""
-        for i_metric, metric_name in enumerate(self.metric_names):
-            if ret_arr:
-                assert self.train is not None and self.test is not None
-                yield i_metric, metric_name, self.train[:, :, i_metric], self.test[:, :, i_metric]
-            else:
-                yield i_metric, metric_name
-
-    def by_metric(
-        self, metric_name: Optional[str] = None, metric_index: Optional[int] = None
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
-        """Return (train_arr, test_arr) for a single metric."""
-        assert self.train is not None and self.test is not None
-        if metric_index is None:
-            if metric_name is None:
-                raise ValueError("Either metric_name or metric_index must be provided")
-            metric_index = self.metric_names.index(metric_name)
-        return self.train[:, :, metric_index], self.test[:, :, metric_index]
-
-    def by_distro(
-        self, distro_name: Optional[str] = None, distro_index: Optional[int] = None
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
-        """Return (train_arr, test_arr) for a single distribution."""
-        assert self.train is not None and self.test is not None
-        if distro_index is None:
-            if distro_name is None:
-                raise ValueError("Either distro_name or distro_index must be provided")
-            distro_index = self.distros.index(distro_name)
-        return self.train[distro_index, :, :], self.test[distro_index, :, :]
-
-    def by_distro_and_metric(
-        self,
-        distro_name: Optional[str] = None,
-        metric_name: Optional[str] = None,
-        distro_index: Optional[int] = None,
-        metric_index: Optional[int] = None,
-    ) -> Tuple[NDArray[Any], NDArray[Any]]:
-        """Return (train_arr, test_arr) for a given distribution and metric."""
-        assert self.train is not None and self.test is not None
-        if distro_index is None:
-            if distro_name is None:
-                raise ValueError("Either distro_name or distro_index must be provided")
-            distro_index = self.distros.index(distro_name)
-        if metric_index is None:
-            if metric_name is None:
-                raise ValueError("Either metric_name or metric_index must be provided")
-            metric_index = self.metric_names.index(metric_name)
-        return self.train[distro_index, :, metric_index], self.test[distro_index, :, metric_index]
-
-
-class WindowDataPackage:
-    """Pack windowed train/test predictions and ground-truth into a 2D object array.
-
-    The data attribute is an array shaped (n_distros, n_windows) with tuples:
-    (y_true_train, y_pred_train, y_true_test, y_pred_test, x_train, x_test, window_info)
-    """
-
-    def __init__(self, all_fit_results: Dict[str, Any], series_data: SeriesData) -> None:
-        self.all_fit_results: Dict[str, Any] = all_fit_results
-        self.series_data: SeriesData = series_data
-        self.data: Optional[NDArray[Any]] = None
-        self.n_distros: int = 0
-        self.n_windows: int = 0
-        self.build_package()
-
-    def iterate_index(self) -> Iterator[Tuple[int, int]]:
-        """Yield (i_distro, i_window) tuples."""
-        for i_distro in range(self.n_distros):
-            for i_window in range(self.n_windows):
-                yield i_distro, i_window
-
-    def build_package(self) -> None:
-        """Construct the data array from all_fit_results and series_data."""
-        self.n_distros = len(self.all_fit_results)
-        # fit_results object is expected to expose n_windows
-        self.n_windows = self.all_fit_results.n_windows
-        data: NDArray[Any] = np.empty((self.n_distros, self.n_windows), dtype=object)
-
-        for i_distro, fit_result in enumerate(self.all_fit_results.values()):
-            for i_window, (single_fit_result, w) in enumerate(zip(fit_result.fit_results, fit_result.window_infos)):
-                y_pred_train = single_fit_result.train_prediction[w.kernel_width :]
-                y_pred_test = single_fit_result.test_prediction[w.kernel_width :]
-
-                y_true_train = self.series_data.y_full[w.training_prediction_start : w.train_end]
-                y_true_test = self.series_data.y_full[w.test_start : w.test_end]
-                x_train = np.arange(w.training_prediction_start, w.train_end)
-                x_test = np.arange(w.test_start, w.test_end)
-
-                data[i_distro][i_window] = (
-                    y_true_train,
-                    y_pred_train,
-                    y_true_test,
-                    y_pred_test,
-                    x_train,
-                    x_test,
-                    w,
-                )
-
-        self.data = data
 
 
 class Evaluator:
     """Compute metrics over windowed predictions for multiple distributions.
 
     Parameters:
-        all_fit_results: mapping distribution_name -> fit_result container.
-        series_data: SeriesData instance with ground-truth and window definitions.
-        metrics: iterable of (metric_name, metric_callable). Metric callable should accept
-                 (y_true: NDArray, y_pred: NDArray) and return a scalar (float).
+        all_fit_results (MultiSeriesFitResults): Results container for multiple series fits.
+        series_data (SeriesData): SeriesData instance with ground-truth and window definitions.
     """
 
     def __init__(
         self,
-        all_fit_results: Dict[str, Any],
+        all_fit_results: MultiSeriesFitResults,
         series_data: SeriesData,
     ) -> None:
-        self.all_fit_results = all_fit_results
-        self.series_data = series_data
+        self.all_fit_results: MultiSeriesFitResults = all_fit_results
+        self.series_data: SeriesData = series_data
         metrics = ErrorFunctions.errors.items()
         self.metric_names: List[str] = [m[0] for m in metrics]
         self.metric_functions: List[Callable[[NDArray[Any], NDArray[Any]], float]] = [m[1] for m in metrics]

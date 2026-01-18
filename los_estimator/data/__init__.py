@@ -23,7 +23,6 @@ class DataPackage:
         df_occupancy (pd.DataFrame): ICU occupancy data over time.
         real_los (pd.Series): Real length of stay values for validation.
         df_init (pd.DataFrame): Initial condition data.
-        df_mutant (pd.DataFrame): Mutant/variant data for analysis.
         xtick_pos (list): Positions for x-axis tick marks in plots.
         xtick_label (list): Labels for x-axis tick marks in plots.
     """
@@ -31,7 +30,6 @@ class DataPackage:
     df_occupancy: pd.DataFrame
     real_los: pd.Series
     df_init: pd.DataFrame
-    df_mutant: pd.DataFrame
     xtick_pos: list
     xtick_label: list
 
@@ -121,9 +119,6 @@ class DataLoader:
 
         # optional data
         df_init = self.load_init_parameters(c.init_params_file)
-        df_mutant = self.load_mutant_data(c.mutants_file)
-        if df_mutant is not None:
-            df_mutant = df_mutant.reindex(df_occupancy.index, method="nearest")
         real_los = self.load_los(c.los_file)
 
         xtick_pos = None
@@ -134,7 +129,6 @@ class DataLoader:
             df_occupancy=df_occupancy,
             real_los=real_los,
             df_init=df_init,
-            df_mutant=df_mutant,
             xtick_pos=xtick_pos,
             xtick_label=xtick_label,
         )
@@ -167,10 +161,3 @@ class DataLoader:
         los = df_los.iloc[:, 0].to_numpy(dtype=float)
         los /= los.sum()
         return los
-
-    def load_mutant_data(self, file=None) -> pd.DataFrame:
-        if file is None:
-            return None
-        df_mutant = self.read_csv(file, parse_dates=["Unnamed: 0"])
-        df_mutant = df_mutant.set_index("Unnamed: 0")
-        return df_mutant

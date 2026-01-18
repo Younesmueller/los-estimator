@@ -91,7 +91,6 @@ class DeconvolutionPlots(VisualizerBase):
         sorted_summary = self.all_fit_results.summary.sort_values("Median Loss Train")
         sorted_summary = sorted_summary[
             [
-                # "Failure Rate",
                 # "Mean Loss Train",
                 "Median Loss Train",
                 # "Upper Quartile Train",

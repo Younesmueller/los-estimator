@@ -97,18 +97,7 @@ def initialize_distro_parameters(
     return distro_boundaries, distro_init_params
 
 
-def fit_convolution(*args, perform_exit=False, **kwargs):
-    if perform_exit:
-        if args[0] == "lognorm":
-            with open("args.dill", "wb") as f:
-                dill.dump(args, f)
-            with open("kwargs.dill", "wb") as f:
-                dill.dump(kwargs, f)
-            raise RuntimeError("Saved args and kwargs for debugging.")
-    return _fit_convolution(*args, **kwargs)
-
-
-def _fit_convolution(
+def fit_convolution(
     distro: str,
     train_data: Tuple[np.ndarray, np.ndarray],
     test_data: Tuple[np.ndarray, np.ndarray],
@@ -116,7 +105,7 @@ def _fit_convolution(
     distro_boundaries: Optional[List[Tuple[Optional[float], Optional[float]]]] = None,
     distro_init_params: Optional[List[float]] = None,
     past_kernels: Optional[np.ndarray] = None,
-    method: str = "Nelder-Mead",
+    method: str = "L-BFGS-B",
     error_fun: str = "mse",
 ) -> SingleFitResult:
     """Fit a convolution-based model to length of stay data.
@@ -215,6 +204,22 @@ def fit_compartmental(
     method: str = "TNC",
     error_fun: str = "mse",
 ) -> SingleFitResult:
+    """Fit the compartmental model to a train/test split.
+
+    Runs bounded optimization over the compartmental parameters and returns a
+    `SingleFitResult` with errors, predictions, and the fitted configuration.
+
+    Args:
+        train_data (tuple[np.ndarray, np.ndarray]): (x_train, y_train) arrays.
+        test_data (tuple[np.ndarray, np.ndarray]): (x_test, y_test) arrays.
+        initial_guess_comp (list[float]): Initial values for the compartmental parameters.
+        kernel_width (int): Window width used when slicing evaluation arrays.
+        method (str, optional): Optimization method. Defaults to "TNC".
+        error_fun (str, optional): Error function name. Defaults to "mse".
+
+    Returns:
+        SingleFitResult: Fit result including errors, predictions, and model config.
+    """
     x_train, y_train = train_data
     x_test, y_test = test_data
 

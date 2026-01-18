@@ -163,13 +163,12 @@ class LosEstimationRun:
     def visualize_input_data(self):
         """Generate visualizations of the input data.
 
-        Creates plots showing ICU occupancy data, mutant data, and other input
+        Creates plots showing ICU occupancy data data, and other input
         data visualizations using the configured InputDataVisualizer.
         """
         self.input_visualizer.data = self.data
         self.input_visualizer.show_input_data()
         self.input_visualizer.plot_icu_data()
-        self.input_visualizer.plot_mutant_data()
 
     def set_up(self):
         """Set up the output directory structure and logging.
@@ -238,7 +237,6 @@ class LosEstimationRun:
         if not self.animation_config.show_figures and not self.animation_config.save_figures:
             logger.info("Animation is disabled. Skipping animation creation.")
             return
-        df_mutant = self.data.df_mutant if self.data else None
         self.animator = DeconvolutionAnimator(
             all_fit_results=self.all_fit_results,
             series_data=self.series_data,
@@ -247,7 +245,6 @@ class LosEstimationRun:
             visualization_context=self.visualization_context,
             animation_config=self.animation_config,
             output_folder_config=self.output_config,
-            df_mutant=df_mutant,
         )
 
         self.animator.animate_fit_deconvolution()

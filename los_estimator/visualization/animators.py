@@ -40,7 +40,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         visualization_context: VisualizationContext,
         output_folder_config: OutputFolderConfig,
         animation_config: AnimationConfig,
-        df_mutant: Optional[pd.DataFrame] = None,
     ):
         super().__init__(
             all_fit_results,
@@ -50,43 +49,31 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             visualization_context,
             output_config=output_folder_config,
         )
-        self.df_mutant = df_mutant
         self.ac = animation_config
         self._generate_animation_context()
 
     def _generate_animation_context(self):
         """Generate context for animation frames."""
         ac = self.ac
-        ac.distro_colors = {
+        self.distro_colors = {
             distro: self.visualization_config.colors[i] for i, distro in enumerate(self.all_fit_results)
         }
-        d = dict(ac.alternative_names)
-        ac.distro_patches = [
-            Patch(color=ac.distro_colors[distro], label=d.get(distro, distro.capitalize()))
-            for distro in self.all_fit_results
+        self.distro_patches = [
+            Patch(color=self.distro_colors[distro], label=distro.capitalize()) for distro in self.all_fit_results
         ]
-        d = dict(ac.replace_short_names)
+        d = dict(ac.short_distro_names)
         self.ac.short_distro_names = [d.get(distro, distro) for distro in self.all_fit_results]
 
-    def _get_subplots(self, SHOW_MUTANTS):
+    def _get_subplots(self):
         """Get subplot configuration for animation."""
         fig = self._figure(figsize=(17, 10))
-        if SHOW_MUTANTS:
-            gs = gridspec.GridSpec(3, 4, height_ratios=[5, 1, 3])
-            ax_main = fig.add_subplot(gs[0, :4])
-            ax_kernel = fig.add_subplot(gs[2, :2])
-            ax_err_train = fig.add_subplot(gs[2, 2])
-            ax_err_test = fig.add_subplot(gs[2, 3])
-            ax_mutant = fig.add_subplot(gs[1, :4])
-        else:
-            gs = gridspec.GridSpec(2, 4, height_ratios=[2, 1])
-            ax_main = fig.add_subplot(gs[0, :4])
-            ax_kernel = fig.add_subplot(gs[1, :2])
-            ax_err_train = fig.add_subplot(gs[1, 2])
-            ax_err_test = fig.add_subplot(gs[1, 3])
-            ax_mutant = None
+        gs = gridspec.GridSpec(2, 4, height_ratios=[2, 1])
+        ax_main = fig.add_subplot(gs[0, :4])
+        ax_kernel = fig.add_subplot(gs[1, :2])
+        ax_err_train = fig.add_subplot(gs[1, 2])
+        ax_err_test = fig.add_subplot(gs[1, 3])
 
-        return fig, ax_main, ax_kernel, ax_err_train, ax_err_test, ax_mutant
+        return fig, ax_main, ax_kernel, ax_err_train, ax_err_test
 
     def _create_animation_folder(self):
         """Create folder for animation frames."""
@@ -149,12 +136,12 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             x_train = np.arange(len(y_train)) + w.training_prediction_start
             x_test = np.arange(len(y_test)) + w.test_start
 
-            ax_main.plot(x_train, y_train, linestyle="--", color=ac.distro_colors[distro])
-            ax_main.plot(x_test, y_test, label=f"{distro.capitalize()}", color=ac.distro_colors[distro])
+            ax_main.plot(x_train, y_train, linestyle="--", color=self.distro_colors[distro])
+            ax_main.plot(x_test, y_test, label=f"{distro.capitalize()}", color=self.distro_colors[distro])
         (line_inc,) = ax_main.plot(x_full * 4, linestyle="--", label="ICU Admissions (Scaled * 4)")
         ma = np.nanmax(x_full)
 
-        legend1 = ax_main.legend(handles=ac.distro_patches, loc="upper left", fancybox=True, ncol=2)
+        legend1 = ax_main.legend(handles=self.distro_patches, loc="upper left", fancybox=True, ncol=2)
         legend2 = ax_main.legend(
             handles=[line_bedload, line_inc, span_train, line_pred_start_vertical_marker, span_test],
             loc="upper right",
@@ -187,8 +174,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
 
     def animate_fit_deconvolution(self):
         """Create animation of fit deconvolution process."""
-        df_mutant = self.df_mutant
-        SHOW_MUTANTS = df_mutant is not None
 
         self._create_animation_folder()
 
@@ -201,13 +186,11 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             window_counter += 1
 
             w = window_info
-            fig, ax_main, ax_kernel, ax_err_train, ax_err_test, ax_mutant = self._get_subplots(SHOW_MUTANTS)
+            fig, ax_main, ax_kernel, ax_err_train, ax_err_test = self._get_subplots()
 
             self._plot_ax_main(ax_main, window_id)
             self._plot_ax_kernel(ax_kernel, window_id)
             self._plot_ax_errors(ax_err_train, ax_err_test, window_id)
-            if SHOW_MUTANTS:
-                self._plot_ax_mutants(ax_mutant, df_mutant)
 
             plt.suptitle(
                 f"{self.model_config.run_name.replace('_', ' ')}\n\nDeconvolution Training Process",
@@ -237,26 +220,6 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             max_test_error = self.ac.test_error_lim
         return max_train_error, max_test_error
 
-    def _plot_ax_mutants(self, ax_mutant, df_mutant):
-        """Plot mutant data on axis."""
-        y_full = self.series_data.y_full
-        mutant_lines = []
-        for col in df_mutant.columns:
-            (line,) = ax_mutant.plot(df_mutant[col].values)
-            mutant_lines.append(line)
-            ax_mutant.fill_between(range(len(y_full)), df_mutant[col].values, 0, alpha=0.3)
-
-        ax_mutant.legend(mutant_lines, df_mutant.columns, loc="upper right")
-        ax_mutant.set_xticks([])
-        ax_mutant.set_xticklabels([])
-        ax_mutant.set_xticks(self.vc.xtick_pos)
-        tmp_xtick = [label.split("\n")[1:] for label in self.vc.xtick_label]
-        tmp_xtick = [label[0] if label else "" for label in tmp_xtick]
-        ax_mutant.set_xticklabels(tmp_xtick)
-        ax_mutant.set_xlim(*self.vc.xlims)
-        ax_mutant.set_title("Variants of Concern")
-        ax_mutant.set_ylabel("Variant Share (%)")
-
     def _plot_ax_errors(self, ax_err_train, ax_err_test, window_id):
         """Plot error bars on axes."""
         train_error_lim, test_error_lim = self._get_max_errors()
@@ -264,7 +227,7 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         for i, (distro, fit_result) in enumerate(self.all_fit_results.items()):
             if window_id >= len(fit_result.fit_results):
                 continue
-            c = ac.distro_colors[distro]
+            c = self.distro_colors[distro]
             train_err = fit_result.train_errors[window_id]
             test_err = fit_result.test_errors[window_id]
 
@@ -291,15 +254,15 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             if window_id >= len(result_series.fit_results):
                 continue
             result_obj = result_series.fit_results[window_id]
-            name = dict(ac.alternative_names).get(distro, distro.capitalize())
+            name = distro.capitalize()
 
-            ax_kernel.plot(result_obj.kernel, label=name, color=ac.distro_colors[distro])
+            ax_kernel.plot(result_obj.kernel, label=name, color=self.distro_colors[distro])
 
         sample_kernel_handle = []
         if hasattr(self.vc, "real_los") and self.vc.real_los is not None:
             sample_kernel_handle = ax_kernel.plot(self.vc.real_los, color="black", label="Reference Distribution")
 
-        ax_kernel.legend(handles=sample_kernel_handle + ac.distro_patches, loc="upper right", fancybox=True, ncol=2)
+        ax_kernel.legend(handles=sample_kernel_handle + self.distro_patches, loc="upper right", fancybox=True, ncol=2)
         ax_kernel.set_ylim(0, 0.1)
         ax_kernel.set_xlim(-2, 60)
         ax_kernel.set_ylabel("Discharge Probability")

@@ -17,7 +17,6 @@
             "request": "launch",
             "program": "${workspaceFolder}/los_estimator/cli/__init__.py",
             "args": [
-                "--silent-plots"
             ],
             "cwd": "${workspaceFolder}",            
             "console": "integratedTerminal"
@@ -29,7 +28,14 @@
             "program": "${workspaceFolder}/run_analysis.py",
             "cwd": "${workspaceFolder}",            
             "console": "integratedTerminal"
-        },
+        }, {
+            "name": "synthetic_example",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/synthetic_example.py",
+            "cwd": "${workspaceFolder}",            
+            "console": "integratedTerminal"
+        }
 
     ]
 }

@@ -63,12 +63,3 @@ class InputDataVisualizer(VisualizerBase):
         ax[1].set_title("ICU Bettenbelegung")
         plt.tight_layout()
         self._show()
-
-    def plot_mutant_data(self):
-        """Plot mutant/variant data.
-
-        Visualizes variant or mutant strain data if available,
-        showing temporal patterns and prevalence.
-        """
-        self.data.df_mutant.plot()
-        plt.show()

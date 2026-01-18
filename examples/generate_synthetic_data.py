@@ -1,10 +1,12 @@
 # %%
+import os
 import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-sys.path.append("..")
+
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from los_estimator.fitting.distributions import Distributions
 
 

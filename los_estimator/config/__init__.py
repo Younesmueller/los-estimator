@@ -60,10 +60,15 @@ class ModelConfig:
 
     Attributes:
         kernel_width (int): Width of the distribution kernel in days.
-        train_width (int): Width of training window in days.
+        train_width (int): Width of training window in days. Has to be chosen larger than the kernel width, to deal with left edge case.
         test_width (int): Width of test window in days.
         step (int): Step size for sliding window analysis.
         error_fun (str): Error function to use for optimization.
+        reuse_last_parametrization (bool): Reuse parameter fit from the previous window.
+        iterative_kernel_fit (bool): Enable iterative fitting of kernels.
+        distributions (List[str]): Candidate distribution names to try.
+        run_name (str): Optional label to tag a run.
+        ideas (types.SimpleNamespace): Scratchpad for experimental options.
     """
 
     kernel_width: int = 120
@@ -121,15 +126,18 @@ class DataConfig:
     """
 
     icu_file: str
-    los_file: str = None
+    los_file: Optional[str] = None
     start_day: str = None
     end_day: str = None
 
     init_params_file: Optional[str] = None
-    mutants_file: Optional[str] = None
 
     def __post_init__(self):
-        pass
+        """Post-initialization hook for validation or defaults.
+
+        Currently a no-op; kept for potential future checks such as
+        ensuring required paths or dates are provided.
+        """
 
 
 @config("debug_config")
@@ -162,6 +170,11 @@ class OutputFolderConfig:
     Attributes:
         base (str): Base directory for all outputs.
         run_name (str): Name of the specific analysis run.
+        results (str): Path to the run's root results folder.
+        figures (str): Path to stored figures.
+        animation (str): Path to stored animations.
+        metrics (str): Path to stored metrics.
+        model_data (str): Path to serialized model data.
     """
 
     base: str
@@ -182,6 +195,7 @@ class OutputFolderConfig:
         self.model_data = os.path.join(self.results, "model_data")
 
     def __post_init__(self):
+        """Populate derived output paths after initialization."""
         self.build()
 
 
@@ -195,28 +209,20 @@ class AnimationConfig:
     Attributes:
         show_figures (bool): Whether to display animations when created.
         save_figures (bool): Whether to save animation files to disk.
-        debug_hide_failed (bool): Hide failed fits in debug animations.
-        alternative_names (List[Tuple[str, str]]): Alternative display names for models.
-        replace_short_names (List[Tuple[str, str]]): Short name replacements for displays.
+        short_distro_names (List[Tuple[str, str]]): Short name replacements for display.
+        train_error_lim (Union[str, float]): Y-limit for train error plots or "auto".
+        test_error_lim (Union[str, float]): Y-limit for test error plots or "auto".
     """
 
     show_figures: bool = False
     save_figures: bool = True
-    debug_hide_failed: bool = False
-    alternative_names: List[Tuple[str, str]] = field(
-        default_factory=lambda: [
-            ("sentinel", "Baseline: Sentinel"),
-        ]
-    )
-    replace_short_names: List[Tuple[str, str]] = field(
+    short_distro_names: List[Tuple[str, str]] = field(
         default_factory=lambda: [
             ("exponential", "exp"),
             ("gaussian", "gauss"),
             ("compartmental", "comp"),
         ]
     )
-    distro_colors: dict[str, str] = field(default_factory=lambda: {})
-    distro_patches: dict[str, str] = field(default_factory=lambda: {})
     train_error_lim: Union[str, float] = "auto"
     test_error_lim: Union[str, float] = "auto"
 
@@ -336,18 +342,15 @@ def save_configurations(path, configurations):
         toml.dump(config_dicts, f)
 
 
-def update_configurations(d1, d2):
-    """Recursively update dictionary d1 with values from d2.
-
-    Performs a deep merge of dictionaries, recursively updating nested
-    dictionaries rather than replacing them entirely.
+def update_configurations(base_config, override_config):
+    """Update a loaded configuration with another.
 
     Args:
-        d1 (dict): Dictionary to update (modified in place).
-        d2 (dict): Dictionary with new values to merge in.
+        base_config (dict): Configuration to update (modified in place).
+        override_config (dict): Configuration with new values to merge in.
     """
-    for key, value in d2.items():
+    for key, value in override_config.items():
         if isinstance(value, dict):
-            update_configurations(d1.setdefault(key, {}), value)
+            update_configurations(base_config.setdefault(key, {}), value)
         else:
-            d1[key] = value
+            base_config[key] = value

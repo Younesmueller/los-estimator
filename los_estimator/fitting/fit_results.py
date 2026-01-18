@@ -1,3 +1,14 @@
+"""Containers for fit results and cross-distribution summaries.
+
+This module defines lightweight containers used throughout the fitting pipeline:
+
+- `SingleFitResult`: Result of fitting a single window for one distribution.
+- `SeriesFitResult`: Aggregates window-wise `SingleFitResult` for a distribution
+  and computes derived arrays and metrics.
+- `MultiSeriesFitResults`: Aggregates multiple `SeriesFitResult` instances across
+  distributions and produces a comparison-ready summary.
+"""
+
 from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -8,26 +19,55 @@ import pandas as pd
 
 from los_estimator.config import ModelConfig
 from los_estimator.core import WindowInfo
+from numpy.typing import NDArray
 
 
 @dataclass
 class SingleFitResult:
+    """Result of a single-window fit for one distribution.
+
+    Instances capture artifacts produced by the optimizer for a specific window,
+    including errors, predictions, and the fitted kernel. Relative error arrays
+    and fitted curve can be attached if computed downstream.
+
+    Attributes:
+        distro (str): Distribution name (e.g., "lognorm", "gaussian").
+        train_data (object): Training data used for the fit.
+        test_data (object): Held-out data for evaluation.
+        success (bool): Whether the optimizer reported success.
+        minimization_result (dict): Raw optimizer result object.
+        train_error (NDArray): Scalar training error for the window.
+        test_error (NDArray): Scalar test error for the window.
+        kernel (NDArray): Fitted kernel array for this window.
+        model_config (ModelConfig): Model configuration snapshot used during fitting.
+        train_prediction (NDArray | None): Optional model predictions on the training window.
+        test_prediction (NDArray | None): Optional model predictions on the test window.
+        rel_train_error (NDArray | None): Optional element-wise relative training error array.
+        rel_test_error (NDArray | None): Optional element-wise relative test error array.
+        curve (NDArray | None): Optional fitted curve points for visualization.
+    """
+
     distro: str
     train_data: object
     test_data: object
     success: bool
     minimization_result: dict
-    train_error: np.ndarray
-    test_error: np.ndarray
-    kernel: np.ndarray
+    train_error: NDArray
+    test_error: NDArray
+    kernel: NDArray
     model_config: ModelConfig
-    train_prediction: Optional[np.ndarray] = None
-    test_prediction: Optional[np.ndarray] = None
-    rel_train_error: Optional[np.ndarray] = None
-    rel_test_error: Optional[np.ndarray] = None
-    curve: Optional[np.ndarray] = None
+    train_prediction: Optional[NDArray] = None
+    test_prediction: Optional[NDArray] = None
+    rel_train_error: Optional[NDArray] = None
+    rel_test_error: Optional[NDArray] = None
+    curve: Optional[NDArray] = None
 
     def __repr__(self):
+        """Return a concise summary of the single fit result.
+
+        Returns:
+            str: Readable summary string including key fields and shapes.
+        """
         # return a string with all variables
         if self is None:
             return None
@@ -44,35 +84,64 @@ class SingleFitResult:
 
 
 class SeriesFitResult:
+    """Aggregate fit results across windows for a single distribution.
+
+    A `SeriesFitResult` collects `SingleFitResult` objects produced for each
+    sliding window of a specific distribution and computes convenient arrays
+    like `train_errors`, `test_errors`, and derived transition metrics.
+
+    Attributes:
+        distro (str): Distribution name for this series.
+        window_infos (list[WindowInfo]): Metadata for each processed window.
+        fit_results (list[SingleFitResult]): Per-window fit result objects.
+        train_errors (NDArray): Array of training errors across windows.
+        test_errors (NDArray): Array of test errors across windows.
+        all_kernels (NDArray): Rolling kernel matrix (rows = day, cols = kernel width).
+        transition_rates (NDArray): Transition rate estimates from model configs.
+        transition_delays (NDArray): Transition delay estimates from model configs.
+    """
+
     distro: str
     window_infos: list[WindowInfo]
     fit_results: list[SingleFitResult]
-    train_errors: np.ndarray
-    test_errors: np.ndarray
-    successes: list[bool]
-    n_success: np.ndarray
-    all_kernels: np.ndarray
-    transition_rates: np.ndarray
-    transition_delays: np.ndarray
+    train_errors: NDArray
+    test_errors: NDArray
+    all_kernels: NDArray
+    transition_rates: NDArray
+    transition_delays: NDArray
 
     def __init__(self, distro):
+        """Initialize the series container for a given distribution.
+
+        Args:
+            distro (str): Distribution name (e.g., "lognorm", "gaussian").
+        """
         self.distro = distro
         self.window_infos = []
         self.fit_results = []
         self.train_errors = None
         self.test_errors = None
-        self.successes = []
-        self.n_success = None
         self.all_kernels = None
 
     def append(self, window_info, fit_result):
+        """Append a window and its fit result to the series.
+
+        Args:
+            window_info (WindowInfo): Metadata about the processed window.
+            fit_result (SingleFitResult): The fit result for the window.
+        """
         self.window_infos.append(window_info)
         self.fit_results.append(fit_result)
 
     def bake(self):
+        """Finalize the series by computing derived arrays and metrics.
+
+        This method:
+        - Aggregates `train_error` and `test_error` into `train_errors` and `test_errors`.
+        - Extracts transition-related metrics from `model_config` into
+          `transition_rates` and `transition_delays`.
+        """
         self._collect_errors()
-        self.successes = [fr.success for fr in self.fit_results]
-        self.n_success = sum(self.successes)
         self.transition_rates = np.array(
             [
                 fr.model_config[0] if ((fr is not None) and len(fr.model_config) > 0) else np.nan
@@ -87,6 +156,11 @@ class SeriesFitResult:
         )
 
     def _collect_errors(self):
+        """Collect window-wise training and testing errors into arrays.
+
+        Populates `train_errors` and `test_errors` by iterating over `fit_results`.
+        Missing fit results are treated as infinite error.
+        """
         self.errors_collected = True
         train_err = np.empty(len(self.fit_results))
         test_err = np.empty(len(self.fit_results))
@@ -101,6 +175,17 @@ class SeriesFitResult:
         self.test_errors = test_err
 
     def __getitem__(self, window_id):
+        """Return fit result(s) for a given window index or slice.
+
+        Args:
+            window_id (int | slice): Window index or slice.
+
+        Returns:
+            SingleFitResult | list[SingleFitResult]: The corresponding result(s).
+
+        Raises:
+            IndexError: If `window_id` is an integer out of range.
+        """
         if isinstance(window_id, slice):
             return self.fit_results[window_id]
         if window_id >= len(self.fit_results):
@@ -108,28 +193,67 @@ class SeriesFitResult:
         return self.fit_results[window_id]
 
     def __setitem__(self, window_id, value):
+        """Replace the fit result at a given window index.
+
+        Args:
+            window_id (int): Window index to replace.
+            value (SingleFitResult): New fit result.
+
+        Raises:
+            IndexError: If `window_id` is out of range.
+        """
         if window_id >= len(self.fit_results):
             raise IndexError(f"Window ID {window_id} out of range for {len(self.fit_results)} windows.")
         self.fit_results[window_id] = value
 
     def __repr__(self):
+        """Return a concise summary of the series fit result.
+
+        Returns:
+            str: Summary including distro, window count, and error array sizes.
+        """
         return f"SeriesFitResult(distro={self.distro}, n_windows={len(self.window_infos)}, train_relative_error: {len(self.train_errors)}, test_relative_error: {len(self.test_errors)})"
 
 
 class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
+    """Aggregate results for multiple distributions and build summaries.
+
+    This container maps distribution names to their `SeriesFitResult` instances,
+    and offers helpers to compute cross-distro arrays (e.g., error matrices)
+    and a comparison `summary` DataFrame.
+
+    Attributes:
+        results (list[SeriesFitResult]): List of SeriesFitResult instances for each distribution.
+        distros (list[str]): List of distribution names corresponding to the results.
+        n_windows (int): Number of fitting windows across all distributions.
+        train_errors_by_distro (NDArray): 2D array of training errors with shape (n_windows, n_distros).
+        test_errors_by_distro (NDArray): 2D array of test errors with shape (n_windows, n_distros).
+        transition_rates_by_distro (NDArray): 2D array of transition rates with shape (n_windows, n_distros).
+        transition_delays_by_distro (NDArray): 2D array of transition delays with shape (n_windows, n_distros).
+        summary (pd.DataFrame): Comparison DataFrame with error statistics and robustness metrics per distribution.
+
+    """
+
     results: list[SeriesFitResult]
     distros: list[str]
     n_windows: int
-    train_errors_by_distro: np.ndarray
-    test_errors_by_distro: np.ndarray
-    successes_by_distro: np.ndarray
-    failures_by_distro: np.ndarray
-    n_success_by_distro: np.ndarray
-    transition_rates_by_distro: np.ndarray
-    transition_delays_by_distro: np.ndarray
+    train_errors_by_distro: NDArray
+    test_errors_by_distro: NDArray
+    transition_rates_by_distro: NDArray
+    transition_delays_by_distro: NDArray
     summary: pd.DataFrame
 
     def __init__(self, distros=None, *args, **kwargs):
+        """Initialize the multi-series container.
+
+        If `distros` is provided, the container is pre-populated with empty
+        `SeriesFitResult` instances keyed by the distribution names.
+
+        Args:
+            distros (list[str] | None): Optional list of distribution names.
+            *args: Passthrough positional args for `OrderedDict`.
+            **kwargs: Passthrough keyword args for `OrderedDict`.
+        """
         super().__init__(*args, **kwargs)
         if distros is not None:
             for distro in distros:
@@ -138,6 +262,16 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
             self.results = list(self.values())
 
     def bake(self):
+        """Finalize all series and compute cross-distribution arrays.
+
+        This method:
+        - Calls `bake()` on each `SeriesFitResult`.
+        - Builds matrices for train/test errors and transition metrics.
+        - Produces a summary DataFrame with central tendency and robustness metrics.
+
+        Returns:
+            MultiSeriesFitResults: The same instance, for chaining.
+        """
         self.distros = list(self.keys())
         self.results = list(self.values())
 
@@ -146,9 +280,6 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
         self.n_windows = len(self.results[0].fit_results) if self.results else 0
         self.train_errors_by_distro = np.array([fr.train_errors for fr in self.results]).T
         self.test_errors_by_distro = np.array([fr.test_errors for fr in self.results]).T
-        self.successes_by_distro = np.array([fr.successes for fr in self.results]).T
-        self.failures_by_distro = 1 - self.successes_by_distro.astype(int)
-        self.n_success_by_distro = np.array([fr.n_success for fr in self.results]).T
         self.transition_rates_by_distro = np.array([fr.transition_rates for fr in self.results]).T
         self.transition_delays_by_distro = np.array([fr.transition_delays for fr in self.results]).T
         self.n_windows = len(self.results[0].fit_results) if self.results else 0
@@ -157,12 +288,17 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
         return self
 
     def _make_summary(self):
+        """Build a comparison DataFrame summarizing error statistics per distro.
+
+        The summary includes:
+        - Mean/Median train and test loss
+        - Upper/Lower quartiles for train loss
+        - Mean losses with outliers removed (IQR-based filtering)
+        """
         df_train = pd.DataFrame(self.train_errors_by_distro, columns=self.distros)
         df_test = pd.DataFrame(self.test_errors_by_distro, columns=self.distros)
 
-        # Compute mean finite loss and failure rate for each model
         summary = pd.DataFrame(index=self.distros)
-        summary["Failure Rate"] = self.failures_by_distro.mean(axis=0)
 
         summary["Mean Loss Train"] = df_train.replace(np.inf, np.nan).mean()
         summary["Median Loss Train"] = df_train.replace(np.inf, np.nan).median()
@@ -187,4 +323,9 @@ class MultiSeriesFitResults(OrderedDict[str, SeriesFitResult]):
         self.summary = summary
 
     def __repr__(self):
+        """Return a concise summary of the multi-series results.
+
+        Returns:
+            str: Summary including distribution list and window count.
+        """
         return f"MultiSeriesFitResults(distros={self.distros}, n_windows={self.n_windows})"

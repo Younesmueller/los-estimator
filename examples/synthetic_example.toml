@@ -71,11 +71,9 @@ figure_dpi = 100
 [animation_config]
 show_figures = false
 save_figures = true
-debug_hide_failed = true
 train_error_lim = "auto"
 test_error_lim = "auto"
-alternative_names = [["sentinel", "Baseline: Sentinel"]]
-replace_short_names = [
+short_distro_names = [
     [
         "exponential",
         "exp",

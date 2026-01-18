@@ -40,7 +40,6 @@ def setup_parser():
         "--overwrite_config_file",
         help="Path to a configuration file. Just overwrite the parameters that you want to change.",
     )
-    parser.add_argument("--show-plots", action="store_true", help="No showing of plots.")
     return parser
 
 
@@ -70,10 +69,6 @@ def main():
         if args.overwrite_config_file:
             overwrite_cfg = load_configurations(args.overwrite_config_file)
             update_configurations(cfg, overwrite_cfg)
-
-        if args.show_plots is not None:
-            cfg["visualization_config"].show_figures = args.show_plots
-            cfg["animation_config"].show_figures = args.show_plots
 
         estimator = LosEstimationRun(
             data_config=cfg["data_config"],

@@ -20,6 +20,10 @@ else:
     from numba import njit
 
 
+def njit(func):
+    return func
+
+
 def los_distro_converter(los):
     """Convert discharge distribution to ICU presence distribution.
 

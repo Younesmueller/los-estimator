@@ -1,6 +1,6 @@
 """Distribution types and probability density functions for LOS modeling.
 
-This module provides various probability distributions that can be used as
+This module provides probability distributions that can be used as
 kernels for length of stay estimation, including standard statistical
 distributions and custom distributions specific to hospital data.
 """
@@ -22,7 +22,7 @@ from scipy.stats import (
 )
 from .sentinel_distro import sentinel_los_berlin
 
-__all__ = ["DistributionTypes", "Distribution"]
+__all__ = ["DistributionTypes", "Distribution", "Distributions"]
 
 
 class DistributionTypes:
@@ -47,7 +47,7 @@ class DistributionTypes:
 
 @dataclass
 class Distribution:
-    """Data class for distribution information.
+    """Data class for distribution function information.
 
     Contains all necessary information to define and use a probability
     distribution for length of stay modeling.
@@ -60,8 +60,8 @@ class Distribution:
     """
 
     name: str
-    init_values: list
-    boundaries: list
+    init_values: list[float]
+    boundaries: list[tuple]
     pdf: Callable
     to_string: Callable = None
 

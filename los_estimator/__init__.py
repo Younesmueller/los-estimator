@@ -4,7 +4,10 @@ A package for analyzing hospital length of stay using deconvolution methods.
 """
 
 import logging
+import sys
 from pathlib import Path
+
+__version__ = "1.0.0"
 
 
 def setup_logging(log_file_path=None):
@@ -41,7 +44,9 @@ def setup_logging(log_file_path=None):
     return logger
 
 
-setup_logging("current.log")
+# Only setup logging when not being imported by Sphinx
+if "sphinx" not in sys.modules:
+    setup_logging("current.log")
 
 # Configuration classes
 from .config import DataConfig, ModelConfig, VisualizationContext
@@ -62,8 +67,6 @@ from .visualization import (
     DeconvolutionPlots,
     InputDataVisualizer,
 )
-
-__version__ = "1.0.0"
 
 __all__ = [
     "LosEstimationRun",
