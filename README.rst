@@ -11,7 +11,7 @@ The LoS Estimator derives patient length of stay distributions from ICU admissio
 .. note::
     This work builds on the methodology described in:
 
-    Schuppert A, Theisen S, Fränkel P, Weber-Carstens S, Karagiannidis C.
+    A. Schuppert, S. Theisen, P. Fränkel, S. Weber-Carstens, C. Karagiannidis.
 
     Bundesweites Belastungsmodell für Intensivstationen durch COVID-19.
     (English: Nationwide exposure model for COVID-19 intensive care unit admission)
@@ -119,11 +119,6 @@ Project Structure
     └── results/                # Output directory (created at runtime)
 
 
-License
--------
-
-[License information to be added]
-
 Contact
 -------
 
@@ -133,23 +128,12 @@ For questions, issues, or contributions:
 - **Author:** Younes Müller
 - **Institution:** RWTH Aachen University
 
-Acknowledgments
----------------
-
-This project was developed at RWTH Aachen University. We acknowledge the Robert Koch Institute for providing public COVID-19 ICU data used in the examples.
-
-
-
-Contributing
-------------
-
-If you want to contribute to the DEA, please reference our contribution guidelines
 
 Links
 -----
-    Documentation: https://diagnostic-expert-advisor.readthedocs.io/en/latest/
+    Documentation: XXX
 
-    Source: https://github.com/JRC-COMBINE/DEA
+    Source: XXX
 
-    Issue tracker: https://github.com/JRC-COMBINE/DEA/isssues
+    Issue tracker: XXX
 

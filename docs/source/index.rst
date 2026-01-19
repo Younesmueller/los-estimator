@@ -20,9 +20,3 @@ Documentation
 
    apiref/api
 
-Indices and Tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
