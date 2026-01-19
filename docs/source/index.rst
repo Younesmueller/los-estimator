@@ -20,3 +20,9 @@ Documentation
 
    apiref/api
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+
+   development/contributing
+
