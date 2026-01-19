@@ -7,7 +7,6 @@ from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from matplotlib.patches import Patch
 
 from ..config import (
