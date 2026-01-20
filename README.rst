@@ -91,7 +91,7 @@ Quick Start
 Documentation
 -------------
 
-Full documentation is available at: `[Documentation URL]`
+Full documentation is available at: `https://los-estimator.readthedocs.io/ <https://los-estimator.readthedocs.io/>`_
 
 - `Quickstart Guide <docs/source/usage/quickstart.rst>`_
 - `CLI Reference <docs/source/usage/cli_usage.rst>`_
@@ -131,9 +131,9 @@ For questions, issues, or contributions:
 
 Links
 -----
-    Documentation: XXX
 
-    Source: XXX
+    Documentation: `https://los-estimator.readthedocs.io/ <https://los-estimator.readthedocs.io/>`_
 
-    Issue tracker: XXX
+    Source: `https://github.com/Younesmueller/los-estimator <https://github.com/Younesmueller/los-estimator>`_
 
+    Issue tracker: `https://github.com/Younesmueller/los-estimator/issues <https://github.com/Younesmueller/los-estimator/issues>`_
