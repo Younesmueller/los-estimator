@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import uuid
@@ -15,22 +16,10 @@ from los_estimator.estimation_run import LosEstimationRun, load_configurations
 class TestLosEstimatorIntegration:
     """Integration tests for LOS Estimator."""
 
-    @pytest.fixture(autouse=True)
-    def setup_test_data(self):
-        """Set up test data and configurations."""
-        # self.original_result = load_comparison_data(less_windows=True)
-        self.cfg = load_configurations(default_config_path)
-
-        # Configure for testing
-        self.cfg["visualization_config"].show_figures = False
-        self.cfg["animation_config"].show_figures = False
-        self.cfg["debug_config"].one_window = False
-        self.cfg["debug_config"].less_windows = True
-        self.cfg["debug_config"].less_distros = False
-        self.cfg["debug_config"].only_linear = False
-
     def test_estimation_run_completes_successfully(self):
         """Test that the estimation run completes without errors."""
+        self.cfg = load_configurations(os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_config.toml"))
+
         unique_id = str(uuid.uuid4())
         estimator = LosEstimationRun(
             self.cfg["data_config"],
@@ -61,7 +50,7 @@ class TestLosEstimatorIntegration:
             sys.executable,
             str(cli_script),
             "--config",
-            str(default_config_path),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_config.toml"),
         ]
 
         try:
@@ -87,5 +76,6 @@ class TestLosEstimatorIntegration:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--tb=short"])
+    pytest.main([__file__, "-v", "-s", "--tb=short"])
     # TestLosEstimatorIntegration().test_cli_execution_completes_successfully()
+    # TestLosEstimatorIntegration().test_estimation_run_completes_successfully()
