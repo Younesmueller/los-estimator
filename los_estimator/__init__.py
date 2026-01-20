@@ -49,7 +49,15 @@ if "sphinx" not in sys.modules:
     setup_logging("current.log")
 
 # Configuration classes
-from .config import DataConfig, ModelConfig, VisualizationContext
+from .config import (
+    DataConfig,
+    ModelConfig,
+    VisualizationContext,
+    DebugConfig,
+    OutputFolderConfig,
+    AnimationConfig,
+    VisualizationConfig,
+)
 
 # Core classes
 from .core import *

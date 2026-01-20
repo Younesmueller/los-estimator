@@ -5,6 +5,7 @@ the quality of length of stay model fits, including standard statistical
 measures and domain-specific error functions.
 """
 
+from numpy.typing import NDArray
 import sys
 from typing import TYPE_CHECKING
 
@@ -48,7 +49,7 @@ class _ErrorFunctions:
     to evaluate model performance and guide optimization.
     """
 
-    def cap_err(y_true, y_pred, cap, a=0.02):
+    def cap_err(y_true: NDArray, y_pred: NDArray, cap, a=0.02):
         """Capacity-weighted error function.
 
         Args:

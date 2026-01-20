@@ -41,30 +41,6 @@ class DataUtils:
     and generating axis labels for time series plots.
     """
 
-    def date_to_day(date, start_day):
-        """Convert date to day number relative to start_day.
-
-        Args:
-            date (pd.Timestamp): Date to convert.
-            start_day (str or pd.Timestamp): Reference start date.
-
-        Returns:
-            int: Number of days since start_day.
-        """
-        return (date - pd.Timestamp(start_day)).days
-
-    def day_to_date(day, start_day):
-        """Convert day number to date relative to start_day.
-
-        Args:
-            day (int): Day number to convert.
-            start_day (str or pd.Timestamp): Reference start date.
-
-        Returns:
-            pd.Timestamp: Date corresponding to the day number.
-        """
-        return pd.Timestamp(start_day) + pd.Timedelta(days=day)
-
     def generate_xticks(df):
         """Generate x-axis tick positions and labels for time series plots.
 

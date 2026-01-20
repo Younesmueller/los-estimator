@@ -2,9 +2,7 @@
 
 import functools
 from typing import Optional
-from collections import defaultdict
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from los_estimator.config import DebugConfig, ModelConfig
@@ -97,7 +95,7 @@ class SeriesData:
         self.windows: np.ndarray
         self.window_infos: list[WindowInfo]
         self.n_windows: int
-        self.debug_config: Optional[DebugConfig] = debug_config or DebugConfig()
+        self.debug_config: DebugConfig = debug_config or DebugConfig()
         self._calc_windows(model_config)
 
         self.n_days: int = len(self.x_full)
@@ -122,14 +120,17 @@ class SeriesData:
         return self.x_full[w.train_window], self.y_full[w.train_window]
 
     @functools.lru_cache
-    def get_test_data(self, window_id):
+    def get_test_data(self, window_id: int):
         if window_id > len(self.windows):
             raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         w = self.window_infos[window_id]
-        return self.x_full[w.test_window_with_runup], self.y_full[w.test_window_with_runup]
+        return (
+            self.x_full[w.test_window_with_runup],
+            self.y_full[w.test_window_with_runup],
+        )
 
     @functools.lru_cache
-    def get_window_info(self, window_id):
+    def get_window_info(self, window_id: int):
         if window_id > len(self.windows):
             raise ValueError(f"Window ID {window_id} out of range for {len(self.windows)} windows.")
         return self.window_infos[window_id]

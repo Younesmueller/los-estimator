@@ -55,7 +55,7 @@ class SingleFitResult:
     train_error: NDArray
     test_error: NDArray
     kernel: NDArray
-    model_config: ModelConfig
+    distro_params: NDArray
     train_prediction: Optional[NDArray] = None
     test_prediction: Optional[NDArray] = None
     rel_train_error: Optional[NDArray] = None
@@ -79,7 +79,31 @@ class SingleFitResult:
             f"rel_train_error={self.rel_train_error}, "
             f"rel_test_error={self.rel_test_error}, "
             f"kernel={self.kernel.shape}, "
-            f"model_config={self.model_config})"
+            f"distro_params={self.distro_params})"
+        )
+
+    @classmethod
+    def create_failed(cls, distro, train_data, test_data):
+        """Create a SingleFitResult representing a failed fit.
+
+        Args:
+            distro (str): Distribution name.
+            train_data (object): Training data used for the fit.
+            test_data (object): Held-out data for evaluation.
+
+        Returns:
+            SingleFitResult: Instance indicating failure with NaN errors.
+        """
+        return cls(
+            distro=distro,
+            train_data=train_data,
+            test_data=test_data,
+            success=False,
+            minimization_result={},
+            train_error=np.nan,
+            test_error=np.nan,
+            kernel=np.array([]),
+            distro_params=np.array([]),
         )
 
 
@@ -145,13 +169,13 @@ class SeriesFitResult:
         self._collect_errors()
         self.transition_rates = np.array(
             [
-                fr.model_config[0] if ((fr is not None) and len(fr.model_config) > 0) else np.nan
+                (fr.distro_params[0] if ((fr is not None) and len(fr.distro_params) > 0) else np.nan)
                 for fr in self.fit_results
             ]
         )
         self.transition_delays = np.array(
             [
-                fr.model_config[1] if ((fr is not None) and len(fr.model_config) > 1) else np.nan
+                (fr.distro_params[1] if ((fr is not None) and len(fr.distro_params) > 1) else np.nan)
                 for fr in self.fit_results
             ]
         )

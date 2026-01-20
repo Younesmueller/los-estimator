@@ -34,7 +34,9 @@ data_config.icu_file = data_path
 data_config.los_file = kernel_path
 model_config.kernel_width = kernel_width
 
-model_config.distributions = ["lognorm", "linear", "gaussian"]
+model_config.distributions = ["exponential", "linear", "gaussian"]
+# debug_config.less_distros = True
+# debug_config.less_windows = True
 
 estimator = LosEstimationRun(
     data_config,

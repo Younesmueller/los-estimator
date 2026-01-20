@@ -5,7 +5,6 @@ and length of stay distributions to predict ICU occupancy through
 mathematical convolution operations.
 """
 
-import sys
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt

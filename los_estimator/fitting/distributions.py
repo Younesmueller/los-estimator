@@ -63,7 +63,7 @@ class Distribution:
     init_values: list[float]
     boundaries: list[tuple]
     pdf: Callable
-    to_string: Callable = None
+    to_string: Callable = lambda x: str(x)
 
 
 class DistributionsClass:

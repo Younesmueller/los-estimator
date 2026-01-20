@@ -127,8 +127,8 @@ class DataConfig:
 
     icu_file: str
     los_file: Optional[str] = None
-    start_day: str = None
-    end_day: str = None
+    start_day: Optional[str] = None
+    end_day: Optional[str] = None
 
     init_params_file: Optional[str] = None
 

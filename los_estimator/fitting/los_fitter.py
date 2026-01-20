@@ -6,11 +6,10 @@ length of stay data using various distribution types and optimization methods.
 
 from __future__ import annotations
 
-import dill
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import minimize, OptimizeResult
-from typing import Callable, Optional, Tuple, Union, List
+from scipy.optimize import minimize
+from typing import Callable, Optional, Tuple, List
 
 from los_estimator.fitting.models.compartmental_model import calc_its_comp
 from los_estimator.fitting.models.convolutional_model import calc_its_convolution
@@ -168,7 +167,7 @@ def fit_convolution(
         kernel=fitted_kernel,
         train_prediction=train_prediction,
         test_prediction=test_prediction,
-        model_config=distro_params,
+        distro_params=distro_params,
         rel_train_error=rel_train_error,
         rel_test_error=rel_test_error,
     )
@@ -253,7 +252,7 @@ def fit_compartmental(
         kernel=np.zeros(1),
         train_prediction=train_prediction,
         test_prediction=test_prediction,
-        model_config=result.x,
+        distro_params=result.x,
         rel_train_error=rel_train_error,
         rel_test_error=rel_test_error,
     )

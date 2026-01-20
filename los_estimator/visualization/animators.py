@@ -2,7 +2,6 @@
 
 import logging
 import os
-from typing import Optional
 
 import glob
 import contextlib
@@ -11,7 +10,6 @@ import contextlib
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from matplotlib.patches import Patch
 
 from ..config import (
@@ -56,13 +54,17 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         """Generate context for animation frames."""
         ac = self.ac
         self.distro_colors = {
-            distro: self.visualization_config.colors[i] for i, distro in enumerate(self.all_fit_results)
+            distro: self.visualization_config.colors[i]
+            for i, distro in enumerate(self.all_fit_results)
         }
         self.distro_patches = [
-            Patch(color=self.distro_colors[distro], label=distro.capitalize()) for distro in self.all_fit_results
+            Patch(color=self.distro_colors[distro], label=distro.capitalize())
+            for distro in self.all_fit_results
         ]
         d = dict(ac.short_distro_names)
-        self.ac.short_distro_names = [d.get(distro, distro) for distro in self.all_fit_results]
+        self.ac.short_distro_names = [
+            d.get(distro, distro) for distro in self.all_fit_results
+        ]
 
     def _get_subplots(self):
         """Get subplot configuration for animation."""
@@ -93,7 +95,9 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             self.series_data.x_full,
         )
 
-        (line_bedload,) = ax_main.plot(y_full, color="black", label="Ground Truth: ICU Bedload")
+        (line_bedload,) = ax_main.plot(
+            y_full, color="black", label="Ground Truth: ICU Bedload"
+        )
 
         span_train = ax_main.axvspan(
             w.train_start,
@@ -136,14 +140,31 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             x_train = np.arange(len(y_train)) + w.training_prediction_start
             x_test = np.arange(len(y_test)) + w.test_start
 
-            ax_main.plot(x_train, y_train, linestyle="--", color=self.distro_colors[distro])
-            ax_main.plot(x_test, y_test, label=f"{distro.capitalize()}", color=self.distro_colors[distro])
-        (line_inc,) = ax_main.plot(x_full * 4, linestyle="--", label="ICU Admissions (Scaled * 4)")
+            ax_main.plot(
+                x_train, y_train, linestyle="--", color=self.distro_colors[distro]
+            )
+            ax_main.plot(
+                x_test,
+                y_test,
+                label=f"{distro.capitalize()}",
+                color=self.distro_colors[distro],
+            )
+        (line_inc,) = ax_main.plot(
+            x_full * 4, linestyle="--", label="ICU Admissions (Scaled * 4)"
+        )
         ma = np.nanmax(x_full)
 
-        legend1 = ax_main.legend(handles=self.distro_patches, loc="upper left", fancybox=True, ncol=2)
+        legend1 = ax_main.legend(
+            handles=self.distro_patches, loc="upper left", fancybox=True, ncol=2
+        )
         legend2 = ax_main.legend(
-            handles=[line_bedload, line_inc, span_train, line_pred_start_vertical_marker, span_test],
+            handles=[
+                line_bedload,
+                line_inc,
+                span_train,
+                line_pred_start_vertical_marker,
+                span_test,
+            ],
             loc="upper right",
         )
 
@@ -256,13 +277,22 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             result_obj = result_series.fit_results[window_id]
             name = distro.capitalize()
 
-            ax_kernel.plot(result_obj.kernel, label=name, color=self.distro_colors[distro])
+            ax_kernel.plot(
+                result_obj.kernel, label=name, color=self.distro_colors[distro]
+            )
 
         sample_kernel_handle = []
         if hasattr(self.vc, "real_los") and self.vc.real_los is not None:
-            sample_kernel_handle = ax_kernel.plot(self.vc.real_los, color="black", label="Reference Distribution")
+            sample_kernel_handle = ax_kernel.plot(
+                self.vc.real_los, color="black", label="Reference Distribution"
+            )
 
-        ax_kernel.legend(handles=sample_kernel_handle + self.distro_patches, loc="upper right", fancybox=True, ncol=2)
+        ax_kernel.legend(
+            handles=sample_kernel_handle + self.distro_patches,
+            loc="upper right",
+            fancybox=True,
+            ncol=2,
+        )
         ax_kernel.set_ylim(0, 0.1)
         ax_kernel.set_xlim(-2, 60)
         ax_kernel.set_ylabel("Discharge Probability")
@@ -282,12 +312,16 @@ class DeconvolutionAnimator(DeconvolutionPlots):
         with contextlib.ExitStack() as stack:
 
             # lazily load images
-            imgs = (stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in)))
+            imgs = (
+                stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in))
+            )
 
             # imgs = (Image.composite(img, Image.new("RGB", img.size, (255, 255, 255)), img) for img in imgs)
             imgs = (
                 Image.composite(
-                    img.convert("RGBA"), Image.new("RGBA", img.size, (255, 255, 255, 255)), img.convert("RGBA")
+                    img.convert("RGBA"),
+                    Image.new("RGBA", img.size, (255, 255, 255, 255)),
+                    img.convert("RGBA"),
                 ).convert("P")
                 for img in imgs
             )
@@ -296,6 +330,13 @@ class DeconvolutionAnimator(DeconvolutionPlots):
             img = next(imgs)
 
             # save and append the following images
-            img.save(fp=fp_out, format="GIF", append_images=imgs, save_all=True, duration=500, loop=0)
+            img.save(
+                fp=fp_out,
+                format="GIF",
+                append_images=imgs,
+                save_all=True,
+                duration=500,
+                loop=0,
+            )
 
         logger.info("GIF saved successfully!")

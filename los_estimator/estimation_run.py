@@ -1,17 +1,28 @@
 import logging
 import os
-import shutil
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 import pandas as pd
-from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 import dill
 
-from los_estimator.config import *
-from los_estimator.core import *
+from los_estimator.config import (
+    DataConfig,
+    ModelConfig,
+    VisualizationContext,
+    DebugConfig,
+    OutputFolderConfig,
+    AnimationConfig,
+    VisualizationConfig,
+    load_configurations,
+    save_configurations,
+)
+from los_estimator.core import (
+    SeriesData,
+)
 from los_estimator.data import DataLoader, DataPackage
 from los_estimator.evaluation import Evaluator
 from los_estimator.fitting import MultiSeriesFitter
@@ -175,6 +186,11 @@ class LosEstimationRun:
 
         self.set_up_logger()
 
+        if self.debug_config.less_distros:
+            self.model_config.distributions = ["linear", "exponential"]
+        if self.debug_config.only_linear:
+            self.model_config.distributions = ["linear"]
+
     def set_up_logger(self):
         """Configure file logging for this analysis run.
 
@@ -275,9 +291,9 @@ class LosEstimationRun:
         logger.info("LOS estimation run completed.")
 
     def fit(self):
-        col = "icu_admissions"
+
         series_data = (
-            self.data.df_occupancy[col].values,
+            self.data.df_occupancy["icu_admissions"].values,
             self.data.df_occupancy["icu_occupancy"].values,
         )
         self.series_data = SeriesData(*series_data, self.model_config, self.debug_config)
@@ -337,18 +353,18 @@ class LosEstimationRun:
 
             series_fit_result = self.all_fit_results[distro]
             window_ids = [w.window for w in series_fit_result.window_infos]
-            model_configs = np.array([fr.model_config for fr in series_fit_result])
+            distro_params = np.array([fr.distro_params for fr in series_fit_result])
             kernels = series_fit_result.all_kernels[window_ids]
             train_errors = series_fit_result.train_errors
             test_errors = series_fit_result.test_errors
-            len_config = model_configs.shape[1]
+            len_config = distro_params.shape[1]
             len_kernels = kernels.shape[1]
             data_dict = {
                 "window": window_ids,
                 "train_error": train_errors,
                 "test_error": test_errors,
             }
-            data_dict.update({f"param_{i}": model_configs[:, i] for i in range(len_config)})
+            data_dict.update({f"param_{i}": distro_params[:, i] for i in range(len_config)})
             data_dict.update({f"kernel_{i}": kernels[:, i] for i in range(len_kernels)})
             df = pd.DataFrame(data_dict)
             df.to_csv(models_path / f"{distro}_models.csv", index=False)

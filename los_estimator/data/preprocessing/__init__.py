@@ -13,7 +13,9 @@ def preprocess_icu_occupancy():
     It is derived from https://github.com/robert-koch-institut/Intensivkapazitaeten_und_COVID-19-Intensivbettenbelegung_in_Deutschland/blob/main/Intensivregister_Bundeslaender_Kapazitaeten.csv
     """
 
-    input_file = os.path.join(input_folder, "Intensivregister_Bundeslaender_Kapazitaeten.csv")
+    input_file = os.path.join(
+        input_folder, "Intensivregister_Bundeslaender_Kapazitaeten.csv"
+    )
 
     df_icu = pd.read_csv(input_file, parse_dates=["datum"])
     df_icu = df_icu[["datum", "faelle_covid_aktuell", "faelle_covid_erstaufnahmen"]]
@@ -21,7 +23,9 @@ def preprocess_icu_occupancy():
     df_icu = df_icu.groupby("datum").sum()
 
     # Fill up the time from beginning of 2020 to data begin
-    date_range = pd.date_range(start="2020-01-01", end=df_icu.index.min(), inclusive="left")
+    date_range = pd.date_range(
+        start="2020-01-01", end=df_icu.index.min(), inclusive="left"
+    )
     new_data = pd.DataFrame(0, index=date_range, columns=df_icu.columns)
     df_icu = pd.concat([new_data, df_icu])
 

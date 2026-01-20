@@ -37,13 +37,15 @@ class MetricsPlots(VisualizerBase):
         colors = self.visualization_config.colors
 
         for i_metric, metric in enumerate(eval_res.metric_names):
-            fig = self._figure()
+            self._figure()
 
             for i_distro, distro in enumerate(eval_res.distros):
-                train_res = eval_res.train[i_distro, :, i_metric]
                 test_res = eval_res.test[i_distro, :, i_metric]
                 plt.plot(
-                    self.series_data.windows, test_res, label=f"{distro} - Test - {metric}", color=colors[i_distro]
+                    self.series_data.windows,
+                    test_res,
+                    label=f"{distro} - Test - {metric}",
+                    color=colors[i_distro],
                 )
             plt.title(f"{metric.capitalize()} Test Metric for Rolling Models")
             plt.xlabel("Model Training Date")

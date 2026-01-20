@@ -1,7 +1,6 @@
 # %%
 """Deconvolution plotting functionality."""
 
-
 import logging
 from typing import List, Optional, Union
 
@@ -125,23 +124,45 @@ class DeconvolutionPlots(VisualizerBase):
 
     def _ax_plot_prediction_error_window(self, ax, fr_series, distro):
         """Plot prediction error window on given axis."""
-        (l_real,) = ax.plot(self.series_data.y_full, color="black", alpha=0.8, linestyle="--", label="Real Occupancy")
+        (l_real,) = ax.plot(
+            self.series_data.y_full,
+            color="black",
+            alpha=0.8,
+            linestyle="--",
+            label="Real Occupancy",
+        )
         for w, fit_result in zip(fr_series.window_infos, fr_series.fit_results):
 
             x = np.arange(w.training_prediction_start, w.train_end)
             y = fit_result.train_prediction[self.model_config.kernel_width : self.model_config.train_width]
-            (l_train,) = ax.plot(x, y, color=self.colors[0], label=f"{distro.capitalize()} Train", linestyle="-")
+            (l_train,) = ax.plot(
+                x,
+                y,
+                color=self.colors[0],
+                label=f"{distro.capitalize()} Train",
+                linestyle="-",
+            )
 
             x = np.arange(w.train_end, w.test_end)
             y = fit_result.test_prediction[w.kernel_width : w.kernel_width + self.model_config.test_width]
             (l_test,) = ax.plot(
-                x, y, color=self.colors[1], label=f"{distro.capitalize()} Prediction", linestyle="--", alpha=0.5
+                x,
+                y,
+                color=self.colors[1],
+                label=f"{distro.capitalize()} Prediction",
+                linestyle="--",
+                alpha=0.5,
             )
         legend_handles = [l_real, l_train, l_test]
         [
             plt.Line2D([0], [0], color="black", linestyle="--", label="Real"),
             plt.Line2D([0], [0], color=self.colors[0], label=f"{distro.capitalize()} Train"),
-            plt.Line2D([0], [0], color=self.colors[1], label=f"{distro.capitalize()} Prediction"),
+            plt.Line2D(
+                [0],
+                [0],
+                color=self.colors[1],
+                label=f"{distro.capitalize()} Prediction",
+            ),
         ]
         ax.legend(handles=legend_handles, loc="upper right")
 
@@ -156,8 +177,22 @@ class DeconvolutionPlots(VisualizerBase):
     def _ax_plot_error_error_points(self, ax2, fr_series, distro):
         """Plot error points on given axis."""
         x = self.series_data.windows
-        (l1,) = ax2.plot(x, fr_series.train_errors, label="Train Error", color=self.colors[0], linestyle="-", alpha=0.7)
-        (l2,) = ax2.plot(x, fr_series.test_errors, label="Test Error", color=self.colors[1], linestyle="--", alpha=0.7)
+        (l1,) = ax2.plot(
+            x,
+            fr_series.train_errors,
+            label="Train Error",
+            color=self.colors[0],
+            linestyle="-",
+            alpha=0.7,
+        )
+        (l2,) = ax2.plot(
+            x,
+            fr_series.test_errors,
+            label="Test Error",
+            color=self.colors[1],
+            linestyle="--",
+            alpha=0.7,
+        )
 
         ax2.legend(handles=[l1, l2], loc="upper right")
 
@@ -293,7 +328,7 @@ class DeconvolutionPlots(VisualizerBase):
 
     def plot_train_vs_test_error(self):
         n_distros = len(self.all_fit_results.distros)
-        _, axs = self._get_subplots(n_distros // 3, 3, sharex=True, sharey=True, figsize=(12, 6))
+        _, axs = self._get_subplots(max(1, n_distros // 3), 3, sharex=True, sharey=True, figsize=(12, 6))
         axs = axs.flatten()
         for distro, ax in zip(self.all_fit_results.distros, axs):
             fr = self.all_fit_results[distro]

@@ -43,7 +43,6 @@ We use Black for code formatting and follow PEP 8. Before submitting a PR:
 .. code-block:: bash
 
     black los_estimator/
-    flake8 los_estimator/
 
 **Type Hints**
 
@@ -177,7 +176,6 @@ Submitting a Pull Request
 
 Before submitting, verify:
 
-- [ ] Code follows project style (black formatted, flake8 passes)
 - [ ] Type hints are added where appropriate
 - [ ] Tests are added for new functionality
 - [ ] Tests pass locally (``pytest``)

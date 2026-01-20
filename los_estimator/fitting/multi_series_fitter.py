@@ -78,26 +78,9 @@ class MultiSeriesFitter:
         self.DEBUG = {
             "ONE_WINDOW": dc.one_window,
             "LESS_WINDOWS": dc.less_windows,
-            "LESS_DISTROS": dc.less_distros,
-            "ONLY_LINEAR": dc.only_linear,
         }
-        self.distributions = self._get_debug_distro(self._distributions)
+
         self.window_data = list(self.series_data)
-
-    def _get_debug_distro(self, distributions):
-        """Filter distributions for debug mode.
-
-        Args:
-            distributions (list[str]): Full list of distributions.
-
-        Returns:
-            list[str]: Filtered list based on debug settings.
-        """
-        if self.DEBUG["LESS_DISTROS"]:
-            return ["linear", "compartmental"]
-        if self.DEBUG["ONLY_LINEAR"]:
-            return ["linear"]
-        return distributions
 
     def _update_past_kernels(self, fit_result, first_window, w, kernel):
         """Update the rolling kernel matrix with the latest fitted kernel.
@@ -192,7 +175,7 @@ class MultiSeriesFitter:
                     )
                     y_pred = calc_its_comp(
                         series_data.x_full,
-                        *result_obj.model_config,
+                        *result_obj.distro_params,
                         series_data.y_full[0],
                     )
                 else:
@@ -212,11 +195,10 @@ class MultiSeriesFitter:
                     )
 
                     self._update_past_kernels(fit_result, is_first_window, w, result_obj.kernel)
-                    y_pred = calc_its_convolution(series_data.x_full, fit_result.all_kernels)
 
             except Exception as e:
                 logger.error(f"Error fitting {distro} on window {window_id}: {e}")
-                result_obj = SingleFitResult()
+                result_obj = SingleFitResult.create_failed(distro, train_data, test_data)
                 raise e
 
             if not result_obj.success:
@@ -248,5 +230,5 @@ class MultiSeriesFitter:
         for prev in reversed(fit_result[:window_id]):
             if not prev:
                 continue
-            return prev.model_config
+            return prev.distro_params
         return init_vals
