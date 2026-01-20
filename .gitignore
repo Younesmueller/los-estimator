@@ -1,4 +1,6 @@
+results/
 .venv/
+examples/results/
 
 
 # Byte-compiled / optimized / DLL files
